@@ -1,8 +1,8 @@
-import { MapPin, TrendingUp } from 'lucide-react';
-import { useCurrentWeatherByCity } from '@hooks/useWeather';
-import { useWeatherContext } from '@context/WeatherContext';
-import LoadingSpinner from '@components/ui/LoadingSpinner';
-import ErrorMessage from '@components/ui/ErrorMessage';
+import { MapPin, TrendingUp } from "lucide-react";
+import { useCurrentWeatherByCity } from "@hooks/useWeather";
+import { useWeatherContext } from "@context/WeatherContext";
+import LoadingSpinner from "@components/ui/LoadingSpinner";
+import ErrorMessage from "@components/ui/ErrorMessage";
 
 /**
  * ForecastCard component for displaying weather forecast for a location
@@ -12,10 +12,11 @@ import ErrorMessage from '@components/ui/ErrorMessage';
  */
 const ForecastCard = ({ location, compact = false }) => {
   const { preferences, formatTemperature } = useWeatherContext();
-  
+
   const { data, isLoading, isError, error } = useCurrentWeatherByCity(
     location.city || location.name,
-    preferences.units
+    preferences.units,
+    location.name || null // Pass original name
   );
 
   // Get weather icon URL
@@ -25,7 +26,9 @@ const ForecastCard = ({ location, compact = false }) => {
 
   if (isLoading) {
     return (
-      <div className={`forecast-card ${compact ? 'forecast-card--compact' : ''}`}>
+      <div
+        className={`forecast-card ${compact ? "forecast-card--compact" : ""}`}
+      >
         <div className="forecast-card__loading">
           <LoadingSpinner size="small" />
           <span>Loading...</span>
@@ -36,7 +39,9 @@ const ForecastCard = ({ location, compact = false }) => {
 
   if (isError) {
     return (
-      <div className={`forecast-card ${compact ? 'forecast-card--compact' : ''}`}>
+      <div
+        className={`forecast-card ${compact ? "forecast-card--compact" : ""}`}
+      >
         <ErrorMessage error={error} variant="compact" />
       </div>
     );
@@ -49,7 +54,7 @@ const ForecastCard = ({ location, compact = false }) => {
   const weather = data.data;
 
   return (
-    <div className={`forecast-card ${compact ? 'forecast-card--compact' : ''}`}>
+    <div className={`forecast-card ${compact ? "forecast-card--compact" : ""}`}>
       <div className="forecast-card__header">
         <div className="forecast-card__location">
           <MapPin size={14} />
@@ -61,8 +66,8 @@ const ForecastCard = ({ location, compact = false }) => {
 
       <div className="forecast-card__content">
         <div className="forecast-card__weather">
-          <img 
-            src={getWeatherIconUrl(weather.current.icon)} 
+          <img
+            src={getWeatherIconUrl(weather.current.icon)}
             alt={weather.current.description}
             className="forecast-card__icon"
           />
@@ -70,7 +75,7 @@ const ForecastCard = ({ location, compact = false }) => {
             {formatTemperature(weather.current.temperature)}
           </div>
         </div>
-        
+
         <div className="forecast-card__description">
           {weather.current.description}
         </div>
@@ -87,4 +92,3 @@ const ForecastCard = ({ location, compact = false }) => {
 };
 
 export default ForecastCard;
-

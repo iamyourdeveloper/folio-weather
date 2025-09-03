@@ -1,4 +1,4 @@
-import api from './api.js';
+import api from "./api.js";
 
 /**
  * Weather Service - Handles all weather-related API calls
@@ -8,13 +8,22 @@ class WeatherService {
    * Get current weather by city name
    * @param {string} city - City name
    * @param {string} units - Temperature units (metric, imperial, kelvin)
+   * @param {string} originalName - Original location name with state/region (optional)
    * @returns {Promise<Object>} Weather data
    */
-  async getCurrentWeatherByCity(city, units = 'metric') {
+  async getCurrentWeatherByCity(city, units = "metric", originalName = null) {
     try {
-      const response = await api.get(`/weather/current/city/${encodeURIComponent(city)}`, {
-        params: { units }
-      });
+      const params = { units };
+      if (originalName) {
+        params.originalName = originalName;
+      }
+
+      const response = await api.get(
+        `/weather/current/city/${encodeURIComponent(city)}`,
+        {
+          params,
+        }
+      );
       return response.data;
     } catch (error) {
       throw this.handleError(error, `Failed to get weather for ${city}`);
@@ -26,16 +35,30 @@ class WeatherService {
    * @param {number} lat - Latitude
    * @param {number} lon - Longitude
    * @param {string} units - Temperature units
+   * @param {string} originalName - Original location name with state/region (optional)
    * @returns {Promise<Object>} Weather data
    */
-  async getCurrentWeatherByCoords(lat, lon, units = 'metric') {
+  async getCurrentWeatherByCoords(
+    lat,
+    lon,
+    units = "metric",
+    originalName = null
+  ) {
     try {
-      const response = await api.get('/weather/current/coords', {
-        params: { lat, lon, units }
+      const params = { lat, lon, units };
+      if (originalName) {
+        params.originalName = originalName;
+      }
+
+      const response = await api.get("/weather/current/coords", {
+        params,
       });
       return response.data;
     } catch (error) {
-      throw this.handleError(error, `Failed to get weather for coordinates ${lat}, ${lon}`);
+      throw this.handleError(
+        error,
+        `Failed to get weather for coordinates ${lat}, ${lon}`
+      );
     }
   }
 
@@ -43,13 +66,22 @@ class WeatherService {
    * Get 5-day weather forecast by city name
    * @param {string} city - City name
    * @param {string} units - Temperature units
+   * @param {string} originalName - Original location name with state/region (optional)
    * @returns {Promise<Object>} Forecast data
    */
-  async getForecastByCity(city, units = 'metric') {
+  async getForecastByCity(city, units = "metric", originalName = null) {
     try {
-      const response = await api.get(`/weather/forecast/city/${encodeURIComponent(city)}`, {
-        params: { units }
-      });
+      const params = { units };
+      if (originalName) {
+        params.originalName = originalName;
+      }
+
+      const response = await api.get(
+        `/weather/forecast/city/${encodeURIComponent(city)}`,
+        {
+          params,
+        }
+      );
       return response.data;
     } catch (error) {
       throw this.handleError(error, `Failed to get forecast for ${city}`);
@@ -61,16 +93,25 @@ class WeatherService {
    * @param {number} lat - Latitude
    * @param {number} lon - Longitude
    * @param {string} units - Temperature units
+   * @param {string} originalName - Original location name with state/region (optional)
    * @returns {Promise<Object>} Forecast data
    */
-  async getForecastByCoords(lat, lon, units = 'metric') {
+  async getForecastByCoords(lat, lon, units = "metric", originalName = null) {
     try {
-      const response = await api.get('/weather/forecast/coords', {
-        params: { lat, lon, units }
+      const params = { lat, lon, units };
+      if (originalName) {
+        params.originalName = originalName;
+      }
+
+      const response = await api.get("/weather/forecast/coords", {
+        params,
       });
       return response.data;
     } catch (error) {
-      throw this.handleError(error, `Failed to get forecast for coordinates ${lat}, ${lon}`);
+      throw this.handleError(
+        error,
+        `Failed to get forecast for coordinates ${lat}, ${lon}`
+      );
     }
   }
 
@@ -80,10 +121,10 @@ class WeatherService {
    */
   async testConnection() {
     try {
-      const response = await api.get('/weather/test');
+      const response = await api.get("/weather/test");
       return response.data;
     } catch (error) {
-      throw this.handleError(error, 'Failed to test weather API connection');
+      throw this.handleError(error, "Failed to test weather API connection");
     }
   }
 
@@ -93,10 +134,10 @@ class WeatherService {
    */
   async getUnits() {
     try {
-      const response = await api.get('/weather/units');
+      const response = await api.get("/weather/units");
       return response.data;
     } catch (error) {
-      throw this.handleError(error, 'Failed to get temperature units');
+      throw this.handleError(error, "Failed to get temperature units");
     }
   }
 
@@ -106,10 +147,10 @@ class WeatherService {
    */
   async getApiInfo() {
     try {
-      const response = await api.get('/weather');
+      const response = await api.get("/weather");
       return response.data;
     } catch (error) {
-      throw this.handleError(error, 'Failed to get weather API information');
+      throw this.handleError(error, "Failed to get weather API information");
     }
   }
 
@@ -120,12 +161,12 @@ class WeatherService {
    * @returns {Error} Formatted error
    */
   handleError(error, defaultMessage) {
-    console.log('🔍 WeatherService Error Debug:', {
+    console.log("🔍 WeatherService Error Debug:", {
       error,
       message: error.message,
       status: error.status,
       response: error.response,
-      defaultMessage
+      defaultMessage,
     });
 
     const errorMessage = error.message || defaultMessage;
@@ -137,17 +178,17 @@ class WeatherService {
 
     // Add specific error types for UI handling
     if (errorStatus === 404) {
-      customError.type = 'NOT_FOUND';
+      customError.type = "NOT_FOUND";
     } else if (errorStatus === 401) {
-      customError.type = 'UNAUTHORIZED';
+      customError.type = "UNAUTHORIZED";
     } else if (errorStatus === 429) {
-      customError.type = 'RATE_LIMITED';
+      customError.type = "RATE_LIMITED";
     } else if (errorStatus === 0) {
-      customError.type = 'NETWORK_ERROR';
+      customError.type = "NETWORK_ERROR";
     } else if (errorStatus >= 500) {
-      customError.type = 'SERVER_ERROR';
+      customError.type = "SERVER_ERROR";
     } else {
-      customError.type = 'UNKNOWN_ERROR';
+      customError.type = "UNKNOWN_ERROR";
     }
 
     return customError;
@@ -157,4 +198,3 @@ class WeatherService {
 // Create and export a singleton instance
 const weatherService = new WeatherService();
 export default weatherService;
-

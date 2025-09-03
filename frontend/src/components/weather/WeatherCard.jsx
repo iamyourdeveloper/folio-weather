@@ -1,17 +1,17 @@
-import { Link } from 'react-router-dom';
-import { 
-  MapPin, 
-  Thermometer, 
-  Wind, 
-  Droplets, 
-  Eye, 
-  Gauge, 
-  Sun, 
+import { Link } from "react-router-dom";
+import {
+  MapPin,
+  Thermometer,
+  Wind,
+  Droplets,
+  Eye,
+  Gauge,
+  Sun,
   Sunset,
   TrendingUp,
-  Heart
-} from 'lucide-react';
-import { useWeatherContext } from '@context/WeatherContext';
+  Heart,
+} from "lucide-react";
+import { useWeatherContext } from "@context/WeatherContext";
 
 /**
  * WeatherCard component for displaying current weather information
@@ -24,16 +24,17 @@ import { useWeatherContext } from '@context/WeatherContext';
  * @param {Function} [props.onToggleForecast] - Optional handler to toggle forecast visibility (used on Home page)
  * @param {boolean} [props.isForecastVisible] - Whether forecast is currently visible (for button label)
  */
-const WeatherCard = ({ 
-  weather, 
-  showForecastLink = false, 
+const WeatherCard = ({
+  weather,
+  showForecastLink = false,
   compact = false,
   onAddToFavorites,
   onRemoveFromFavorites,
   onToggleForecast,
-  isForecastVisible
+  isForecastVisible,
 }) => {
-  const { preferences, formatTemperature, formatWindSpeed, isFavorite } = useWeatherContext();
+  const { preferences, formatTemperature, formatWindSpeed, isFavorite } =
+    useWeatherContext();
 
   if (!weather) {
     return null;
@@ -43,10 +44,10 @@ const WeatherCard = ({
 
   // Format time for sunrise/sunset
   const formatTime = (isoString) => {
-    return new Date(isoString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+    return new Date(isoString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
@@ -59,26 +60,32 @@ const WeatherCard = ({
   const isLocationFavorited = isFavorite(location);
 
   return (
-    <div className={`weather-card ${compact ? 'weather-card--compact' : ''}`}>
+    <div className={`weather-card ${compact ? "weather-card--compact" : ""}`}>
       {/* Header */}
       <div className="weather-card__header">
         <div className="weather-card__location">
           <MapPin size={16} />
           <h3 className="weather-card__location-name">
-            {location.name}
-            {location.country && (
-              <span className="weather-card__country">, {location.country}</span>
-            )}
+            {/* Show original name if available, otherwise show city, country */}
+            {location.name || location.city || "Unknown Location"}
+            {/* Only show country if it's not already included in the name */}
+            {location.country &&
+              typeof location.name === "string" &&
+              !location.name.includes(location.country) && (
+                <span className="weather-card__country">
+                  , {location.country}
+                </span>
+              )}
           </h3>
         </div>
-        
+
         {onAddToFavorites && !isLocationFavorited && (
-          <button 
+          <button
             onClick={() => {
               const result = onAddToFavorites(location);
               if (result) {
                 // Could add a toast notification here in the future
-                console.log('Added to favorites:', result.name);
+                console.log("Added to favorites:", result.name);
               }
             }}
             className="weather-card__favorite-btn"
@@ -88,14 +95,17 @@ const WeatherCard = ({
             <Heart size={16} />
           </button>
         )}
-        
-        {isLocationFavorited && (
-          onRemoveFromFavorites ? (
+
+        {isLocationFavorited &&
+          (onRemoveFromFavorites ? (
             <button
               onClick={() => {
                 const removed = onRemoveFromFavorites(location);
                 if (removed) {
-                  console.log('Removed from favorites:', location.name || location.city);
+                  console.log(
+                    "Removed from favorites:",
+                    location.name || location.city
+                  );
                 }
               }}
               className="weather-card__favorite-btn"
@@ -105,11 +115,13 @@ const WeatherCard = ({
               <Heart size={16} fill="currentColor" />
             </button>
           ) : (
-            <div className="weather-card__favorited" title="Already in favorites">
+            <div
+              className="weather-card__favorited"
+              title="Already in favorites"
+            >
               <Heart size={16} fill="currentColor" />
             </div>
-          )
-        )}
+          ))}
       </div>
 
       {/* Main Weather Display */}
@@ -120,8 +132,8 @@ const WeatherCard = ({
               {formatTemperature(current.temperature)}
             </span>
             <div className="weather-card__weather-info">
-              <img 
-                src={getWeatherIconUrl(current.icon)} 
+              <img
+                src={getWeatherIconUrl(current.icon)}
                 alt={current.description}
                 className="weather-card__icon"
               />
@@ -130,7 +142,7 @@ const WeatherCard = ({
               </span>
             </div>
           </div>
-          
+
           <div className="weather-card__feels-like">
             <Thermometer size={14} />
             <span>Feels like {formatTemperature(current.feelsLike)}</span>
@@ -160,14 +172,18 @@ const WeatherCard = ({
               <div className="weather-detail">
                 <Gauge size={16} />
                 <span className="weather-detail__label">Pressure</span>
-                <span className="weather-detail__value">{current.pressure} hPa</span>
+                <span className="weather-detail__value">
+                  {current.pressure} hPa
+                </span>
               </div>
             )}
 
             <div className="weather-detail">
               <Eye size={16} />
               <span className="weather-detail__label">Visibility</span>
-              <span className="weather-detail__value">{current.visibility} km</span>
+              <span className="weather-detail__value">
+                {current.visibility} km
+              </span>
             </div>
 
             {preferences.showUvIndex && current.uvIndex && (
@@ -180,7 +196,9 @@ const WeatherCard = ({
 
             <div className="weather-detail">
               <span className="weather-detail__label">Cloudiness</span>
-              <span className="weather-detail__value">{current.cloudiness}%</span>
+              <span className="weather-detail__value">
+                {current.cloudiness}%
+              </span>
             </div>
           </div>
         </div>
@@ -205,7 +223,7 @@ const WeatherCard = ({
       {/* Actions */}
       {showForecastLink && (
         <div className="weather-card__actions">
-          {typeof onToggleForecast === 'function' ? (
+          {typeof onToggleForecast === "function" ? (
             <button
               type="button"
               onClick={onToggleForecast}
@@ -213,10 +231,10 @@ const WeatherCard = ({
               aria-expanded={!!isForecastVisible}
             >
               <TrendingUp size={16} />
-              {isForecastVisible ? 'Hide Forecast' : 'View Forecast'}
+              {isForecastVisible ? "Hide Forecast" : "View Forecast"}
             </button>
           ) : (
-            <Link 
+            <Link
               to={`/search?city=${encodeURIComponent(location.name)}`}
               className="btn btn--secondary btn--small"
             >

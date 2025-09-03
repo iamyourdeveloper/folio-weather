@@ -1,16 +1,17 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { QueryProvider } from '@context/QueryProvider';
-import WeatherProvider from '@context/WeatherContext';
-import Header from '@components/layout/Header';
-import Footer from '@components/layout/Footer';
-import TopBarProgress from '@components/ui/TopBarProgress';
-import HomePage from '@pages/HomePage';
-import SearchPage from '@pages/SearchPage';
-import FavoritesPage from '@pages/FavoritesPage';
-import SettingsPage from '@pages/SettingsPage';
-import TestPage from '@pages/TestPage';
-import ErrorBoundary from '@components/common/ErrorBoundary';
-import '@styles/App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryProvider } from "@context/QueryProvider";
+import WeatherProvider from "@context/WeatherContext";
+import Header from "@components/layout/Header";
+import Footer from "@components/layout/Footer";
+import TopBarProgress from "@components/ui/TopBarProgress";
+import ConnectionStatus from "@components/ui/ConnectionStatus";
+import HomePage from "@pages/HomePage";
+import SearchPage from "@pages/SearchPage";
+import FavoritesPage from "@pages/FavoritesPage";
+import SettingsPage from "@pages/SettingsPage";
+import TestPage from "@pages/TestPage";
+import ErrorBoundary from "@components/common/ErrorBoundary";
+import "@styles/App.css";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Router>
             <div className="app">
               <TopBarProgress />
+              <ConnectionStatus />
               <Header />
               <main className="main-content">
                 <Routes>

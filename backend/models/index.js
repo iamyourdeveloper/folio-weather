@@ -1,17 +1,23 @@
 // Central export file for all models
-import User from './User.js';
-import FavoriteLocation from './FavoriteLocation.js';
-import WeatherAlert from './WeatherAlert.js';
+// Note: Models are prepared for future implementation but not currently active
+// Uncomment and use when implementing user authentication and database persistence
 
-export {
-  User,
-  FavoriteLocation,
-  WeatherAlert
-};
+// import User from './User.js';
+// import FavoriteLocation from './FavoriteLocation.js';
+// import WeatherAlert from './WeatherAlert.js';
 
-export default {
-  User,
-  FavoriteLocation,
-  WeatherAlert
-};
+// export {
+//   User,
+//   FavoriteLocation,
+//   WeatherAlert
+// };
+
+// export default {
+//   User,
+//   FavoriteLocation,
+//   WeatherAlert
+// };
+
+// For now, export empty object to prevent import errors
+export default {};
 

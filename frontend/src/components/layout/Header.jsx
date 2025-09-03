@@ -14,6 +14,10 @@ import {
 } from 'lucide-react';
 import { useWeatherContext } from '@context/WeatherContext';
 import HeaderWeatherBadge from './HeaderWeatherBadge';
+import {
+  parseLocationQuery,
+  isValidLocationQuery,
+} from "@/utils/searchUtils.js";
 
 /**
  * Header component with navigation and search functionality
@@ -43,31 +47,45 @@ const Header = () => {
     { path: '/test', label: 'API Test', icon: TestTube },
   ];
 
-  // Handle search submission
+  // Handle search submission - using same reliable pattern as Search page
   const handleSearch = (e, rawQuery) => {
     e.preventDefault();
-    const q = (rawQuery ?? headerSearchQuery).trim();
-    if (!q) return;
+    const fullQuery = (rawQuery ?? headerSearchQuery).trim();
+    if (!fullQuery) return;
 
-    // Collapse the expandable search immediately after submit
-    // by removing focus from any element inside the search form.
-    if (inputRef.current) inputRef.current.blur();
-    if (typeof document !== 'undefined' && document.activeElement && document.activeElement.blur) {
-      try { document.activeElement.blur(); } catch {}
+    // Validate the query before processing (same as Search page)
+    if (!isValidLocationQuery(fullQuery)) {
+      console.log("Invalid location query format:", fullQuery);
+      return;
     }
-    setIsSearchActive(false);
 
-    // Update context for consistency
-    searchLocation(q);
-    // Immediately reflect the most recent search in the header/weather badge
-    // so users see the temperature update right after submitting.
-    selectLocation({ city: q, name: q, type: 'city' });
+    // Parse the location query to extract city and full name (same as Search page)
+    const { city, fullName } = parseLocationQuery(fullQuery);
+    console.log("Parsed location:", { city, fullName });
+
+    // Update context using parsed data (same as Search page)
+    searchLocation(fullName); // Use full name for context
+    selectLocation({ city, name: fullName, type: 'city' }); // city for API, name for display
 
     // Client-side navigate to trigger Search page hydration
-    navigate(`/search?city=${encodeURIComponent(q)}`);
+    navigate(`/search?city=${encodeURIComponent(fullName)}`);
 
-    // Clear the input so placeholder shows after submit
+    // Clear the input for next search but keep search form active
     setHeaderSearchQuery('');
+    
+    // Keep search form open and ready for next search (don't collapse)
+    // This allows multiple consecutive searches without needing to reopen
+    if (inputRef.current) {
+      // Small delay to let navigation complete, then refocus for next search
+      const timeoutId = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+      
+      // Store timeout ID for potential cleanup
+      inputRef.current.setAttribute('data-focus-timeout', timeoutId);
+    }
   };
 
   // Toggle theme
@@ -87,6 +105,7 @@ const Header = () => {
 
   // Close the expandable search on outside pointer interactions
   // (but keep it open when interacting with allowed controls)
+  // Made less aggressive to support multiple consecutive searches
   useEffect(() => {
     const handler = (e) => {
       if (!isSearchActive) return;
@@ -94,8 +113,10 @@ const Header = () => {
       if (!formEl) return;
       const t = e.target;
       const isInsideForm = formEl.contains(t);
-      const isAllowed = !!t.closest?.('.header__theme-toggle, .header-weather, .header-weather__link, .header__logo');
-      if (!isInsideForm && !isAllowed) {
+      const isAllowed = !!t.closest?.('.header__theme-toggle, .header-weather, .header-weather__link, .header__logo, .header__nav, .header__actions');
+      // Only close if clicking far outside the header area
+      const isInHeader = !!t.closest?.('.header');
+      if (!isInsideForm && !isAllowed && !isInHeader) {
         setIsSearchActive(false);
       }
     };
@@ -118,6 +139,18 @@ const Header = () => {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isSearchActive]);
+
+  // Cleanup any pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (inputRef.current) {
+        const timeoutId = inputRef.current.getAttribute('data-focus-timeout');
+        if (timeoutId) {
+          clearTimeout(parseInt(timeoutId));
+        }
+      }
+    };
+  }, []);
 
   return (
     <header className={`header ${isSearchActive ? 'header--search-active' : ''}`}>
@@ -180,29 +213,34 @@ const Header = () => {
               className="search-form"
               onFocus={() => setIsSearchActive(true)}
               onBlur={(e) => {
-                // Only collapse if focus moved completely outside the form,
-                // AND the next focus/click target is not one of the allowed
-                // controls (theme toggle or weather badge). We also honor a
-                // pointer-down flag to handle browsers that don't set
-                // relatedTarget during blur reliably on link/button clicks.
+                // Less aggressive blur handling for multiple consecutive searches
+                // Only collapse if focus moves completely outside the header area
                 if (!e.currentTarget.contains(e.relatedTarget)) {
                   const rt = e.relatedTarget;
+                  const isInHeader = !!(rt && rt.closest?.('.header'));
                   const isAllowedTarget = !!(
                     rt &&
                     (rt.closest?.('.header__theme-toggle') ||
                      rt.closest?.('.header-weather') ||
                      rt.closest?.('.header-weather__link') ||
-                     rt.closest?.('.header__logo'))
+                     rt.closest?.('.header__logo') ||
+                     rt.closest?.('.header__nav') ||
+                     rt.closest?.('.header__actions'))
                   );
 
-                  const keepOpen = keepOpenOnNextBlurRef.current || isAllowedTarget;
+                  const keepOpen = keepOpenOnNextBlurRef.current || isAllowedTarget || isInHeader;
 
                   // Reset the one-shot flag for subsequent interactions
                   keepOpenOnNextBlurRef.current = false;
 
                   if (!keepOpen) {
-                    // Defer collapse to allow any click to complete cleanly
-                    setTimeout(() => setIsSearchActive(false), 0);
+                    // Add longer delay to prevent premature closing during navigation
+                    setTimeout(() => {
+                      // Double-check that search should still be closed
+                      if (!document.activeElement?.closest?.('.header')) {
+                        setIsSearchActive(false);
+                      }
+                    }, 200);
                   }
                 }
               }}
@@ -222,7 +260,12 @@ const Header = () => {
                   type="text"
                   placeholder="Enter city name (e.g., London, New York, Tokyo)"
                   value={headerSearchQuery}
-                  onChange={(e) => setHeaderSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Prevent XSS and invalid characters
+                    const sanitizedValue = value.replace(/[<>]/g, '');
+                    setHeaderSearchQuery(sanitizedValue);
+                  }}
                   onFocus={() => {
                     setIsSearchActive(true);
                     if (isMenuOpen) setIsMenuOpen(false);
@@ -289,8 +332,10 @@ const Header = () => {
             <form
               onSubmit={(e) => {
                 handleSearch(e, mobileSearchQuery);
-                setIsMenuOpen(false);
+                // Clear the mobile query for next search
                 setMobileSearchQuery('');
+                // Keep mobile menu open for multiple consecutive searches
+                // Don't close menu automatically - let user close when done
               }}
               className="search-form search-form--mobile"
             >
@@ -300,7 +345,12 @@ const Header = () => {
                   type="text"
                   placeholder="Enter city name (e.g., London, New York, Tokyo)"
                   value={mobileSearchQuery}
-                  onChange={(e) => setMobileSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Prevent XSS and invalid characters
+                    const sanitizedValue = value.replace(/[<>]/g, '');
+                    setMobileSearchQuery(sanitizedValue);
+                  }}
                   className="search-form__input search-form__input--large"
                   ref={mobileInputRef}
                 />

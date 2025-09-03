@@ -25,12 +25,14 @@ const queryClient = new QueryClient({
   },
 });
 
-// Optional: Add global error handling
+// Optional: Add global error handling for future mutations
 queryClient.setMutationDefaults(['weather'], {
   mutationFn: async ({ endpoint, data, method = 'POST' }) => {
     // This would be used for any weather-related mutations
     // Currently we only have queries, but this is for future use
-    console.log(`Weather mutation: ${method} ${endpoint}`, data);
+    if (import.meta.env.DEV) {
+      console.log(`Weather mutation: ${method} ${endpoint}`, data);
+    }
   },
 });
 

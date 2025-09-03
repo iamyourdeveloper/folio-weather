@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 /**
  * Custom hook for handling geolocation functionality
@@ -11,13 +11,13 @@ export const useGeolocation = (options = {}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
 
-  // Default options for geolocation
-  const defaultOptions = {
+  // Default options for geolocation - memoized to prevent infinite re-renders
+  const defaultOptions = useMemo(() => ({
     enableHighAccuracy: true,
     timeout: 5000,
     maximumAge: 10 * 60 * 1000, // 10 minutes
     ...options,
-  };
+  }), [options]);
 
   // Check if geolocation is supported
   useEffect(() => {
@@ -53,16 +53,16 @@ export const useGeolocation = (options = {}) => {
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied by user.';
+            errorMessage = 'Location access denied. You can enable location access in your browser settings or use the search to find weather for any city.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.';
+            errorMessage = 'Location information is unavailable. Please try searching for your city manually.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
+            errorMessage = 'Location request timed out. Please try again or search for your city manually.';
             break;
           default:
-            errorMessage = 'An unknown error occurred while retrieving location.';
+            errorMessage = 'Unable to get your location. Please search for your city manually.';
             break;
         }
         
@@ -101,16 +101,16 @@ export const useGeolocation = (options = {}) => {
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied by user.';
+            errorMessage = 'Location access denied. You can enable location access in your browser settings or use the search to find weather for any city.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.';
+            errorMessage = 'Location information is unavailable. Please try searching for your city manually.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
+            errorMessage = 'Location request timed out. Please try again or search for your city manually.';
             break;
           default:
-            errorMessage = 'An unknown error occurred while retrieving location.';
+            errorMessage = 'Unable to get your location. Please search for your city manually.';
             break;
         }
         

@@ -1,12 +1,26 @@
-import { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { MapPin, Search, Heart, TrendingUp, AlertCircle, ChevronLeft, ChevronRight, Shuffle } from 'lucide-react';
-import { useWeatherContext } from '@context/WeatherContext';
-import { useCurrentWeatherByCoords, useCurrentWeatherByCity, useForecastByCoords, useForecastByCity } from '@hooks/useWeather';
-import WeatherCard from '@components/weather/WeatherCard';
-import ForecastCard from '@components/weather/ForecastCard';
-import LoadingSpinner from '@components/ui/LoadingSpinner';
-import ErrorMessage from '@components/ui/ErrorMessage';
+import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import {
+  MapPin,
+  Search,
+  Heart,
+  TrendingUp,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Shuffle,
+} from "lucide-react";
+import { useWeatherContext } from "@context/WeatherContext";
+import {
+  useCurrentWeatherByCoords,
+  useCurrentWeatherByCity,
+  useForecastByCoords,
+  useForecastByCity,
+} from "@hooks/useWeather";
+import WeatherCard from "@components/weather/WeatherCard";
+import ForecastCard from "@components/weather/ForecastCard";
+import LoadingSpinner from "@components/ui/LoadingSpinner";
+import ErrorMessage from "@components/ui/ErrorMessage";
 
 /**
  * HomePage component - Main landing page with current weather and quick actions
@@ -32,11 +46,16 @@ const HomePage = () => {
 
   // Get the effective location to use
   const effectiveLocation = getEffectiveLocation();
-  
+
   // Determine which weather data to fetch based on effective location
-  const shouldFetchByCoords = effectiveLocation?.type === 'coords' || 
-    (currentLocation && !selectedLocation && !autoSelectedLocation && preferences.autoLocation);
-  const shouldFetchByCity = effectiveLocation?.type === 'city' || selectedLocation;
+  const shouldFetchByCoords =
+    effectiveLocation?.type === "coords" ||
+    (currentLocation &&
+      !selectedLocation &&
+      !autoSelectedLocation &&
+      preferences.autoLocation);
+  const shouldFetchByCity =
+    effectiveLocation?.type === "city" || selectedLocation;
 
   // Toggle state for revealing the 5-day forecast on Home
   const [showHomeForecast, setShowHomeForecast] = useState(false);
@@ -60,11 +79,11 @@ const HomePage = () => {
     updateSliderNav();
     const onScroll = () => updateSliderNav();
     const onResize = () => updateSliderNav();
-    el.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
     return () => {
-      el.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
     };
   }, [favorites.length]);
 
@@ -72,26 +91,39 @@ const HomePage = () => {
     const el = sliderRef.current;
     if (!el) return;
     const amount = el.clientWidth; // scroll by one viewport width
-    el.scrollBy({ left: dir * amount, behavior: 'smooth' });
+    el.scrollBy({ left: dir * amount, behavior: "smooth" });
   };
 
   // Fetch weather data based on location
   const coordsWeather = useCurrentWeatherByCoords(
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lat : null,
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lon : null,
-    preferences.units
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      : null,
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      : null,
+    preferences.units,
+    effectiveLocation?.name || selectedLocation?.name // Pass original name when available
   );
 
   const cityWeather = useCurrentWeatherByCity(
-    shouldFetchByCity ? (effectiveLocation?.city || selectedLocation?.city) : null,
-    preferences.units
+    shouldFetchByCity
+      ? effectiveLocation?.city || selectedLocation?.city
+      : null,
+    preferences.units,
+    selectedLocation?.name // Pass original name when available
   );
 
   // Fetch forecast data (enabled only when toggled open)
   const coordsForecast = useForecastByCoords(
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lat : null,
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lon : null,
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      : null,
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      : null,
     preferences.units,
+    effectiveLocation?.name || selectedLocation?.name, // Pass original name when available
     {
       enabled:
         showHomeForecast &&
@@ -104,10 +136,18 @@ const HomePage = () => {
   );
 
   const cityForecast = useForecastByCity(
-    shouldFetchByCity ? (effectiveLocation?.city || selectedLocation?.city) : null,
+    shouldFetchByCity
+      ? effectiveLocation?.city || selectedLocation?.city
+      : null,
     preferences.units,
+    selectedLocation?.name, // Pass original name when available
     {
-      enabled: showHomeForecast && !!(shouldFetchByCity && (effectiveLocation?.city || selectedLocation?.city)),
+      enabled:
+        showHomeForecast &&
+        !!(
+          shouldFetchByCity &&
+          (effectiveLocation?.city || selectedLocation?.city)
+        ),
     }
   );
 
@@ -127,10 +167,11 @@ const HomePage = () => {
         <section className="home-hero">
           <div className="home-hero__content">
             <h1 className="home-hero__title">
-              Welcome to {import.meta.env.VITE_APP_NAME || 'Weather App'}
+              Welcome to {import.meta.env.VITE_APP_NAME || "Weather App"}
             </h1>
             <p className="home-hero__subtitle">
-              Get real-time weather information, forecasts, and manage your favorite locations
+              Get real-time weather information, forecasts, and manage your
+              favorite locations
             </p>
 
             {/* Quick Action Buttons */}
@@ -139,7 +180,7 @@ const HomePage = () => {
                 <Search size={20} />
                 Search Weather
               </Link>
-              
+
               <Link to="/favorites" className="btn btn--secondary">
                 <Heart size={20} />
                 View Favorites
@@ -167,7 +208,7 @@ const HomePage = () => {
               Random City
             </button>
           </div>
-          
+
           {/* Location Status */}
           <div className="location-status">
             {locationLoading && (
@@ -176,34 +217,38 @@ const HomePage = () => {
                 <span>Getting your location...</span>
               </div>
             )}
-            
+
             {locationError && (
               <div className="location-status__item location-status__item--error">
                 <AlertCircle size={16} />
                 <span>
-                  {(locationError?.message || 'Unable to retrieve your location.')}
-                  {" "}Please search for a city.
+                  {locationError?.message ||
+                    "Unable to retrieve your location."}{" "}
+                  Please search for a city.
                 </span>
               </div>
             )}
-            
+
             {currentLocation && !selectedLocation && (
               <div className="location-status__item location-status__item--success">
                 <MapPin size={16} />
                 <span>Using your current location</span>
               </div>
             )}
-            
+
             {selectedLocation && (
               <div className="location-status__item location-status__item--info">
                 <Search size={16} />
-                <span>Showing weather for {selectedLocation.name || selectedLocation.city}</span>
+                <span>
+                  Showing weather for{" "}
+                  {selectedLocation.name || selectedLocation.city}
+                </span>
               </div>
             )}
-            
+
             {!selectedLocation && autoSelectedLocation && (
               <div className="location-status__item location-status__item--info">
-                {autoSelectedLocation.type === 'coords' ? (
+                {autoSelectedLocation.type === "coords" ? (
                   <>
                     <MapPin size={16} />
                     <span>Showing weather for {autoSelectedLocation.name}</span>
@@ -228,15 +273,15 @@ const HomePage = () => {
             )}
 
             {(error || activeWeather.isError) && (
-              <ErrorMessage 
-                error={error || activeWeather.error} 
+              <ErrorMessage
+                error={error || activeWeather.error}
                 onRetry={activeWeather.refetch}
               />
             )}
 
             {activeWeather.isSuccess && activeWeather.data && (
               <div className="weather-display">
-                <WeatherCard 
+                <WeatherCard
                   weather={activeWeather.data.data}
                   showForecastLink={true}
                   onAddToFavorites={(loc) => addFavorite(loc)}
@@ -244,70 +289,93 @@ const HomePage = () => {
                   onToggleForecast={() => setShowHomeForecast((v) => !v)}
                   isForecastVisible={showHomeForecast}
                 />
-                
+
                 {/* Show 5-day forecast if available */}
                 {showHomeForecast &&
-                 activeForecast.isSuccess &&
-                 activeForecast.data &&
-                 activeForecast.data.data &&
-                 activeForecast.data.data.forecast &&
-                 preferences.show5DayForecast && (
-                  <div className="forecast-section">
-                    <h3 className="forecast-section__title">5-Day Forecast</h3>
-                    <div className="forecast-grid">
-                      {activeForecast.data.data.forecast.slice(0, 5).map((day, index) => (
-                        <div key={day.date} className="forecast-item">
-                          <div className="forecast-item__date">
-                            {index === 0
-                              ? 'Today'
-                              : index === 1
-                              ? 'Tomorrow'
-                              : new Date(day.date).toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                })}
-                            {" "}
-                            <span style={{ color: 'var(--color-text-secondary)' }}>
-                              {new Date(day.date).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                              })}
-                            </span>
-                          </div>
-                          <img
-                            src={`https://openweathermap.org/img/wn/${day.icon || '01d'}@2x.png`}
-                            alt={day.description || 'Weather'}
-                            className="forecast-item__icon"
-                          />
-                          <div className="forecast-item__temps">
-                            <span className="forecast-item__temp-high">{Math.round(day.maxTemp)}°</span>
-                            <span className="forecast-item__temp-low">{Math.round(day.minTemp)}°</span>
-                          </div>
-                          <div className="forecast-item__description">
-                            {day.description || day.mainWeather || 'N/A'}
-                          </div>
-                        </div>
-                      ))}
+                  activeForecast.isSuccess &&
+                  activeForecast.data &&
+                  activeForecast.data.data &&
+                  activeForecast.data.data.forecast &&
+                  preferences.show5DayForecast && (
+                    <div className="forecast-section">
+                      <h3 className="forecast-section__title">
+                        5-Day Forecast
+                      </h3>
+                      <div className="forecast-grid">
+                        {activeForecast.data.data.forecast
+                          .slice(0, 5)
+                          .map((day, index) => (
+                            <div key={day.date} className="forecast-item">
+                              <div className="forecast-item__date">
+                                {index === 0
+                                  ? "Today"
+                                  : index === 1
+                                  ? "Tomorrow"
+                                  : new Date(day.date).toLocaleDateString(
+                                      "en-US",
+                                      {
+                                        weekday: "short",
+                                      }
+                                    )}{" "}
+                                <span
+                                  style={{
+                                    color: "var(--color-text-secondary)",
+                                  }}
+                                >
+                                  {new Date(day.date).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                    }
+                                  )}
+                                </span>
+                              </div>
+                              <img
+                                src={`https://openweathermap.org/img/wn/${
+                                  day.icon || "01d"
+                                }@2x.png`}
+                                alt={day.description || "Weather"}
+                                className="forecast-item__icon"
+                              />
+                              <div className="forecast-item__temps">
+                                <span className="forecast-item__temp-high">
+                                  {Math.round(day.maxTemp)}°
+                                </span>
+                                <span className="forecast-item__temp-low">
+                                  {Math.round(day.minTemp)}°
+                                </span>
+                              </div>
+                              <div className="forecast-item__description">
+                                {day.description || day.mainWeather || "N/A"}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             )}
 
-            {!isLoading && !activeWeather.isLoading && !activeWeather.data && !error && !activeWeather.isError && !effectiveLocation && (
-              <div className="weather-empty">
-                <Search size={48} />
-                <h3>No weather data available</h3>
-                <p>
-                  {locationError 
-                    ? 'Please search for a city to get weather information.'
-                    : 'Allow location access or search for a city to get started.'
-                  }
-                </p>
-                <Link to="/search" className="btn btn--primary">
-                  Search for Weather
-                </Link>
-              </div>
-            )}
+            {!isLoading &&
+              !activeWeather.isLoading &&
+              !activeWeather.data &&
+              !error &&
+              !activeWeather.isError &&
+              !effectiveLocation && (
+                <div className="weather-empty">
+                  <Search size={48} />
+                  <h3>No weather data available</h3>
+                  <p>
+                    {locationError
+                      ? "Please search for a city to get weather information."
+                      : "Allow location access or search for a city to get started."}
+                  </p>
+                  <Link to="/search" className="btn btn--primary">
+                    Search for Weather
+                  </Link>
+                </div>
+              )}
           </div>
         </section>
 
@@ -321,29 +389,35 @@ const HomePage = () => {
                 <TrendingUp size={16} />
               </Link>
             </div>
-            
+
             <div className="favorites-slider">
-              <div className="favorites-slider__viewport" ref={sliderRef} aria-label="Favorite locations slider">
+              <div
+                className="favorites-slider__viewport"
+                ref={sliderRef}
+                aria-label="Favorite locations slider"
+              >
                 <div className="favorites-slider__track">
                   {favorites.map((favorite) => (
-                    <div 
-                      key={favorite.id} 
+                    <div
+                      key={favorite.id}
                       className="favorite-item"
                       role="button"
                       tabIndex={0}
                       title={`Show ${favorite.name || favorite.city} on Home`}
-                      onClick={() => selectLocation({
-                        type: 'city',
-                        city: favorite.city || favorite.name,
-                        name: favorite.name || favorite.city,
-                        country: favorite.country,
-                        coordinates: favorite.coordinates,
-                      })}
+                      onClick={() =>
+                        selectLocation({
+                          type: "city",
+                          city: favorite.city || favorite.name,
+                          name: favorite.name || favorite.city,
+                          country: favorite.country,
+                          coordinates: favorite.coordinates,
+                        })
+                      }
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
+                        if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           selectLocation({
-                            type: 'city',
+                            type: "city",
                             city: favorite.city || favorite.name,
                             name: favorite.name || favorite.city,
                             country: favorite.country,
@@ -351,12 +425,9 @@ const HomePage = () => {
                           });
                         }
                       }}
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: "pointer" }}
                     >
-                      <ForecastCard 
-                        location={favorite}
-                        compact={true}
-                      />
+                      <ForecastCard location={favorite} compact={true} />
                     </div>
                   ))}
                 </div>
@@ -405,7 +476,8 @@ const HomePage = () => {
               </div>
               <h3 className="feature-card__title">City Search</h3>
               <p className="feature-card__description">
-                Search for weather in any city worldwide with detailed forecasts.
+                Search for weather in any city worldwide with detailed
+                forecasts.
               </p>
             </div>
 

@@ -33,7 +33,7 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 - **Search Integration**: Header search with instant results
 - **Favorited Indicator**: Filled-heart visual when a location is already saved
 - **Header Weather Badge**: Live temperature + location badge in the header that mirrors the active location and updates immediately after searches
-- **Random City**: One-click action on Home to preview weather for a randomly selected popular city
+- **Random City**: One-click action on Home to preview weather for a randomly selected city (drawn from a broad, global list to reduce repeats)
 
 ### 🎨 Interface & Design
 

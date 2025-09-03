@@ -111,10 +111,16 @@
 }
 
 /* Make the entire search box feel clickable before focus */
-.search-form__input-group:hover { cursor: pointer; }
-.search-form__input-group:hover .search-form__input { cursor: pointer; }
+.search-form__input-group:hover {
+  cursor: pointer;
+}
+.search-form__input-group:hover .search-form__input {
+  cursor: pointer;
+}
 /* Ensure caret appears even when hovered and focused */
-.search-form__input-group:hover .search-form__input:focus { cursor: text; }
+.search-form__input-group:hover .search-form__input:focus {
+  cursor: text;
+}
 
 .search-form__input--large {
   padding: 1rem 1rem 1rem 3rem;
@@ -160,8 +166,7 @@
 /* Show the submit button when the header search is active/focused */
 .header--search-active .search-form__submit {
   /* Smooth reveal only when active */
-  transition:
-    background-color 0.2s ease,
+  transition: background-color 0.2s ease,
     opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     max-width 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -198,11 +203,17 @@
   z-index: 2;
   opacity: 0;
   pointer-events: none;
-  transition: color 0.15s ease, background-color 0.15s ease,
-              opacity 180ms ease, transform 180ms ease;
+  transition: color 0.15s ease, background-color 0.15s ease, opacity 180ms ease,
+    transform 180ms ease;
 }
-.search-form__clear:hover { color: var(--color-text-primary); background: var(--color-background-tertiary); }
-.search-form__clear:focus { outline: none; box-shadow: 0 0 0 2px rgb(59 130 246 / 0.25); }
+.search-form__clear:hover {
+  color: var(--color-text-primary);
+  background: var(--color-background-tertiary);
+}
+.search-form__clear:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.25);
+}
 
 /* Reveal clear button only when the header search is active or focused */
 .header--search-active .search-form__clear {
@@ -954,41 +965,41 @@
   .header__container {
     padding: 0 1rem;
   }
-  
+
   .header__search {
     display: none;
   }
-  
+
   .search-form {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .search-form__input-group {
     width: 100%;
   }
-  
+
   .search-form__submit {
     width: 100%;
   }
-  
+
   .header__nav--desktop {
     display: none;
   }
-  
+
   .header__menu-toggle {
     display: flex;
   }
-  
+
   .header__nav--mobile {
     display: block;
   }
-  
+
   .nav__list--mobile .nav__link {
     padding: 1rem 0.75rem;
     justify-content: flex-start;
   }
-  
+
   .weather-card__current {
     flex-direction: column;
     align-items: center;
@@ -999,20 +1010,20 @@
     padding: 0.3rem 0.45rem;
     font-size: 0.78rem;
   }
-  
+
   .weather-card__temp-value {
     font-size: 2.5rem;
   }
-  
+
   .weather-details-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .footer__content {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
-  
+
   .footer__bottom-content {
     flex-direction: column;
     text-align: center;
@@ -1024,20 +1035,20 @@
     height: 56px;
     padding: 0 0.75rem;
   }
-  
+
   .header__brand-text {
     display: none;
   }
-  
+
   .weather-card,
   .forecast-card {
     padding: 1rem;
   }
-  
+
   .weather-card__temp-value {
     font-size: 2rem;
   }
-  
+
   .weather-details-grid {
     grid-template-columns: 1fr;
   }
@@ -1070,20 +1081,30 @@
   }
   .header--search-active .header__nav--desktop {
     opacity: 0;
-    pointer-events: none;
+    /* pointer-events: none; - removed to ensure elements remain accessible */
     max-width: 0;
     overflow: hidden;
   }
 
   /* Ensure Theme sits to the left of Search at ≥768px */
   .header__actions .header-weather,
-  .header__actions .header-weather__link { order: 1; }
-  .header__actions .header__theme-toggle { order: 2; }
-  .header__actions .header__search { order: 3; }
-  .header__actions .header__menu-toggle { order: 4; }
+  .header__actions .header-weather__link {
+    order: 1;
+  }
+  .header__actions .header__theme-toggle {
+    order: 2;
+  }
+  .header__actions .header__search {
+    order: 3;
+  }
+  .header__actions .header__menu-toggle {
+    order: 4;
+  }
 
   /* Tweak gap between Theme and Search on tablets (slightly tighter) */
-  .header__theme-toggle + .header__search { margin-left: 0.375rem; }
+  .header__theme-toggle + .header__search {
+    margin-left: 0.375rem;
+  }
 }
 
 /* Desktop ≥1140px: center nav; keep actions right */
@@ -1107,7 +1128,7 @@
   /* While searching on desktop, fade out and collapse the centered nav */
   .header--search-active .header__nav--desktop {
     opacity: 0;
-    pointer-events: none;
+    /* pointer-events: none; - removed to ensure elements remain accessible */
     max-width: 0;
     overflow: hidden;
   }
@@ -1135,13 +1156,23 @@
 
   /* Order controls: Weather → Theme → Search → Menu */
   .header__actions .header-weather,
-  .header__actions .header-weather__link { order: 1; }
-  .header__actions .header__theme-toggle { order: 2; }
-  .header__actions .header__search { order: 3; }
-  .header__actions .header__menu-toggle { order: 4; }
+  .header__actions .header-weather__link {
+    order: 1;
+  }
+  .header__actions .header__theme-toggle {
+    order: 2;
+  }
+  .header__actions .header__search {
+    order: 3;
+  }
+  .header__actions .header__menu-toggle {
+    order: 4;
+  }
 
   /* Tweak gap between Theme and Search on desktops (slightly tighter) */
-  .header__theme-toggle + .header__search { margin-left: 0.5rem; }
+  .header__theme-toggle + .header__search {
+    margin-left: 0.5rem;
+  }
 }
 
 /* Up to 1139px: keep nav links in hamburger (but keep search + badge) */
@@ -1212,7 +1243,7 @@
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   font-size: 0.9rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   z-index: 1000;
 }
 .toast--success {
@@ -1238,6 +1269,113 @@
   animation: pulse 1s infinite ease-in-out;
 }
 @keyframes pulse {
-  0%, 100% { opacity: 0.4 }
-  50% { opacity: 1 }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ===== CONNECTION STATUS ===== */
+.connection-status {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-10px);
+  opacity: 0;
+  animation: slideInStatus 0.3s ease-out forwards;
+}
+
+.connection-status.offline {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.connection-status.online {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.connection-status__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-status__icon {
+  display: flex;
+  align-items: center;
+}
+
+.connection-status.offline .connection-status__icon {
+  color: #ef4444;
+}
+
+.connection-status.online .connection-status__icon {
+  color: #10b981;
+}
+
+.connection-status__text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.connection-status.offline .connection-status__text {
+  color: #dc2626;
+}
+
+.connection-status.online .connection-status__text {
+  color: #059669;
+}
+
+.connection-status__retry {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.connection-status__retry:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.connection-status__retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes slideInStatus {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.icon--spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

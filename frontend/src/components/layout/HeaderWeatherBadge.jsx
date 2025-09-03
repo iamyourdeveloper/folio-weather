@@ -1,11 +1,11 @@
-import { memo } from 'react';
-import { Link, useLocation as useRouterLocation } from 'react-router-dom';
-import { Thermometer, MapPin } from 'lucide-react';
-import { useWeatherContext } from '@context/WeatherContext';
-import { 
+import { memo } from "react";
+import { Link, useLocation as useRouterLocation } from "react-router-dom";
+import { Thermometer, MapPin } from "lucide-react";
+import { useWeatherContext } from "@context/WeatherContext";
+import {
   useCurrentWeatherByCity,
-  useCurrentWeatherByCoords
-} from '@hooks/useWeather';
+  useCurrentWeatherByCoords,
+} from "@hooks/useWeather";
 
 /**
  * Small, live temperature display used in the header.
@@ -27,20 +27,32 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
   // Match Home's effective location logic
   const effectiveLocation = getEffectiveLocation();
   const shouldFetchByCoords =
-    effectiveLocation?.type === 'coords' ||
-    (currentLocation && !selectedLocation && !autoSelectedLocation && preferences.autoLocation);
-  const shouldFetchByCity = effectiveLocation?.type === 'city' || selectedLocation;
+    effectiveLocation?.type === "coords" ||
+    (currentLocation &&
+      !selectedLocation &&
+      !autoSelectedLocation &&
+      preferences.autoLocation);
+  const shouldFetchByCity =
+    effectiveLocation?.type === "city" || selectedLocation;
 
   const coordsWeather = useCurrentWeatherByCoords(
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lat : null,
-    shouldFetchByCoords ? (effectiveLocation?.coordinates || currentLocation)?.lon : null,
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      : null,
+    shouldFetchByCoords
+      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      : null,
     preferences.units,
+    effectiveLocation?.name || selectedLocation?.name, // Pass original name when available
     { staleTime: 60_000 }
   );
 
   const cityWeather = useCurrentWeatherByCity(
-    shouldFetchByCity ? (effectiveLocation?.city || selectedLocation?.city) : null,
+    shouldFetchByCity
+      ? effectiveLocation?.city || selectedLocation?.city
+      : null,
     preferences.units,
+    selectedLocation?.name, // Pass original name when available
     { staleTime: 60_000 }
   );
 
@@ -48,7 +60,10 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
 
   // Compact render helpers
   const Loading = (
-    <div className="header-weather header-weather--loading" title="Loading weather…">
+    <div
+      className="header-weather header-weather--loading"
+      title="Loading weather…"
+    >
       <span className="header-weather__dot" />
       <span className="header-weather__text">Loading</span>
     </div>
@@ -63,22 +78,38 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
   if (!data?.current || !data?.location) return null;
 
   const temp = formatTemperature(data.current.temperature);
-  const locName = data.location?.name ?? effectiveLocation?.name ?? effectiveLocation?.city;
+  const locName =
+    data.location?.name ?? effectiveLocation?.name ?? effectiveLocation?.city;
 
   // Link target: on Home, just show; elsewhere, link back to Home for context
-  const isHome = routerLocation.pathname === '/';
+  const isHome = routerLocation.pathname === "/";
   const content = (
-    <div className="header-weather" aria-live="polite" onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
+    <div
+      className="header-weather"
+      aria-live="polite"
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
+    >
       <Thermometer size={14} className="header-weather__icon" />
       <span className="header-weather__temp">{temp}</span>
       <span className="header-weather__sep">•</span>
       <MapPin size={12} className="header-weather__icon" />
-      <span className="header-weather__city" title={locName}>{locName}</span>
+      <span className="header-weather__city" title={locName}>
+        {locName}
+      </span>
     </div>
   );
 
-  return isHome ? content : (
-    <Link to="/" className="header-weather__link" title="View on Home" onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
+  return isHome ? (
+    content
+  ) : (
+    <Link
+      to="/"
+      className="header-weather__link"
+      title="View on Home"
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
+    >
       {content}
     </Link>
   );
