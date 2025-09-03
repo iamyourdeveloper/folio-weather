@@ -1,0 +1,1243 @@
+/* FolioWeather - Component Styles */
+
+/* ===== HEADER COMPONENT ===== */
+.header {
+  background: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.header__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  overflow: hidden; /* prevent transient overflow when search expands */
+}
+
+.header__brand {
+  display: flex;
+  align-items: center;
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+
+.header__brand-text {
+  font-weight: 700;
+}
+
+.header__search {
+  /* Desktop-only sizing is defined in a media query below */
+  flex: 1;
+  max-width: 500px;
+  margin: 0 2rem;
+}
+
+.search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-form__input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.search-form__icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  z-index: 2;
+  cursor: pointer; /* indicate clickable for expansion */
+  transition: color 0.2s ease, transform 200ms ease, left 200ms ease;
+}
+
+.search-form__icon:hover {
+  color: var(--color-primary);
+}
+
+.search-form__input {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9999px; /* fully rounded (pill/circular) */
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  cursor: text;
+}
+
+/* Provide room for the right-aligned clear button in the header field */
+.header .search-form__input {
+  padding-right: 2.25rem;
+}
+
+/* Hide placeholder until focused so only the icon is visible */
+.search-form__input::placeholder {
+  color: transparent;
+  transition: color 0.2s ease;
+}
+.search-form__input:focus::placeholder,
+.header--search-active .search-form__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.search-form__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+  outline: none;
+  cursor: text;
+}
+
+/* Make the entire search box feel clickable before focus */
+.search-form__input-group:hover { cursor: pointer; }
+.search-form__input-group:hover .search-form__input { cursor: pointer; }
+/* Ensure caret appears even when hovered and focused */
+.search-form__input-group:hover .search-form__input:focus { cursor: text; }
+
+.search-form__input--large {
+  padding: 1rem 1rem 1rem 3rem;
+  font-size: 1rem;
+}
+
+/* Base submit button styling (visible by default) */
+.search-form__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.search-form__submit:hover {
+  background: var(--color-primary-dark);
+}
+
+/* Header-only behavior: hidden by default, revealed when active */
+.header .search-form__submit {
+  /* Make hide instant: only keep background-color transition */
+  transition: background-color 0.2s ease;
+  /* Hidden by default in header */
+  opacity: 0;
+  transform: translateX(-6px) scale(0.98);
+  max-width: 0;
+  overflow: hidden;
+  padding-left: 0;
+  padding-right: 0;
+  pointer-events: none;
+}
+
+/* Show the submit button when the header search is active/focused */
+.header--search-active .search-form__submit {
+  /* Smooth reveal only when active */
+  transition:
+    background-color 0.2s ease,
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    margin 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  max-width: 200px; /* enough for label */
+  padding: 0.75rem 1rem;
+  pointer-events: auto;
+}
+
+.search-form__submit--large {
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+}
+
+/* Clear (X) button inside header search field */
+.search-form__clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%) scale(0.96);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  border-radius: 9999px;
+  cursor: pointer;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: color 0.15s ease, background-color 0.15s ease,
+              opacity 180ms ease, transform 180ms ease;
+}
+.search-form__clear:hover { color: var(--color-text-primary); background: var(--color-background-tertiary); }
+.search-form__clear:focus { outline: none; box-shadow: 0 0 0 2px rgb(59 130 246 / 0.25); }
+
+/* Reveal clear button only when the header search is active or focused */
+.header--search-active .search-form__clear {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+/* .search-form__current-location removed: header badge shows location */
+
+/* Navigation */
+.header__nav--desktop {
+  display: flex;
+}
+
+.header__nav--mobile {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1rem;
+}
+
+/* Search area inside mobile nav */
+.nav__search {
+  margin: 1rem auto 0 auto;
+  /* Responsive width like the screenshot */
+  width: min(92vw, 720px);
+  max-width: 720px;
+}
+
+.header__nav--mobile .search-form {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  /* Keep input and button on one line inside the menu */
+  flex-direction: row;
+}
+
+/* Keep icon on the left for the mobile-menu search (not centered) */
+.header__nav--mobile .search-form__icon {
+  left: 1rem;
+  transform: translateY(-50%);
+}
+
+/* Ensure input keeps left icon spacing in the mobile menu */
+.header__nav--mobile .search-form__input {
+  flex: 1 1 auto;
+  height: 48px;
+  padding: 0.75rem 2.75rem 0.75rem 3rem; /* room for left icon + right clear */
+  border: 1px solid var(--color-border);
+  border-radius: 9999px; /* pill */
+  background: var(--color-background);
+  /* Start with no visible halo; animate in/out on focus */
+  box-shadow: 0 0 0 0 rgb(59 130 246 / 0.15);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+/* Show/dissolve focus ring like other inputs when focused/blurred */
+.header__nav--mobile .search-form__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.15);
+  outline: none;
+}
+
+/* Always show submit button in the mobile menu */
+.header__nav--mobile .search-form__submit {
+  opacity: 1;
+  transform: none;
+  max-width: none;
+  height: 48px;
+  padding: 0 1.25rem;
+  pointer-events: auto;
+}
+
+/* Ensure clear (X) shows in hamburger search when rendered */
+.header__nav--mobile .search-form__clear {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+  right: 0.75rem;
+}
+
+/* Visible placeholder in hamburger (override header behavior) */
+.header__nav--mobile .search-form__input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.nav__list {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+}
+
+.nav__list--mobile {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav__item {
+  margin: 0;
+}
+
+.nav__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.nav__link:hover {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}
+
+.nav__link--active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.nav__link--active:hover {
+  background: var(--color-primary-dark);
+}
+
+.nav__link-text {
+  display: inline;
+  white-space: nowrap; /* keep labels like "API Test" in one line */
+}
+
+/* Header Actions */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0; /* keep actions visible when search expands */
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Small live temperature badge in header */
+.header-weather__link {
+  text-decoration: none;
+}
+
+.header-weather {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.header-weather--loading {
+  color: var(--color-text-secondary);
+}
+
+.header-weather__icon {
+  color: var(--color-text-secondary);
+}
+
+.header-weather__temp {
+  font-weight: 700;
+}
+
+.header-weather__city {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-weather__sep {
+  color: var(--color-text-tertiary);
+}
+
+.header-weather__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  animation: pulse 1s infinite ease-in-out;
+}
+
+.header__theme-toggle,
+.header__menu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header__theme-toggle:hover,
+.header__menu-toggle:hover {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}
+
+.header__menu-toggle {
+  display: none;
+}
+
+/* ===== FOOTER COMPONENT ===== */
+.footer {
+  background: var(--color-background-secondary);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+  padding: 2rem 0 1rem;
+}
+
+.footer__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.footer__content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.footer__section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--color-text-primary);
+}
+
+.footer__description,
+.footer__text {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.footer__version {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+.footer__links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer__link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.footer__link:hover {
+  color: var(--color-primary);
+}
+
+.footer__external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.footer__social {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.footer__social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-background-tertiary);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.footer__social-link:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.footer__bottom {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.footer__bottom-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer__copyright {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.footer__heart {
+  color: var(--color-error);
+}
+
+.footer__text--small {
+  font-size: 0.75rem;
+}
+
+/* ===== WEATHER CARD COMPONENT ===== */
+.weather-card {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.weather-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.weather-card--compact {
+  padding: 1rem;
+}
+
+.weather-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.weather-card__location {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.weather-card__location-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.weather-card__country {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
+.weather-card__favorite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.weather-card__favorite-btn:hover {
+  background: var(--color-error);
+  color: white;
+}
+
+.weather-card__favorited {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  background: var(--color-background-secondary);
+}
+
+.weather-card__main {
+  margin-bottom: 1.5rem;
+}
+
+.weather-card__current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.weather-card__temperature {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.weather-card__temp-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.weather-card__weather-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.weather-card__icon {
+  width: 64px;
+  height: 64px;
+}
+
+.weather-card__description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+  text-align: center;
+}
+
+.weather-card__feels-like {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.weather-card__details {
+  margin-bottom: 1.5rem;
+}
+
+.weather-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.weather-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.weather-detail__label {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.weather-detail__value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.weather-card__sun-times {
+  display: flex;
+  justify-content: space-around;
+  padding: 1rem;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.sun-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sun-time__label {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sun-time__value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.weather-card__actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== FORECAST CARD COMPONENT ===== */
+.forecast-card {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.forecast-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.forecast-card--compact {
+  padding: 0.75rem;
+}
+
+.forecast-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.forecast-card__location-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.forecast-card__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.forecast-card__weather {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.forecast-card__icon {
+  width: 48px;
+  height: 48px;
+}
+
+.forecast-card__temp {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.forecast-card__description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+.forecast-card__details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+.forecast-card__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--color-text-secondary);
+}
+
+/* ===== ERROR MESSAGE COMPONENT ===== */
+.error-message {
+  background: var(--color-background);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.error-message--compact {
+  padding: 0.75rem;
+}
+
+.error-message--banner {
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+
+.error-message__content {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.error-message__icon {
+  color: var(--color-error);
+  flex-shrink: 0;
+}
+
+.error-message__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-error);
+  margin: 0 0 0.25rem 0;
+}
+
+.error-message__description {
+  color: var(--color-text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.error-message__suggestion {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.error-message__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.error-message__action {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.error-message__retry {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.error-message__retry:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.error-message__dismiss:hover {
+  background: var(--color-background-secondary);
+}
+
+/* Error variants */
+.error-message--network {
+  border-color: var(--color-warning);
+}
+
+.error-message--network .error-message__title,
+.error-message--network .error-message__icon {
+  color: var(--color-warning);
+}
+
+.error-message--not-found {
+  border-color: var(--color-secondary);
+}
+
+.error-message--not-found .error-message__title,
+.error-message--not-found .error-message__icon {
+  color: var(--color-secondary);
+}
+
+/* ===== LOADING SPINNER ===== */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+}
+
+.loading-spinner--small {
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.loading-spinner--large {
+  gap: 0.75rem;
+  font-size: 1.125rem;
+}
+
+.loading-spinner__icon {
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner__message {
+  color: var(--color-text-secondary);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (min-width: 768px) {
+  .header__search {
+    display: block;
+  }
+}
+
+/* Phones: hide header search */
+@media (max-width: 767px) {
+  .header__container {
+    padding: 0 1rem;
+  }
+  
+  .header__search {
+    display: none;
+  }
+  
+  .search-form {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .search-form__input-group {
+    width: 100%;
+  }
+  
+  .search-form__submit {
+    width: 100%;
+  }
+  
+  .header__nav--desktop {
+    display: none;
+  }
+  
+  .header__menu-toggle {
+    display: flex;
+  }
+  
+  .header__nav--mobile {
+    display: block;
+  }
+  
+  .nav__list--mobile .nav__link {
+    padding: 1rem 0.75rem;
+    justify-content: flex-start;
+  }
+  
+  .weather-card__current {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .header-weather {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.78rem;
+  }
+  
+  .weather-card__temp-value {
+    font-size: 2.5rem;
+  }
+  
+  .weather-details-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .footer__content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .footer__bottom-content {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .header__container {
+    height: 56px;
+    padding: 0 0.75rem;
+  }
+  
+  .header__brand-text {
+    display: none;
+  }
+  
+  .weather-card,
+  .forecast-card {
+    padding: 1rem;
+  }
+  
+  .weather-card__temp-value {
+    font-size: 2rem;
+  }
+  
+  .weather-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Desktop/tablet >=768px only: expandable search */
+@media (min-width: 768px) {
+  /* Start a bit compact, then expand on focus */
+  .header__search {
+    /* Ultra-compact: show only the magnifying glass in the field */
+    flex: 0 0 48px;
+    max-width: 64px;
+    /* Make collapse instant by default; expansion will set its own transition */
+    transition: none;
+  }
+
+  /* Expand only when Header has active state; JS toggles this for reliability */
+  .header--search-active .header__search {
+    /* Tablet expanded width */
+    flex-basis: 420px;
+    max-width: 420px;
+    /* Smooth expansion only */
+    transition: flex-basis 200ms ease, max-width 200ms ease;
+  }
+
+  /* Smoothly fade/collapse desktop nav while searching */
+  .header__nav--desktop {
+    transition: opacity 160ms ease, max-width 200ms ease;
+    flex: 0 1 auto;
+  }
+  .header--search-active .header__nav--desktop {
+    opacity: 0;
+    pointer-events: none;
+    max-width: 0;
+    overflow: hidden;
+  }
+
+  /* Ensure Theme sits to the left of Search at ≥768px */
+  .header__actions .header-weather,
+  .header__actions .header-weather__link { order: 1; }
+  .header__actions .header__theme-toggle { order: 2; }
+  .header__actions .header__search { order: 3; }
+  .header__actions .header__menu-toggle { order: 4; }
+
+  /* Tweak gap between Theme and Search on tablets (slightly tighter) */
+  .header__theme-toggle + .header__search { margin-left: 0.375rem; }
+}
+
+/* Desktop ≥1140px: center nav; keep actions right */
+@media (min-width: 1140px) {
+  .header__container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 1.5rem; /* extra separation between logo and centered nav */
+  }
+
+  .header__nav--desktop {
+    justify-self: center;
+  }
+
+  .header__nav--desktop .nav__list {
+    justify-content: center;
+    gap: 1.25rem; /* roomier spacing for desktop */
+  }
+
+  /* While searching on desktop, fade out and collapse the centered nav */
+  .header--search-active .header__nav--desktop {
+    opacity: 0;
+    pointer-events: none;
+    max-width: 0;
+    overflow: hidden;
+  }
+
+  /* Keep actions at the far right */
+  .header__actions {
+    justify-self: end;
+    gap: 0.75rem; /* slightly larger spacing between items */
+  }
+
+  /* Keep actions right-aligned to preserve center alignment during search */
+  .header--search-active .header__actions {
+    grid-column: 3 / 4;
+    justify-self: end;
+    transform: translateX(-8px); /* subtle nudge left on desktop */
+  }
+
+  /* Give the right side a touch more room for search */
+  .header--search-active .header__search {
+    flex-basis: 560px; /* Desktop expanded width */
+    max-width: 560px;
+    /* Smooth expansion only on desktop */
+    transition: flex-basis 200ms ease, max-width 200ms ease;
+  }
+
+  /* Order controls: Weather → Theme → Search → Menu */
+  .header__actions .header-weather,
+  .header__actions .header-weather__link { order: 1; }
+  .header__actions .header__theme-toggle { order: 2; }
+  .header__actions .header__search { order: 3; }
+  .header__actions .header__menu-toggle { order: 4; }
+
+  /* Tweak gap between Theme and Search on desktops (slightly tighter) */
+  .header__theme-toggle + .header__search { margin-left: 0.5rem; }
+}
+
+/* Up to 1139px: keep nav links in hamburger (but keep search + badge) */
+@media (max-width: 1139px) {
+  .header__nav--desktop {
+    display: none;
+  }
+  .header__menu-toggle {
+    display: flex;
+  }
+  .header__nav--mobile {
+    display: block;
+  }
+  /* Move search into the hamburger menu at these widths */
+  .header__search {
+    display: none;
+  }
+
+  /* In the mobile menu, keep search icon left-aligned and input padded */
+  .header__nav--mobile .search-form__icon {
+    left: 1rem;
+    transform: translateY(-50%);
+  }
+  .header__nav--mobile .search-form__input {
+    padding-left: 3rem;
+  }
+  /* Keep the blue button visible and sized to content */
+  .header__nav--mobile .search-form__submit {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  /* Collapsed (not active) desktop header field only: center icon in tiny circle */
+  .header:not(.header--search-active) .header__search .search-form__icon {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  /* Keep input padding symmetric in the collapsed desktop header field */
+  .header:not(.header--search-active) .header__search .search-form__input {
+    padding-left: 0.75rem; /* remove extra left gap in the tiny circle */
+    padding-right: 0.75rem;
+  }
+
+  /* Always keep the icon left-aligned inside the hamburger search */
+  .header__nav--mobile .search-form__icon {
+    left: 1rem;
+    transform: translateY(-50%);
+  }
+  .header__nav--mobile .search-form__input {
+    padding-left: 3rem;
+  }
+
+  /* When active, restore icon to the left inside the pill */
+  .header.header--search-active .search-form__icon {
+    left: 0.75rem;
+    transform: translateY(-50%);
+  }
+}
+
+/* ===== TOAST & INLINE STATUS ===== */
+.toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 1000;
+}
+.toast--success {
+  background: #e7f7ef;
+  color: #0f5132;
+  border: 1px solid #badbcc;
+}
+
+.inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+.inline-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  display: inline-block;
+  animation: pulse 1s infinite ease-in-out;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4 }
+  50% { opacity: 1 }
+}

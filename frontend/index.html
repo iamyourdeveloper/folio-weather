@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FolioWeather</title>
+    <meta id="meta-color-scheme" name="color-scheme" content="light dark" />
+    <script>
+      // Prevent theme flash: apply saved theme class before app mounts
+      (function() {
+        try {
+          var saved = localStorage.getItem('weatherAppPreferences');
+          var theme = 'light';
+          if (saved) {
+            var parsed = JSON.parse(saved);
+            if (parsed && parsed.theme) theme = parsed.theme;
+          }
+          if (theme === 'auto') {
+            theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var root = document.documentElement;
+          root.classList.add('no-theme-transition');
+          root.classList.remove('theme-light','theme-dark');
+          if (theme === 'dark') root.classList.add('theme-dark');
+          else if (theme === 'light') root.classList.add('theme-light');
+
+          // Inline minimal variables/background to avoid white flash before CSS loads
+          if (theme === 'dark') {
+            var darkVars = {
+              '--color-background': '#0f172a',
+              '--color-background-secondary': '#1e293b',
+              '--color-background-tertiary': '#334155',
+              '--color-text-primary': '#f8fafc',
+              '--color-text-secondary': '#cbd5e1',
+              '--color-text-tertiary': '#94a3b8',
+              '--color-border': '#334155',
+              '--color-border-light': '#475569'
+            };
+            for (var k in darkVars) { root.style.setProperty(k, darkVars[k]); }
+            root.style.backgroundColor = darkVars['--color-background'];
+            root.style.color = darkVars['--color-text-primary'];
+            var meta = document.getElementById('meta-color-scheme');
+            if (meta) meta.setAttribute('content','dark light');
+          }
+
+          // Remove transition block after first paint
+          requestAnimationFrame(function(){
+            root.classList.remove('no-theme-transition');
+          });
+        } catch (e) {
+          // no-op
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
