@@ -3,6 +3,12 @@
  */
 
 import RANDOM_CITIES from "../data/randomCities.js";
+import { 
+  ALL_US_CITIES_FLAT, 
+  searchUSCities, 
+  getCitiesByState,
+  getRandomUSCities 
+} from "../../../backend/data/allUSCitiesComplete.js";
 
 /**
  * Extracts city name from a query that might include state/region/country
@@ -172,7 +178,15 @@ const handleSingleNameQuery = (normalizedQuery, originalQuery) => {
     return { city: cityPart, fullName: normalizedQuery };
   }
 
-  // Try to find a matching city in our database to get the full name
+  // Try to find a matching city in our comprehensive US database first
+  const usMatches = searchUSCities(normalizedQuery, 5);
+  if (usMatches.length > 0) {
+    // Prefer US cities for disambiguation
+    const bestMatch = disambiguateUSCities(usMatches, normalizedQuery);
+    return { city: bestMatch.city, fullName: bestMatch.name };
+  }
+
+  // Fall back to international cities database
   const matchingCities = RANDOM_CITIES.filter(
     (cityData) =>
       cityData.city &&
@@ -187,6 +201,34 @@ const handleSingleNameQuery = (normalizedQuery, originalQuery) => {
 
   // No match found, treat the whole string as both city and full name
   return { city: normalizedQuery, fullName: originalQuery };
+};
+
+/**
+ * Disambiguate between multiple US cities with the same name
+ * @param {Array} cities - Array of matching US cities
+ * @param {string} query - Original query for context
+ * @returns {Object} Best matching city
+ */
+const disambiguateUSCities = (cities, query) => {
+  if (cities.length === 1) {
+    return cities[0];
+  }
+  
+  // For US cities, prefer more populous states/cities
+  // Priority order: major metropolitan areas first
+  const statePopulationPriority = [
+    'CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI',
+    'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI',
+    'CO', 'MN', 'SC', 'AL', 'LA', 'KY', 'OR', 'OK', 'CT', 'UT'
+  ];
+  
+  for (const state of statePopulationPriority) {
+    const stateMatch = cities.find(city => city.state === state);
+    if (stateMatch) return stateMatch;
+  }
+  
+  // Fallback to first match
+  return cities[0];
 };
 
 /**
@@ -249,6 +291,167 @@ const disambiguateCities = (cities, query) => {
 
   // Fallback to first match
   return cities[0];
+};
+
+/**
+ * Resolves a location to its full display name using our database
+ * @param {Object} location - Location object with city, name, country, state, countryCode
+ * @returns {string} Full display name for the location
+ */
+export const resolveFullLocationName = (location) => {
+  if (!location || (typeof location !== 'object')) return "Unknown Location";
+  
+  const cityName = location.city || location.name;
+  const country = location.country;
+  const state = location.state;
+  const countryCode = location.countryCode;
+  
+  if (!cityName || typeof cityName !== 'string') return location.name || "Unknown Location";
+  
+  // If the location already has a properly formatted name that includes state/country, use it
+  if (location.name && location.name.includes(",") && location.name !== cityName) {
+    return location.name;
+  }
+  
+  // Priority 1: Use backend-provided state information for US cities
+  if ((country === "US" || countryCode === "US") && state) {
+    return `${cityName}, ${state}`;
+  }
+  
+  // Priority 2: Try to find an exact match in our database using city name and country
+  const exactMatch = RANDOM_CITIES.find(
+    (cityData) =>
+      cityData.city &&
+      cityData.city.toLowerCase() === cityName.toLowerCase() &&
+      cityData.country === country
+  );
+  
+  if (exactMatch) {
+    return exactMatch.name;
+  }
+  
+  // Priority 3: Try to find match using countryCode if available
+  if (countryCode) {
+    const countryCodeMatch = RANDOM_CITIES.find(
+      (cityData) =>
+        cityData.city &&
+        cityData.city.toLowerCase() === cityName.toLowerCase() &&
+        cityData.country === countryCode
+    );
+    
+    if (countryCodeMatch) {
+      return countryCodeMatch.name;
+    }
+  }
+  
+  // Priority 4: If no exact match, try to find any city with the same name in the same country
+  const countryMatches = RANDOM_CITIES.filter(
+    (cityData) =>
+      cityData.city &&
+      cityData.city.toLowerCase() === cityName.toLowerCase() &&
+      (cityData.country === country || cityData.country === countryCode)
+  );
+  
+  if (countryMatches.length > 0) {
+    return countryMatches[0].name;
+  }
+  
+  // Priority 5: Try a more flexible search - normalize spaces and case
+  const normalizedCityName = cityName.toLowerCase().replace(/\s+/g, ' ').trim();
+  const flexibleMatch = RANDOM_CITIES.find(
+    (cityData) =>
+      cityData.city &&
+      cityData.city.toLowerCase().replace(/\s+/g, ' ').trim() === normalizedCityName &&
+      (cityData.country === country || cityData.country === countryCode)
+  );
+  
+  if (flexibleMatch) {
+    return flexibleMatch.name;
+  }
+  
+  // Priority 6: Construct a properly formatted name based on available data
+  const nameParts = [cityName];
+  
+  // Add state if available and it's a US location
+  if (state && (country === "US" || countryCode === "US")) {
+    nameParts.push(state);
+  }
+  // Add country or country code for non-US locations
+  else if (country && country !== "US" && cityName !== country) {
+    nameParts.push(country);
+  } else if (countryCode && countryCode !== "US" && cityName !== countryCode) {
+    nameParts.push(countryCode);
+  }
+  
+  return nameParts.join(", ");
+};
+
+/**
+ * Comprehensive search function that searches both US and international cities
+ * @param {string} query - Search query
+ * @param {number} limit - Maximum results to return
+ * @returns {Array} Array of matching cities
+ */
+export const searchAllCities = (query, limit = 20) => {
+  if (!query || typeof query !== "string") return [];
+  
+  const results = [];
+  
+  // Search US cities first (higher priority)
+  const usResults = searchUSCities(query, Math.floor(limit * 0.7));
+  results.push(...usResults);
+  
+  // Search international cities
+  const remainingLimit = limit - results.length;
+  if (remainingLimit > 0) {
+    const normalizedQuery = query.toLowerCase().trim();
+    const intlResults = RANDOM_CITIES.filter(cityData => 
+      cityData.city && 
+      (cityData.city.toLowerCase().includes(normalizedQuery) ||
+       cityData.name.toLowerCase().includes(normalizedQuery))
+    ).slice(0, remainingLimit);
+    
+    results.push(...intlResults);
+  }
+  
+  return results;
+};
+
+/**
+ * Get suggestions for city search with mixed US and international cities
+ * @param {string} query - Partial search query
+ * @param {number} limit - Maximum suggestions to return
+ * @returns {Array} Array of city suggestions
+ */
+export const getCitySuggestions = (query, limit = 10) => {
+  if (!query || query.length < 2) {
+    // Return random mix of popular US and international cities
+    const usRandomCities = getRandomUSCities(Math.floor(limit * 0.6));
+    const intlRandomCities = RANDOM_CITIES
+      .sort(() => 0.5 - Math.random())
+      .slice(0, Math.floor(limit * 0.4));
+    
+    return [...usRandomCities, ...intlRandomCities];
+  }
+  
+  return searchAllCities(query, limit);
+};
+
+/**
+ * Search cities by state (US only)
+ * @param {string} stateCode - Two-letter state code
+ * @param {string} query - Optional city name filter
+ * @returns {Array} Array of cities in the state
+ */
+export const searchCitiesByState = (stateCode, query = '') => {
+  const stateCities = getCitiesByState(stateCode);
+  
+  if (!query) return stateCities;
+  
+  const normalizedQuery = query.toLowerCase().trim();
+  return stateCities.filter(city => 
+    city.city.toLowerCase().includes(normalizedQuery)
+  );
 };
 
 /**

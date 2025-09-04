@@ -2,6 +2,7 @@ import { Heart, Trash2, MapPin, Plus, GripVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useWeatherContext } from '@context/WeatherContext';
 import ForecastCard from '@components/weather/ForecastCard';
+import { resolveFullLocationName } from '@utils/searchUtils';
 import { useState, useCallback } from 'react';
 
 /**
@@ -106,7 +107,7 @@ const FavoritesPage = () => {
                     </div>
                     <div className="favorite-item__location">
                       <MapPin size={16} />
-                      <span className="favorite-item__name">{favorite.name}</span>
+                      <span className="favorite-item__name">{resolveFullLocationName(favorite)}</span>
                     </div>
                     <button
                       onClick={() => handleRemoveFavorite(favorite.id)}

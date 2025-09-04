@@ -90,10 +90,12 @@ app.get("/api", (req, res) => {
 // Import route handlers
 import weatherRoutes from "./routes/weather.js";
 import userRoutes from "./routes/users.js";
+import searchRoutes from "./routes/search.js";
 
 // Use routes
 app.use("/api/weather", weatherRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/search", searchRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

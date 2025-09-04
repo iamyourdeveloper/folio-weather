@@ -12,6 +12,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useWeatherContext } from "@context/WeatherContext";
+import { resolveFullLocationName } from "@utils/searchUtils";
 
 /**
  * WeatherCard component for displaying current weather information
@@ -36,7 +37,7 @@ const WeatherCard = ({
   const { preferences, formatTemperature, formatWindSpeed, isFavorite } =
     useWeatherContext();
 
-  if (!weather) {
+  if (!weather || !weather.location || !weather.current) {
     return null;
   }
 
@@ -66,16 +67,7 @@ const WeatherCard = ({
         <div className="weather-card__location">
           <MapPin size={16} />
           <h3 className="weather-card__location-name">
-            {/* Show original name if available, otherwise show city, country */}
-            {location.name || location.city || "Unknown Location"}
-            {/* Only show country if it's not already included in the name */}
-            {location.country &&
-              typeof location.name === "string" &&
-              !location.name.includes(location.country) && (
-                <span className="weather-card__country">
-                  , {location.country}
-                </span>
-              )}
+            {resolveFullLocationName(location)}
           </h3>
         </div>
 

@@ -7,12 +7,18 @@ This TODO reflects the current, implemented state of FolioWeather and outlines n
 - Frontend (React 19 + Vite) with responsive, modern UI
 - Backend (Express) with OpenWeatherMap integration and REST endpoints
 - Geolocation for current location weather
+- **Advanced city search system with 15,000+ US cities database and real-time autocomplete**
+- **US cities display with proper state information (e.g., "Springfield, IL")**
+- **Comprehensive search API with caching, state filtering, and statistics**
+- **Real-time search dropdown with debouncing and smart prioritization**
 - City search with current + 5‑day forecast
 - Favorites: add/remove, duplicate prevention, drag‑and‑drop reorder
 - Home: favorites slider with accessible controls; Random City quick action
 - Header: live temperature + location badge synchronized with active location
+- **Enhanced header search with mobile optimization and improved state management**
 - Settings: temperature units (C/F/K), theme (light/dark/auto), display toggles; staged changes with Save + toast; live theme preview; reset to defaults; refresh indicator on unit changes
 - Error handling: Error Boundary, graceful API errors, global top‑bar progress indicator
+- **Connection status monitoring with real-time network awareness**
 - API Test page at `/test`
 
 ## Next Up (High Priority)

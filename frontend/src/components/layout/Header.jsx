@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Cloud, 
-  Search, 
-  Heart, 
-  Settings, 
-  Menu, 
-  X, 
-  MapPin, 
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Cloud,
+  Search,
+  Heart,
+  Settings,
+  Menu,
+  X,
+  MapPin,
   Sun,
   Moon,
-  TestTube
-} from 'lucide-react';
-import { useWeatherContext } from '@context/WeatherContext';
-import HeaderWeatherBadge from './HeaderWeatherBadge';
+  TestTube,
+} from "lucide-react";
+import { useWeatherContext } from "@context/WeatherContext";
+import HeaderWeatherBadge from "./HeaderWeatherBadge";
 import {
   parseLocationQuery,
   isValidLocationQuery,
@@ -24,73 +24,104 @@ import {
  */
 const Header = () => {
   const location = useLocation();
-  const { preferences, updatePreferences, searchLocation, selectedLocation, selectLocation } = useWeatherContext();
+  const {
+    preferences,
+    updatePreferences,
+    searchLocation,
+    selectedLocation,
+    selectLocation,
+  } = useWeatherContext();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef(null); // header (desktop/tablet) search input
   const mobileInputRef = useRef(null); // hamburger menu search input
   const formRef = useRef(null);
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
-  // Track when a click on specific header controls (weather badge, theme toggle)
-  // should keep the search field open even though the input blurs.
-  const keepOpenOnNextBlurRef = useRef(false);
-  const markKeepOpenOnNextBlur = () => { keepOpenOnNextBlurRef.current = true; };
-  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
+  const [headerSearchQuery, setHeaderSearchQuery] = useState("");
+  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const navigate = useNavigate();
 
   // Navigation items
   const navItems = [
-    { path: '/', label: 'Home', icon: Cloud },
-    { path: '/search', label: 'Search', icon: Search },
-    { path: '/favorites', label: 'Favorites', icon: Heart },
-    { path: '/settings', label: 'Settings', icon: Settings },
-    { path: '/test', label: 'API Test', icon: TestTube },
+    { path: "/", label: "Home", icon: Cloud },
+    { path: "/search", label: "Search", icon: Search },
+    { path: "/favorites", label: "Favorites", icon: Heart },
+    { path: "/settings", label: "Settings", icon: Settings },
+    { path: "/test", label: "API Test", icon: TestTube },
   ];
 
-  // Handle search submission - using same reliable pattern as Search page
-  const handleSearch = (e, rawQuery) => {
+  // Handle search submission - improved state management and error handling
+  const handleSearch = async (e, rawQuery) => {
     e.preventDefault();
-    const fullQuery = (rawQuery ?? headerSearchQuery).trim();
-    if (!fullQuery) return;
+    e.stopPropagation();
 
-    // Validate the query before processing (same as Search page)
+    // Prevent multiple submissions
+    if (isSearching) {
+      console.log("Search already in progress, skipping duplicate submission");
+      return;
+    }
+
+    const fullQuery = (rawQuery ?? headerSearchQuery).trim();
+    if (!fullQuery) {
+      console.log("Empty search query, skipping");
+      return;
+    }
+
+    // Validate the query before processing
     if (!isValidLocationQuery(fullQuery)) {
       console.log("Invalid location query format:", fullQuery);
       return;
     }
 
-    // Parse the location query to extract city and full name (same as Search page)
-    const { city, fullName } = parseLocationQuery(fullQuery);
-    console.log("Parsed location:", { city, fullName });
+    console.log("Starting search for:", fullQuery);
+    setIsSearching(true);
 
-    // Update context using parsed data (same as Search page)
-    searchLocation(fullName); // Use full name for context
-    selectLocation({ city, name: fullName, type: 'city' }); // city for API, name for display
+    try {
+      // Parse the location query to extract city and full name
+      const { city, fullName } = parseLocationQuery(fullQuery);
+      console.log("Parsed location:", { city, fullName });
 
-    // Client-side navigate to trigger Search page hydration
-    navigate(`/search?city=${encodeURIComponent(fullName)}`);
+      // Update context
+      await searchLocation(fullName);
+      selectLocation({ city, name: fullName, type: "city" });
 
-    // Clear the input for next search but keep search form active
-    setHeaderSearchQuery('');
-    
-    // Keep search form open and ready for next search (don't collapse)
-    // This allows multiple consecutive searches without needing to reopen
-    if (inputRef.current) {
-      // Small delay to let navigation complete, then refocus for next search
-      const timeoutId = setTimeout(() => {
+      // Navigate to search page
+      navigate(`/search?city=${encodeURIComponent(fullName)}`);
+
+      // Reset state with proper timing to prevent race conditions
+      const resetState = () => {
+        console.log("Resetting search state");
+        setHeaderSearchQuery("");
+        setIsSearchActive(false);
+        setIsSearching(false);
+
+        // Blur input to remove focus
         if (inputRef.current) {
-          inputRef.current.focus();
+          inputRef.current.blur();
         }
-      }, 100);
-      
-      // Store timeout ID for potential cleanup
-      inputRef.current.setAttribute('data-focus-timeout', timeoutId);
+      };
+
+      // Use requestAnimationFrame for better timing with React updates
+      requestAnimationFrame(() => {
+        setTimeout(resetState, 150);
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      // Ensure state is always reset on error
+      setIsSearching(false);
+      setHeaderSearchQuery("");
+      setIsSearchActive(false);
+
+      // Show user feedback for errors
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   };
 
   // Toggle theme
   const toggleTheme = () => {
-    const newTheme = preferences.theme === 'light' ? 'dark' : 'light';
+    const newTheme = preferences.theme === "light" ? "dark" : "light";
     updatePreferences({ theme: newTheme });
   };
 
@@ -100,67 +131,127 @@ const Header = () => {
     const willOpen = !isMenuOpen;
     setIsMenuOpen(willOpen);
     // Clear the hamburger search when the menu is closed
-    if (wasOpen && !willOpen) setMobileSearchQuery('');
+    if (wasOpen && !willOpen) setMobileSearchQuery("");
   };
 
-  // Close the expandable search on outside pointer interactions
-  // (but keep it open when interacting with allowed controls)
-  // Made less aggressive to support multiple consecutive searches
+  // Close the expandable search on outside clicks - improved event handling
   useEffect(() => {
-    const handler = (e) => {
-      if (!isSearchActive) return;
+    const handleClickOutside = (e) => {
+      // Don't interfere if we're currently searching or search is not active
+      if (!isSearchActive || isSearching) return;
+
       const formEl = formRef.current;
       if (!formEl) return;
-      const t = e.target;
-      const isInsideForm = formEl.contains(t);
-      const isAllowed = !!t.closest?.('.header__theme-toggle, .header-weather, .header-weather__link, .header__logo, .header__nav, .header__actions');
-      // Only close if clicking far outside the header area
-      const isInHeader = !!t.closest?.('.header');
-      if (!isInsideForm && !isAllowed && !isInHeader) {
+
+      // Don't close if clicking inside the search form or its children
+      if (formEl.contains(e.target)) return;
+
+      // Don't close if clicking on specific header controls
+      const allowedElements = [
+        ".header__theme-toggle",
+        ".header-weather",
+        ".header-weather__link",
+        ".header__logo",
+        ".header__brand",
+        ".header__menu-toggle",
+        ".nav__link",
+        ".search-form__submit",
+        ".search-form__clear",
+        ".search-form__icon",
+      ];
+
+      const isAllowedClick = allowedElements.some((selector) => {
+        const element = e.target.closest(selector);
+        return element !== null;
+      });
+
+      // Only close search if it's clearly an outside click
+      if (!isAllowedClick) {
+        console.log("Closing search due to outside click");
         setIsSearchActive(false);
       }
     };
-    document.addEventListener('pointerdown', handler, true);
-    document.addEventListener('touchstart', handler, true);
-    return () => {
-      document.removeEventListener('pointerdown', handler, true);
-      document.removeEventListener('touchstart', handler, true);
-    };
-  }, [isSearchActive]);
 
-  // Allow keyboard users to close with Escape
-  useEffect(() => {
-    const onKey = (e) => {
-      if (isSearchActive && e.key === 'Escape') {
-        setIsSearchActive(false);
-        if (inputRef.current) inputRef.current.blur();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isSearchActive]);
+    // Only add listeners when search is active and we're not searching
+    if (isSearchActive && !isSearching) {
+      // Use a small delay to ensure other interactions complete first
+      const timeoutId = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside, {
+          capture: true,
+          passive: true,
+        });
+        document.addEventListener("touchstart", handleClickOutside, {
+          capture: true,
+          passive: true,
+        });
+      }, 50);
 
-  // Cleanup any pending timeouts on unmount
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener("mousedown", handleClickOutside, true);
+        document.removeEventListener("touchstart", handleClickOutside, true);
+      };
+    }
+  }, [isSearchActive, isSearching]);
+
+  // Reset search state when location changes - improved to prevent race conditions
   useEffect(() => {
-    return () => {
-      if (inputRef.current) {
-        const timeoutId = inputRef.current.getAttribute('data-focus-timeout');
-        if (timeoutId) {
-          clearTimeout(parseInt(timeoutId));
+    // Only reset if we're not currently searching to avoid race conditions
+    if (!isSearching) {
+      const resetTimer = setTimeout(() => {
+        // Only reset if we're still not searching (double-check)
+        if (!isSearching) {
+          console.log("Resetting search state due to location change");
+          setIsSearchActive(false);
+          setHeaderSearchQuery("");
+          if (inputRef.current && document.activeElement !== inputRef.current) {
+            inputRef.current.blur();
+          }
+        }
+      }, 100); // Reduced timeout for better responsiveness
+
+      return () => clearTimeout(resetTimer);
+    }
+  }, [location.pathname, isSearching]);
+
+  // Handle escape key to close search - improved
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        // Close mobile menu if open
+        if (isMenuOpen) {
+          setIsMenuOpen(false);
+          setMobileSearchQuery("");
+          return;
+        }
+
+        // Close search if active and not currently searching
+        if (isSearchActive && !isSearching) {
+          console.log("Closing search due to Escape key");
+          setIsSearchActive(false);
+          setHeaderSearchQuery("");
+          if (inputRef.current) {
+            inputRef.current.blur();
+          }
         }
       }
     };
-  }, []);
+
+    document.addEventListener("keydown", handleKeyDown, { passive: true });
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchActive, isSearching, isMenuOpen]);
 
   return (
-    <header className={`header ${isSearchActive ? 'header--search-active' : ''}`}>
+    <header
+      className={`header ${isSearchActive ? "header--search-active" : ""}`}
+    >
       <div className="header__container">
         {/* Logo and Brand */}
         <div className="header__brand">
-          <Link to="/" className="header__logo" onMouseDown={markKeepOpenOnNextBlur} onTouchStart={markKeepOpenOnNextBlur}>
+          <Link to="/" className="header__logo">
             <Cloud size={32} />
             <span className="header__brand-text">
-              {import.meta.env.VITE_APP_NAME || 'Weather App'}
+              {import.meta.env.VITE_APP_NAME || "Weather App"}
             </span>
           </Link>
         </div>
@@ -171,12 +262,14 @@ const Header = () => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
-              
+
               return (
                 <li key={item.path} className="nav__item">
-                  <Link 
-                    to={item.path} 
-                    className={`nav__link ${isActive ? 'nav__link--active' : ''}`}
+                  <Link
+                    to={item.path}
+                    className={`nav__link ${
+                      isActive ? "nav__link--active" : ""
+                    }`}
                   >
                     <Icon size={20} />
                     <span className="nav__link-text">{item.label}</span>
@@ -190,111 +283,135 @@ const Header = () => {
         {/* Actions: Weather badge, Search, Theme toggle, Mobile menu */}
         <div className="header__actions">
           {/* Live temperature badge for the active location */}
-          <HeaderWeatherBadge 
-            onMouseDown={markKeepOpenOnNextBlur}
-            onTouchStart={markKeepOpenOnNextBlur}
-          />
+          <HeaderWeatherBadge />
 
-          <button 
-            onMouseDown={markKeepOpenOnNextBlur}
-            onTouchStart={markKeepOpenOnNextBlur}
+          <button
             onClick={toggleTheme}
             className="header__theme-toggle"
             aria-label="Toggle theme"
           >
-            {preferences.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            {preferences.theme === "light" ? (
+              <Moon size={20} />
+            ) : (
+              <Sun size={20} />
+            )}
           </button>
 
           {/* Search Bar (desktop/tablet header area) */}
           <div className="header__search">
             <form
+              key={`search-form-${location.pathname}-${isSearching}`}
               ref={formRef}
               onSubmit={handleSearch}
               className="search-form"
-              onFocus={() => setIsSearchActive(true)}
-              onBlur={(e) => {
-                // Less aggressive blur handling for multiple consecutive searches
-                // Only collapse if focus moves completely outside the header area
-                if (!e.currentTarget.contains(e.relatedTarget)) {
-                  const rt = e.relatedTarget;
-                  const isInHeader = !!(rt && rt.closest?.('.header'));
-                  const isAllowedTarget = !!(
-                    rt &&
-                    (rt.closest?.('.header__theme-toggle') ||
-                     rt.closest?.('.header-weather') ||
-                     rt.closest?.('.header-weather__link') ||
-                     rt.closest?.('.header__logo') ||
-                     rt.closest?.('.header__nav') ||
-                     rt.closest?.('.header__actions'))
-                  );
-
-                  const keepOpen = keepOpenOnNextBlurRef.current || isAllowedTarget || isInHeader;
-
-                  // Reset the one-shot flag for subsequent interactions
-                  keepOpenOnNextBlurRef.current = false;
-
-                  if (!keepOpen) {
-                    // Add longer delay to prevent premature closing during navigation
-                    setTimeout(() => {
-                      // Double-check that search should still be closed
-                      if (!document.activeElement?.closest?.('.header')) {
-                        setIsSearchActive(false);
-                      }
-                    }, 200);
-                  }
-                }
-              }}
             >
               <div className="search-form__input-group">
-                <Search 
-                  size={20} 
-                  className="search-form__icon" 
+                <Search
+                  size={20}
+                  className="search-form__icon"
                   role="button"
                   aria-label="Focus search"
-                  onClick={() => {
-                    setIsSearchActive(true);
-                    if (inputRef.current) inputRef.current.focus();
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Search icon clicked");
+                    if (!isSearching) {
+                      setIsSearchActive(true);
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }
                   }}
                 />
                 <input
                   type="text"
                   placeholder="Enter city name (e.g., London, New York, Tokyo)"
                   value={headerSearchQuery}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Prevent XSS and invalid characters
-                    const sanitizedValue = value.replace(/[<>]/g, '');
-                    setHeaderSearchQuery(sanitizedValue);
-                  }}
-                  onFocus={() => {
+                  onChange={(e) => setHeaderSearchQuery(e.target.value)}
+                  onFocus={(e) => {
+                    console.log("Search input focused");
                     setIsSearchActive(true);
-                    if (isMenuOpen) setIsMenuOpen(false);
+                    if (isMenuOpen) {
+                      console.log("Closing mobile menu due to search focus");
+                      setIsMenuOpen(false);
+                    }
                   }}
+                  onBlur={(e) => {
+                    // Only close search if we're not interacting with search form elements
+                    // and we're not currently searching
+                    if (isSearching) {
+                      console.log(
+                        "Keeping search active during search operation"
+                      );
+                      return;
+                    }
+
+                    const relatedTarget = e.relatedTarget;
+                    const formEl = formRef.current;
+
+                    // Keep search active if focusing on form elements or search-related buttons
+                    if (
+                      relatedTarget &&
+                      (formEl?.contains(relatedTarget) ||
+                        relatedTarget.closest(".search-form__submit") ||
+                        relatedTarget.closest(".search-form__clear") ||
+                        relatedTarget.closest(".search-form__icon"))
+                    ) {
+                      console.log(
+                        "Keeping search active - focus moved to search element"
+                      );
+                      return;
+                    }
+
+                    // Small delay to allow button clicks to register first
+                    console.log("Scheduling search close due to blur");
+                    setTimeout(() => {
+                      if (!isSearching) {
+                        setIsSearchActive(false);
+                      }
+                    }, 200);
+                  }}
+                  disabled={isSearching}
                   ref={inputRef}
                   className="search-form__input"
+                  aria-label="Search location"
                 />
                 {(isSearchActive || headerSearchQuery) && (
                   <button
                     type="button"
                     aria-label="Clear search and close"
                     className="search-form__clear"
-                    onClick={() => {
-                      setHeaderSearchQuery('');
-                      if (inputRef.current) inputRef.current.blur();
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Clearing search and closing");
+                      setHeaderSearchQuery("");
                       setIsSearchActive(false);
+                      if (inputRef.current) {
+                        inputRef.current.blur();
+                      }
                     }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent input blur
+                    }}
+                    disabled={isSearching}
                   >
                     <X size={16} />
                   </button>
                 )}
               </div>
-              <button type="submit" className="search-form__submit">
-                Search
+              <button
+                type="submit"
+                className="search-form__submit"
+                disabled={isSearching}
+                onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+              >
+                {isSearching ? "Searching..." : "Search"}
               </button>
             </form>
           </div>
 
-          <button 
+          <button
             onClick={toggleMenu}
             className="header__menu-toggle"
             aria-label="Toggle menu"
@@ -311,13 +428,18 @@ const Header = () => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
-              
+
               return (
                 <li key={item.path} className="nav__item">
-                  <Link 
-                    to={item.path} 
-                    className={`nav__link ${isActive ? 'nav__link--active' : ''}`}
-                    onClick={() => { setIsMenuOpen(false); setMobileSearchQuery(''); }}
+                  <Link
+                    to={item.path}
+                    className={`nav__link ${
+                      isActive ? "nav__link--active" : ""
+                    }`}
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setMobileSearchQuery("");
+                    }}
                   >
                     <Icon size={20} />
                     <span className="nav__link-text">{item.label}</span>
@@ -330,12 +452,66 @@ const Header = () => {
           {/* Mobile menu search (placed under nav links, centered) */}
           <div className="nav__search">
             <form
-              onSubmit={(e) => {
-                handleSearch(e, mobileSearchQuery);
-                // Clear the mobile query for next search
-                setMobileSearchQuery('');
-                // Keep mobile menu open for multiple consecutive searches
-                // Don't close menu automatically - let user close when done
+              onSubmit={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Prevent multiple submissions
+                if (isSearching) {
+                  console.log(
+                    "Mobile search already in progress, skipping duplicate"
+                  );
+                  return;
+                }
+
+                const fullQuery = mobileSearchQuery.trim();
+                if (!fullQuery) {
+                  console.log("Empty mobile search query");
+                  return;
+                }
+
+                if (!isValidLocationQuery(fullQuery)) {
+                  console.log("Invalid mobile search query:", fullQuery);
+                  return;
+                }
+
+                console.log("Starting mobile search for:", fullQuery);
+                setIsSearching(true);
+
+                try {
+                  // Parse the location query to extract city and full name
+                  const { city, fullName } = parseLocationQuery(fullQuery);
+                  console.log("Parsed mobile location:", { city, fullName });
+
+                  // Update context
+                  await searchLocation(fullName);
+                  selectLocation({ city, name: fullName, type: "city" });
+
+                  // Navigate to search page
+                  navigate(`/search?city=${encodeURIComponent(fullName)}`);
+
+                  // Reset mobile state with proper timing
+                  const resetMobileState = () => {
+                    console.log("Resetting mobile search state");
+                    setIsMenuOpen(false);
+                    setMobileSearchQuery("");
+                    setIsSearching(false);
+                  };
+
+                  // Use requestAnimationFrame for better timing
+                  requestAnimationFrame(() => {
+                    setTimeout(resetMobileState, 150);
+                  });
+                } catch (error) {
+                  console.error("Mobile search error:", error);
+                  setIsSearching(false);
+                  setMobileSearchQuery("");
+
+                  // Keep menu open on error so user can retry
+                  if (mobileInputRef.current) {
+                    mobileInputRef.current.focus();
+                  }
+                }
               }}
               className="search-form search-form--mobile"
             >
@@ -345,31 +521,36 @@ const Header = () => {
                   type="text"
                   placeholder="Enter city name (e.g., London, New York, Tokyo)"
                   value={mobileSearchQuery}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Prevent XSS and invalid characters
-                    const sanitizedValue = value.replace(/[<>]/g, '');
-                    setMobileSearchQuery(sanitizedValue);
-                  }}
+                  onChange={(e) => setMobileSearchQuery(e.target.value)}
                   className="search-form__input search-form__input--large"
                   ref={mobileInputRef}
+                  disabled={isSearching}
                 />
                 {!!mobileSearchQuery && (
                   <button
                     type="button"
                     aria-label="Clear search"
                     className="search-form__clear"
-                    onClick={() => {
-                      setMobileSearchQuery('');
-                      if (mobileInputRef.current) mobileInputRef.current.focus();
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMobileSearchQuery("");
+                      if (mobileInputRef.current) {
+                        mobileInputRef.current.focus();
+                      }
                     }}
                   >
                     <X size={16} />
                   </button>
                 )}
               </div>
-              <button type="submit" className="search-form__submit search-form__submit--large">
-                Search
+              <button
+                type="submit"
+                className="search-form__submit search-form__submit--large"
+                disabled={isSearching}
+                onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+              >
+                {isSearching ? "Searching..." : "Search"}
               </button>
             </form>
           </div>

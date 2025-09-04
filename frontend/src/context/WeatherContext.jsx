@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import { queryClient } from "@context/QueryProvider";
 import { useCurrentLocation } from "@hooks/useGeolocation";
 import RANDOM_CITIES from "../data/randomCities.js";
+import { resolveFullLocationName } from "../utils/searchUtils.js";
 
 // Function to get a curated set of diverse fallback cities from the full RANDOM_CITIES list
 // This creates a smaller, regionally diverse subset as a fallback when the full list isn't available
@@ -179,9 +180,28 @@ export const WeatherProvider = ({ children }) => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           // Validate minimal shape to avoid corrupt data
-          return parsed.filter(
+          const validFavorites = parsed.filter(
             (fav) => fav && (fav.city || fav.name) && typeof fav.id === "string"
           );
+          
+          // Migrate existing favorites to use enhanced location resolution
+          return validFavorites.map((fav) => {
+            // Enhance the favorite's display name using our location resolution
+            const enhancedName = resolveFullLocationName({
+              city: fav.city,
+              name: fav.name,
+              country: fav.country
+            });
+            
+            // Update if we got a different name (better resolution, case fixes, etc.)
+            if (enhancedName && enhancedName !== fav.name) {
+              return {
+                ...fav,
+                name: enhancedName
+              };
+            }
+            return fav;
+          });
         }
       }
     } catch (e) {
@@ -349,9 +369,12 @@ export const WeatherProvider = ({ children }) => {
       return null;
     }
 
+    // Use the enhanced location resolution to get the full display name
+    const displayName = resolveFullLocationName(location);
+
     const newFavorite = {
       id: Date.now().toString(),
-      name: location.name || cityName,
+      name: displayName,
       city: cityName, // Use cityName for consistency
       country: location.country || "",
       coordinates: location.coordinates || null,

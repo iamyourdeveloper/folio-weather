@@ -1,5 +1,33 @@
 /* Search Page Specific Styles */
 
+/* Search page specific dropdown styling */
+.search-page__search-container {
+  margin-bottom: 2rem;
+}
+
+.search-page__dropdown {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-page__help-text {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Header search dropdown styling */
+.header__search-dropdown {
+  width: 100%;
+}
+
+.nav__search-dropdown {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .explore-more-btn {
   transition: all 0.2s ease-in-out;
   background: #4f7fff !important;

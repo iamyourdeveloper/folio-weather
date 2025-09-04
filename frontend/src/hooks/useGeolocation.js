@@ -24,10 +24,31 @@ export const useGeolocation = (options = {}) => {
     setIsSupported('geolocation' in navigator);
   }, []);
 
+  // Function to check permission status
+  const checkPermissionStatus = useCallback(async () => {
+    if (!navigator.permissions) return 'unknown';
+    
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      return permission.state; // 'granted', 'denied', 'prompt'
+    } catch (error) {
+      console.log('Permission API not available:', error);
+      return 'unknown';
+    }
+  }, []);
+
   // Function to get current position
-  const getCurrentPosition = useCallback(() => {
+  const getCurrentPosition = useCallback(async () => {
     if (!isSupported) {
       setError(new Error('Geolocation is not supported by this browser.'));
+      return;
+    }
+
+    // Check permission status first
+    const permissionStatus = await checkPermissionStatus();
+    
+    if (permissionStatus === 'denied') {
+      setError(new Error('Location access has been blocked. To enable location access:\n\n1. Click the location icon (🔒 or 🌐) in your browser\'s address bar\n2. Select "Allow" for location permissions\n3. Refresh the page\n\nAlternatively, you can search for any city manually.'));
       return;
     }
 
@@ -53,7 +74,7 @@ export const useGeolocation = (options = {}) => {
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. You can enable location access in your browser settings or use the search to find weather for any city.';
+            errorMessage = 'Location access has been blocked. To enable location access:\n\n1. Click the location icon (🔒 or 🌐) in your browser\'s address bar\n2. Select "Allow" for location permissions\n3. Refresh the page\n\nAlternatively, you can search for any city manually.';
             break;
           case error.POSITION_UNAVAILABLE:
             errorMessage = 'Location information is unavailable. Please try searching for your city manually.';
@@ -70,7 +91,7 @@ export const useGeolocation = (options = {}) => {
       },
       defaultOptions
     );
-  }, [isSupported, defaultOptions]);
+  }, [isSupported, defaultOptions, checkPermissionStatus]);
 
   // Function to watch position changes
   const watchPosition = useCallback(() => {
@@ -145,6 +166,7 @@ export const useGeolocation = (options = {}) => {
     watchPosition,
     clearWatch,
     reset,
+    checkPermissionStatus,
   };
 };
 

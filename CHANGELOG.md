@@ -6,7 +6,34 @@ This project follows a human-friendly, date-based changelog.
 
 ## Start Date: 08-28-2025.
 
+## [Major Search System Update] - September 2025
+
 ### Added
+
+#### 🔍 Comprehensive Search System
+
+- **US Cities Database**: Added database of 15,000+ US cities with complete state mapping and coordinate disambiguation
+- **Advanced Search API**: New `/api/search` endpoints with autocomplete, state filtering, statistics, and caching
+- **Real-time Autocomplete**: Intelligent search suggestions with US city prioritization and 300ms debouncing
+- **Search Caching**: Performance optimization with configurable TTL (15-30 minutes) using custom middleware
+- **State-Specific Searches**: Search cities by US state name or abbreviation (e.g., "California" returns CA cities)
+- **US City State Display**: All US cities now display with proper state information (e.g., "Springfield, IL")
+
+#### 🎨 Enhanced UI Components
+
+- **SearchDropdown Component**: New real-time search dropdown with keyboard navigation and accessibility
+- **Connection Status**: Real-time network connectivity monitoring with auto-reconnection attempts
+- **Top Bar Progress**: Global loading indicator bound to all React Query activity
+- **Enhanced Header Search**: Mobile-optimized search with improved state management and form resets
+
+#### ⚡ Performance & API Enhancements
+
+- **Search Cache System**: Intelligent middleware for caching search results with automatic cleanup
+- **Coordinate Disambiguation**: Smart handling of duplicate city names using geographic coordinates
+- **Search Statistics API**: Database analytics and metrics endpoint for monitoring and optimization
+- **Enhanced Error Handling**: Improved location error handling for international cities and edge cases
+
+### Enhanced (Previous Features)
 
 - Header: small live temperature badge showing today's current temperature for the active location (matches Home). Updates immediately after searches and when switching locations/favorites/units.
 - Favorites: drag-and-drop reordering on the Favorites page.

@@ -15,8 +15,12 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 ### 🗺️ Location Services
 
 - **Geolocation Support**: Automatic current location detection
-- **City Search**: Search weather for any city globally
+- **Advanced City Search**: Comprehensive search with 15,000+ US cities and state information
+- **Real-time Autocomplete**: Smart search suggestions with US city prioritization
+- **State-Specific Search**: Search cities by US state with proper state display
 - **Coordinate Input**: Manual latitude/longitude weather lookup
+- **US Cities Database**: Complete database with state mapping and coordinate disambiguation
+- **International Cities**: Global city search with fallback support
 
 ### ⭐ Favorites & Navigation
 
@@ -30,10 +34,13 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 
 - **Quick Access**: Fast switching between saved locations
 - **Auto Location**: Automatic weather for current location on app load
-- **Search Integration**: Header search with instant results
+- **Enhanced Header Search**: Real-time search with autocomplete suggestions and state information
+- **Search Integration**: Header search with instant results and mobile-optimized interface
 - **Favorited Indicator**: Filled-heart visual when a location is already saved
 - **Header Weather Badge**: Live temperature + location badge in the header that mirrors the active location and updates immediately after searches
 - **Random City**: One-click action on Home to preview weather for a randomly selected city (drawn from a broad, global list to reduce repeats)
+- **Connection Status**: Real-time network connectivity monitoring
+- **Smart City Display**: US cities automatically show with state information (e.g., "Springfield, IL")
 
 ### 🎨 Interface & Design
 
@@ -54,9 +61,15 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 ### 🔧 Technical Features
 
 - **React Query Caching**: Smart data caching with refetch-on-focus and retries
+- **Search Performance**: Advanced search caching with 15-30 minute TTL for improved response times
+- **US Cities Database**: Comprehensive database of 15,000+ US locations with state mapping
+- **Search API**: RESTful search endpoints with autocomplete, state filtering, and statistics
+- **Real-time Autocomplete**: Debounced search with intelligent US city prioritization
 - **Error Boundaries**: Robust error handling and recovery
 - **API Testing**: Built-in API endpoint testing interface
 - **Real-time Updates**: Automatic weather data refresh
+- **Connection Monitoring**: Network status awareness and offline state handling
+- **Global Loading States**: Top bar progress indicator bound to all API activity
 - **Favorites Data Integrity**: Validation and recovery for corrupted favorites in localStorage
 
 Note: PWA install and offline support are planned future enhancements.
@@ -81,7 +94,9 @@ Note: PWA install and offline support are planned future enhancements.
 - **Express.js**: Fast, minimalist web framework
 - **MongoDB**: NoSQL database for user data and preferences (ready for implementation)
 - **Mongoose**: MongoDB object modeling for Node.js
-- **RESTful APIs**: Clean, standardized API endpoints
+- **RESTful APIs**: Clean, standardized API endpoints with comprehensive search functionality
+- **Search Database**: 15,000+ US cities with state mapping and coordinate disambiguation
+- **Caching Middleware**: Intelligent search result caching with TTL management
 - **CORS**: Cross-origin resource sharing configuration
 - **Helmet**: Security middleware for Express
 - **Morgan**: HTTP request logging middleware

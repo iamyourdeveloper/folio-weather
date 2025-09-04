@@ -21,6 +21,7 @@ import WeatherCard from "@components/weather/WeatherCard";
 import ForecastCard from "@components/weather/ForecastCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
+import { resolveFullLocationName } from "@utils/searchUtils";
 
 /**
  * HomePage component - Main landing page with current weather and quick actions
@@ -65,6 +66,11 @@ const HomePage = () => {
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
 
+  // Weather section ref for scrolling
+  const weatherSectionRef = useRef(null);
+  // Forecast section ref for scrolling to forecast
+  const forecastSectionRef = useRef(null);
+
   const updateSliderNav = () => {
     const el = sliderRef.current;
     if (!el) return;
@@ -92,6 +98,42 @@ const HomePage = () => {
     if (!el) return;
     const amount = el.clientWidth; // scroll by one viewport width
     el.scrollBy({ left: dir * amount, behavior: "smooth" });
+  };
+
+  // Function to scroll to weather section
+  const scrollToWeatherSection = () => {
+    const el = weatherSectionRef.current;
+    if (el) {
+      el.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start",
+        inline: "nearest"
+      });
+    }
+  };
+
+  // Function to scroll to forecast section
+  const scrollToForecastSection = () => {
+    // Try multiple times in case the element isn't ready immediately
+    const attemptScroll = (attempts = 0) => {
+      const el = forecastSectionRef.current;
+      if (el) {
+        el.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center",
+          inline: "nearest"
+        });
+        console.log("✅ Scrolled to forecast section on HomePage");
+      } else if (attempts < 5) {
+        console.log(`⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`);
+        setTimeout(() => attemptScroll(attempts + 1), 100);
+      } else {
+        console.log("❌ Failed to find forecast section ref on HomePage after 5 attempts");
+      }
+    };
+    
+    // Initial delay to allow React to render the forecast section
+    setTimeout(() => attemptScroll(), 200);
   };
 
   // Fetch weather data based on location
@@ -190,7 +232,7 @@ const HomePage = () => {
         </section>
 
         {/* Current Weather Section */}
-        <section className="home-weather">
+        <section className="home-weather" ref={weatherSectionRef}>
           <div className="section__header">
             <h2 className="section__title">Current Weather</h2>
             <button
@@ -241,7 +283,7 @@ const HomePage = () => {
                 <Search size={16} />
                 <span>
                   Showing weather for{" "}
-                  {selectedLocation.name || selectedLocation.city}
+                  {resolveFullLocationName(selectedLocation)}
                 </span>
               </div>
             )}
@@ -251,12 +293,12 @@ const HomePage = () => {
                 {autoSelectedLocation.type === "coords" ? (
                   <>
                     <MapPin size={16} />
-                    <span>Showing weather for {autoSelectedLocation.name}</span>
+                    <span>Showing weather for {resolveFullLocationName(autoSelectedLocation)}</span>
                   </>
                 ) : (
                   <>
                     <Search size={16} />
-                    <span>Showing weather for {autoSelectedLocation.name}</span>
+                    <span>Showing weather for {resolveFullLocationName(autoSelectedLocation)}</span>
                   </>
                 )}
               </div>
@@ -286,7 +328,14 @@ const HomePage = () => {
                   showForecastLink={true}
                   onAddToFavorites={(loc) => addFavorite(loc)}
                   onRemoveFromFavorites={(loc) => removeFavoriteByLocation(loc)}
-                  onToggleForecast={() => setShowHomeForecast((v) => !v)}
+                  onToggleForecast={() => {
+                    const newValue = !showHomeForecast;
+                    setShowHomeForecast(newValue);
+                    // Scroll to forecast section when showing forecast
+                    if (newValue) {
+                      scrollToForecastSection();
+                    }
+                  }}
                   isForecastVisible={showHomeForecast}
                 />
 
@@ -295,9 +344,8 @@ const HomePage = () => {
                   activeForecast.isSuccess &&
                   activeForecast.data &&
                   activeForecast.data.data &&
-                  activeForecast.data.data.forecast &&
-                  preferences.show5DayForecast && (
-                    <div className="forecast-section">
+                  activeForecast.data.data.forecast && (
+                    <div className="forecast-section" ref={forecastSectionRef}>
                       <h3 className="forecast-section__title">
                         5-Day Forecast
                       </h3>
@@ -397,39 +445,63 @@ const HomePage = () => {
                 aria-label="Favorite locations slider"
               >
                 <div className="favorites-slider__track">
-                  {favorites.map((favorite) => (
-                    <div
-                      key={favorite.id}
-                      className="favorite-item"
-                      role="button"
-                      tabIndex={0}
-                      title={`Show ${favorite.name || favorite.city} on Home`}
-                      onClick={() =>
-                        selectLocation({
-                          type: "city",
-                          city: favorite.city || favorite.name,
-                          name: favorite.name || favorite.city,
-                          country: favorite.country,
-                          coordinates: favorite.coordinates,
-                        })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
+                  {favorites.map((favorite) => {
+                    // Resolve the location name for consistent display using all available data
+                    const locationForResolution = {
+                      ...favorite,
+                      city: favorite.city,
+                      name: favorite.name,
+                      country: favorite.country,
+                      state: favorite.state,
+                      countryCode: favorite.countryCode,
+                    };
+                    
+                    const resolvedName = resolveFullLocationName(locationForResolution);
+                    const enhancedFavorite = {
+                      ...favorite,
+                      name: resolvedName,
+                    };
+                    
+                    return (
+                      <div
+                        key={favorite.id}
+                        className="favorite-item"
+                        role="button"
+                        tabIndex={0}
+                        title={`Show ${resolvedName} on Home`}
+                        onClick={() => {
                           selectLocation({
                             type: "city",
                             city: favorite.city || favorite.name,
-                            name: favorite.name || favorite.city,
+                            name: resolvedName,
                             country: favorite.country,
+                            state: favorite.state,
+                            countryCode: favorite.countryCode,
                             coordinates: favorite.coordinates,
                           });
-                        }
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <ForecastCard location={favorite} compact={true} />
-                    </div>
-                  ))}
+                          scrollToWeatherSection();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectLocation({
+                              type: "city",
+                              city: favorite.city || favorite.name,
+                              name: resolvedName,
+                              country: favorite.country,
+                              state: favorite.state,
+                              countryCode: favorite.countryCode,
+                              coordinates: favorite.coordinates,
+                            });
+                            scrollToWeatherSection();
+                          }
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <ForecastCard location={enhancedFavorite} compact={true} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               {favorites.length > 3 && (

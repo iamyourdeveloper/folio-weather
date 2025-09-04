@@ -1,6 +1,8 @@
 import axios from "axios";
 import http from "http";
 import https from "https";
+import { getStateForUSCity, formatUSCityWithState, isUSCity } from "../data/usCitiesStateMapping.js";
+import { searchUSCities, ALL_US_CITIES_FLAT } from "../data/allUSCitiesComplete.js";
 
 class WeatherService {
   constructor() {
@@ -15,16 +17,24 @@ class WeatherService {
 
     // Create axios instance with optimized configuration
     this.axiosInstance = axios.create({
-      timeout: 15000, // Increased timeout
+      timeout: 8000, // Reduced timeout to 8 seconds
       headers: {
         "User-Agent": "FolioWeather/1.0.0",
       },
       // Retry configuration
-      retry: 3,
+      retry: 2, // Reduced retries
       retryDelay: 1000,
-      // Keep connections alive
-      httpAgent: new http.Agent({ keepAlive: true }),
-      httpsAgent: new https.Agent({ keepAlive: true }),
+      // Keep connections alive with shorter keep-alive time
+      httpAgent: new http.Agent({ 
+        keepAlive: true, 
+        keepAliveMsecs: 1000,
+        timeout: 8000
+      }),
+      httpsAgent: new https.Agent({ 
+        keepAlive: true, 
+        keepAliveMsecs: 1000,
+        timeout: 8000
+      }),
     });
 
     // Add request interceptor for logging
@@ -59,18 +69,20 @@ class WeatherService {
 
         const shouldRetry =
           config &&
-          config.__retryCount < (config.retry || 3) &&
+          config.__retryCount < (config.retry || 2) &&
           (!error.response ||
             error.response.status >= 500 ||
             error.code === "ECONNABORTED");
 
         if (shouldRetry) {
           config.__retryCount += 1;
-          const delay =
-            config.retryDelay * Math.pow(2, config.__retryCount - 1);
+          const delay = Math.min(
+            config.retryDelay * Math.pow(2, config.__retryCount - 1),
+            3000 // Max delay of 3 seconds
+          );
 
           console.log(
-            `🔄 Retrying request (${config.__retryCount}/${config.retry}) after ${delay}ms`
+            `🔄 Retrying OpenWeather API request (${config.__retryCount}/${config.retry}) after ${delay}ms`
           );
 
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -183,30 +195,43 @@ class WeatherService {
 
       return this.formatCurrentWeatherData(response.data, originalName);
     } catch (error) {
-      // If the enhanced query fails, try with just the city name as fallback
-      if (originalName && originalName !== city) {
-        console.log(
-          `⚠️ Enhanced query failed, trying fallback with city name: "${city}"`
-        );
+      const queryString = this.constructLocationQuery(city, originalName);
+      console.log(`⚠️ Primary query failed for "${queryString}"`);
+      
+      // Try multiple fallback strategies
+      const fallbackStrategies = this.getFallbackStrategies(city, originalName);
+      
+      for (const fallback of fallbackStrategies) {
         try {
+          console.log(`🔄 Trying fallback: "${fallback.query}" (${fallback.reason})`);
+          
           const fallbackResponse = await this.makeApiCall(
             `${this.baseUrl}/weather`,
             {
-              q: city,
+              q: fallback.query,
               appid: this.apiKey,
               units: units,
             }
           );
 
+          // Use the original name for display, but indicate it's a fallback
+          const displayName = originalName || city;
+          console.log(`✅ Fallback successful: Using "${fallback.query}" for "${displayName}"`);
+          
           return this.formatCurrentWeatherData(
             fallbackResponse.data,
-            originalName
+            displayName
           );
         } catch (fallbackError) {
-          throw this.handleWeatherApiError(fallbackError);
+          console.log(`❌ Fallback "${fallback.query}" failed: ${fallbackError.message}`);
+          continue;
         }
       }
-      throw this.handleWeatherApiError(error);
+      
+      // If all fallbacks fail, throw the original error with enhanced message
+      const enhancedError = this.handleWeatherApiError(error);
+      enhancedError.message = `Weather data not available for "${originalName || city}". This location may not be recognized by the weather service. Try searching for a nearby major city instead.`;
+      throw enhancedError;
     }
   }
 
@@ -264,27 +289,43 @@ class WeatherService {
 
       return this.formatForecastData(response.data, originalName);
     } catch (error) {
-      // If the enhanced query fails, try with just the city name as fallback
-      if (originalName && originalName !== city) {
-        console.log(
-          `⚠️ Enhanced forecast query failed, trying fallback with city name: "${city}"`
-        );
+      const queryString = this.constructLocationQuery(city, originalName);
+      console.log(`⚠️ Primary forecast query failed for "${queryString}"`);
+      
+      // Try multiple fallback strategies
+      const fallbackStrategies = this.getFallbackStrategies(city, originalName);
+      
+      for (const fallback of fallbackStrategies) {
         try {
+          console.log(`🔄 Trying forecast fallback: "${fallback.query}" (${fallback.reason})`);
+          
           const fallbackResponse = await this.makeApiCall(
             `${this.baseUrl}/forecast`,
             {
-              q: city,
+              q: fallback.query,
               appid: this.apiKey,
               units: units,
             }
           );
 
-          return this.formatForecastData(fallbackResponse.data, originalName);
+          // Use the original name for display, but indicate it's a fallback
+          const displayName = originalName || city;
+          console.log(`✅ Forecast fallback successful: Using "${fallback.query}" for "${displayName}"`);
+          
+          return this.formatForecastData(
+            fallbackResponse.data,
+            displayName
+          );
         } catch (fallbackError) {
-          throw this.handleWeatherApiError(fallbackError);
+          console.log(`❌ Forecast fallback "${fallback.query}" failed: ${fallbackError.message}`);
+          continue;
         }
       }
-      throw this.handleWeatherApiError(error);
+      
+      // If all fallbacks fail, throw the original error with enhanced message
+      const enhancedError = this.handleWeatherApiError(error);
+      enhancedError.message = `Forecast data not available for "${originalName || city}". This location may not be recognized by the weather service. Try searching for a nearby major city instead.`;
+      throw enhancedError;
     }
   }
 
@@ -341,6 +382,19 @@ class WeatherService {
           "do",
           "dos",
           "das",
+          "la",
+          "le",
+          "les",
+          "el",
+          "del",
+          "am",
+          "an",
+          "auf",
+          "im",
+          "in",
+          "von",
+          "zu",
+          "zur",
         ];
 
         return part
@@ -350,7 +404,9 @@ class WeatherService {
             if (!cleanWord) return cleanWord;
 
             // Handle state/country codes within words - be more selective
-            // Only treat as state/country code if it's exactly 2 letters and common codes
+            // Only treat as state/country code if it's exactly 2 letters, common codes, 
+            // AND appears at the end of a location name (after comma) to avoid affecting
+            // prepositions like "de" in "Rio de Janeiro"
             const commonStateCodes = [
               "AL",
               "AK",
@@ -359,7 +415,6 @@ class WeatherService {
               "CA",
               "CO",
               "CT",
-              "DE",
               "FL",
               "GA",
               "HI",
@@ -414,6 +469,9 @@ class WeatherService {
               "NT",
               "NU",
               "YT", // Canadian provinces
+            ];
+
+            const commonCountryCodes = [
               "US",
               "GB",
               "CA",
@@ -430,15 +488,19 @@ class WeatherService {
               "RU", // Countries
             ];
 
-            if (
+            // Check if this word is a standalone state/country code
+            // Only uppercase if it's a standalone 2-3 letter code at the end of a part
+            const isStandaloneStateCode = 
               cleanWord.length === 2 &&
-              commonStateCodes.includes(cleanWord.toUpperCase())
-            ) {
-              return cleanWord.toUpperCase();
-            } else if (
-              cleanWord.length === 3 &&
-              commonStateCodes.includes(cleanWord.toUpperCase())
-            ) {
+              commonStateCodes.includes(cleanWord.toUpperCase()) &&
+              part.trim().split(" ").length === 1; // Only if it's the only word in this comma-separated part
+
+            const isStandaloneCountryCode = 
+              (cleanWord.length === 2 || cleanWord.length === 3) &&
+              commonCountryCodes.includes(cleanWord.toUpperCase()) &&
+              part.trim().split(" ").length === 1; // Only if it's the only word in this comma-separated part
+
+            if (isStandaloneStateCode || isStandaloneCountryCode) {
               return cleanWord.toUpperCase();
             }
 
@@ -503,36 +565,61 @@ class WeatherService {
    * @returns {Object} Formatted weather data
    */
   formatCurrentWeatherData(data, originalName = null) {
+    // Validate required data structure
+    if (!data || !data.coord || !data.main || !data.weather || !data.weather[0] || !data.sys) {
+      console.error("Invalid weather data structure:", data);
+      throw new Error("Invalid weather data received from API");
+    }
+
     const locationName = originalName || data.name || "Unknown Location";
     const formattedLocationName = this.formatLocationName(locationName);
+    const cityName = this.formatLocationName(data.name) || "Unknown City";
+    const countryCode = data.sys?.country || "";
+    
+    // Enhanced location formatting for US cities
+    let enhancedLocationName = formattedLocationName;
+    let state = null;
+    
+    // If this is a US city, try to add state information
+    if (countryCode === "US" && data.name) {
+      const detectedState = getStateForUSCity(data.name, data.coord?.lat, data.coord?.lon);
+      if (detectedState) {
+        state = detectedState;
+        // Only update the name if the original doesn't already contain state info
+        if (!originalName || !originalName.includes(',')) {
+          enhancedLocationName = formatUSCityWithState(cityName, detectedState);
+        }
+      }
+    }
 
     return {
       location: {
-        name: String(formattedLocationName),
-        city: String(this.formatLocationName(data.name) || "Unknown City"),
-        country: String(data.sys?.country || ""),
+        name: String(enhancedLocationName),
+        city: String(cityName),
+        country: String(countryCode),
+        state: state, // Add state information
         coordinates: {
-          lat: data.coord.lat,
-          lon: data.coord.lon,
+          lat: Number(data.coord.lat) || 0,
+          lon: Number(data.coord.lon) || 0,
         },
       },
       current: {
-        temperature: Math.round(data.main.temp),
-        feelsLike: Math.round(data.main.feels_like),
-        humidity: data.main.humidity,
-        pressure: data.main.pressure,
-        visibility: data.visibility / 1000, // Convert to km
-        uvIndex: data.uvi || null,
-        windSpeed: data.wind.speed,
-        windDirection: data.wind.deg,
-        cloudiness: data.clouds.all,
-        description: data.weather[0].description,
-        main: data.weather[0].main,
-        icon: data.weather[0].icon,
+        temperature: Math.round(Number(data.main.temp) || 0),
+        feelsLike: Math.round(Number(data.main.feels_like) || 0),
+        humidity: Number(data.main.humidity) || 0,
+        pressure: Number(data.main.pressure) || 0,
+        visibility: (Number(data.visibility) || 0) / 1000, // Convert to km
+        uvIndex: data.uvi ? Number(data.uvi) : null,
+        windSpeed: Number(data.wind?.speed) || 0,
+        windDirection: Number(data.wind?.deg) || 0,
+        cloudiness: Number(data.clouds?.all) || 0,
+        description: String(data.weather[0].description || "Unknown"),
+        main: String(data.weather[0].main || "Unknown"),
+        icon: String(data.weather[0].icon || "01d"),
       },
       sun: {
-        sunrise: new Date(data.sys.sunrise * 1000).toISOString(),
-        sunset: new Date(data.sys.sunset * 1000).toISOString(),
+        sunrise: data.sys.sunrise ? new Date(Number(data.sys.sunrise) * 1000).toISOString() : null,
+        sunset: data.sys.sunset ? new Date(Number(data.sys.sunset) * 1000).toISOString() : null,
       },
       timestamp: new Date().toISOString(),
     };
@@ -545,6 +632,12 @@ class WeatherService {
    * @returns {Object} Formatted forecast data
    */
   formatForecastData(data, originalName = null) {
+    // Validate required data structure
+    if (!data || !data.list || !Array.isArray(data.list) || !data.city) {
+      console.error("Invalid forecast data structure:", data);
+      throw new Error("Invalid forecast data received from API");
+    }
+
     const dailyForecasts = {};
 
     // Group forecasts by day
@@ -589,17 +682,33 @@ class WeatherService {
       );
     });
 
+    const locationName = originalName || data.city?.name || "Unknown Location";
+    const formattedLocationName = this.formatLocationName(locationName);
+    const cityName = this.formatLocationName(data.city?.name) || "Unknown City";
+    const countryCode = data.city?.country || "";
+    
+    // Enhanced location formatting for US cities
+    let enhancedLocationName = formattedLocationName;
+    let state = null;
+    
+    // If this is a US city, try to add state information
+    if (countryCode === "US" && data.city?.name) {
+      const detectedState = getStateForUSCity(data.city.name, data.city.coord?.lat, data.city.coord?.lon);
+      if (detectedState) {
+        state = detectedState;
+        // Only update the name if the original doesn't already contain state info
+        if (!originalName || !originalName.includes(',')) {
+          enhancedLocationName = formatUSCityWithState(cityName, detectedState);
+        }
+      }
+    }
+
     return {
       location: {
-        name: String(
-          this.formatLocationName(
-            originalName || data.city?.name || "Unknown Location"
-          )
-        ),
-        city: String(
-          this.formatLocationName(data.city?.name) || "Unknown City"
-        ),
-        country: String(data.city?.country || ""),
+        name: String(enhancedLocationName),
+        city: String(cityName),
+        country: String(countryCode),
+        state: state, // Add state information
         coordinates: {
           lat: data.city.coord.lat,
           lon: data.city.coord.lon,
@@ -612,6 +721,120 @@ class WeatherService {
       })),
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Get fallback strategies for location queries when primary search fails
+   * @param {string} city - The base city name
+   * @param {string} originalName - The full original search query
+   * @returns {Array} Array of fallback query strategies
+   */
+  getFallbackStrategies(city, originalName) {
+    const fallbacks = [];
+    
+    // Strategy 1: Try just the city name without country/state
+    if (originalName && originalName !== city) {
+      fallbacks.push({
+        query: city,
+        reason: "city name only"
+      });
+    }
+    
+    // Strategy 2: For Uruguayan cities, try nearby major cities
+    if (originalName && originalName.includes("UY")) {
+      const uruguayanFallbacks = [
+        "Montevideo,UY",
+        "Canelones,UY", 
+        "Maldonado,UY",
+        "Punta del Este,UY"
+      ];
+      
+      for (const fallback of uruguayanFallbacks) {
+        if (!fallback.toLowerCase().includes(city.toLowerCase())) {
+          fallbacks.push({
+            query: fallback,
+            reason: "nearby major city in Uruguay"
+          });
+        }
+      }
+    }
+    
+    // Strategy 3: Try the country/region only
+    if (originalName) {
+      const parts = originalName.split(',').map(p => p.trim());
+      if (parts.length > 1) {
+        // Try the last part (usually country/state)
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && lastPart !== city) {
+          fallbacks.push({
+            query: lastPart,
+            reason: "country/region only"
+          });
+        }
+        
+        // Try second-to-last part (usually state/province)
+        if (parts.length > 2) {
+          const secondLastPart = parts[parts.length - 2];
+          if (secondLastPart && secondLastPart !== city) {
+            fallbacks.push({
+              query: `${secondLastPart},${lastPart}`,
+              reason: "state and country"
+            });
+          }
+        }
+      }
+    }
+    
+    // Strategy 4: Common alternative spellings and variations
+    const cityVariations = this.getCityVariations(city);
+    for (const variation of cityVariations) {
+      fallbacks.push({
+        query: variation,
+        reason: "alternative spelling"
+      });
+    }
+    
+    return fallbacks;
+  }
+  
+  /**
+   * Get common variations and alternative spellings for city names
+   * @param {string} city - The city name
+   * @returns {Array} Array of alternative city names
+   */
+  getCityVariations(city) {
+    const variations = [];
+    const cityLower = city.toLowerCase();
+    
+    // Common variations for Spanish cities
+    const spanishVariations = {
+      "ciudad de la costa": ["Costa de Oro", "Ciudad Costa", "La Costa"],
+      "ciudad": ["City"],
+      "la": [""],
+      "de": [""],
+    };
+    
+    // Apply variations
+    for (const [original, alternatives] of Object.entries(spanishVariations)) {
+      if (cityLower.includes(original)) {
+        for (const alt of alternatives) {
+          if (alt) {
+            const variation = city.replace(new RegExp(original, 'gi'), alt);
+            if (variation !== city) {
+              variations.push(variation);
+            }
+          }
+        }
+      }
+    }
+    
+    // Remove articles and prepositions
+    const withoutArticles = city.replace(/\b(la|el|de|del|los|las)\b/gi, '').trim();
+    if (withoutArticles && withoutArticles !== city) {
+      variations.push(withoutArticles);
+    }
+    
+    return variations;
   }
 
   /**
@@ -729,6 +952,11 @@ class WeatherService {
       CN: ["China", "中国", "CN"],
       MX: ["Mexico", "México", "MX"],
       ZA: ["South Africa", "ZA"],
+      UY: ["Uruguay", "UY"],
+      AR: ["Argentina", "AR"],
+      CL: ["Chile", "CL"],
+      CO: ["Colombia", "CO"],
+      PE: ["Peru", "PE"],
     };
 
     for (const [code, patterns] of Object.entries(countryMappings)) {

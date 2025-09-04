@@ -7,6 +7,7 @@ import { useCurrentWeatherByCity, useForecastByCity } from "@hooks/useWeather";
 import WeatherCard from "@components/weather/WeatherCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
+import SearchDropdown from "@components/ui/SearchDropdown";
 import RANDOM_CITIES from "@/data/randomCities.js";
 import {
   parseLocationQuery,
@@ -36,8 +37,13 @@ const SearchPage = () => {
     selectedLocation?.city || ""
   );
 
+  // Toggle state for revealing the 5-day forecast on Search
+  const [showSearchForecast, setShowSearchForecast] = useState(false);
+
   // Ref for scrolling to current weather section
   const currentWeatherRef = useRef(null);
+  // Ref for scrolling to forecast section
+  const forecastSectionRef = useRef(null);
 
   // Debounce search to prevent excessive API calls
   const debounce = (func, wait) => {
@@ -58,9 +64,14 @@ const SearchPage = () => {
     { enabled: !!searchedCity }
   );
 
-  const forecast = useForecastByCity(searchedCity, preferences.units, {
-    enabled: !!searchedCity,
-  });
+  const forecast = useForecastByCity(
+    searchedCity,
+    preferences.units,
+    selectedLocation?.name || null, // Pass originalName properly
+    {
+      enabled: !!searchedCity && showSearchForecast,
+    }
+  );
 
   // Memoize the navigation handler to prevent infinite re-renders
   const handleCityParamNavigation = useCallback((cityParam) => {
@@ -75,6 +86,9 @@ const SearchPage = () => {
       setSearchedCity(city);
       searchLocation(fullName); // Use full name for context
       selectLocation({ city, name: fullName }); // city for API, name for display
+      
+      // Reset forecast toggle when navigating to a new city
+      setShowSearchForecast(false);
 
       // Clear the query string so a browser refresh on the Search page
       // doesn't re-hydrate results. This preserves the immediate view
@@ -97,6 +111,9 @@ const SearchPage = () => {
       setSearchedCity(city);
       searchLocation(fullName);
       selectLocation({ city, name: fullName });
+      
+      // Reset forecast toggle when searching for a new city
+      setShowSearchForecast(false);
 
       // Focus on current weather card with highlight effect
       focusOnWeatherCard();
@@ -130,6 +147,10 @@ const SearchPage = () => {
       setSearchedCity(city);
       searchLocation(fullName); // Use full name for context
       selectLocation({ city, name: fullName }); // city for API, name for display
+      
+      // Reset forecast toggle when searching for a new city
+      setShowSearchForecast(false);
+      
       // Clear input so placeholder returns after submit
       setLocalSearchQuery("");
 
@@ -160,6 +181,30 @@ const SearchPage = () => {
     return timeoutId;
   };
 
+  // Function to scroll to forecast section
+  const scrollToForecastSection = () => {
+    // Try multiple times in case the element isn't ready immediately
+    const attemptScroll = (attempts = 0) => {
+      const el = forecastSectionRef.current;
+      if (el) {
+        el.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center",
+          inline: "nearest"
+        });
+        console.log("✅ Scrolled to forecast section on SearchPage");
+      } else if (attempts < 5) {
+        console.log(`⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`);
+        setTimeout(() => attemptScroll(attempts + 1), 100);
+      } else {
+        console.log("❌ Failed to find forecast section ref on SearchPage after 5 attempts");
+      }
+    };
+    
+    // Initial delay to allow React to render the forecast section
+    setTimeout(() => attemptScroll(), 200);
+  };
+
   // Expanded popular cities list (curated subset from RANDOM_CITIES)
   // Do not slice here so regional tabs can access the full set.
   const ALL_POPULAR_CITIES = (RANDOM_CITIES || []).map((c) => ({
@@ -167,6 +212,16 @@ const SearchPage = () => {
     query: c.city || c.name,
     country: c.country,
   }));
+
+  // Fisher-Yates shuffle algorithm for random sorting
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
 
   // Region -> country mapping for quick filtering
   const REGION_COUNTRIES = {
@@ -220,8 +275,9 @@ const SearchPage = () => {
 
   const REGIONS = ["All", ...Object.keys(REGION_COUNTRIES)];
   const [activeRegion, setActiveRegion] = useState("All");
-  const [sortMode, setSortMode] = useState("curated"); // 'curated' | 'az'
+  const [sortMode, setSortMode] = useState("random"); // 'curated' | 'az' | 'random'
   const [visibleCount, setVisibleCount] = useState(20); // Track number of visible cities per region
+  const [randomizedCities, setRandomizedCities] = useState({}); // Cache randomized cities per region
 
   const filteredPopularCities =
     activeRegion === "All"
@@ -230,12 +286,54 @@ const SearchPage = () => {
           REGION_COUNTRIES[activeRegion]?.has(c.country)
         );
 
-  const sortedPopularCities =
-    sortMode === "az"
-      ? [...filteredPopularCities].sort((a, b) =>
+  // Initialize randomized cities for the current region if not already cached
+  useEffect(() => {
+    if (sortMode === "random" && !randomizedCities[activeRegion]) {
+      setRandomizedCities(prev => ({
+        ...prev,
+        [activeRegion]: shuffleArray(filteredPopularCities)
+      }));
+    }
+  }, [activeRegion, sortMode, filteredPopularCities, randomizedCities]);
+
+  // Initialize random sorting on component mount (app refresh)
+  useEffect(() => {
+    // Set initial random order for "All" region on app load
+    if (sortMode === "random" && Object.keys(randomizedCities).length === 0) {
+      setRandomizedCities({
+        "All": shuffleArray(ALL_POPULAR_CITIES)
+      });
+    }
+  }, [sortMode, randomizedCities, ALL_POPULAR_CITIES]);
+
+  // Re-randomize cities when switching regions (tab navigation)
+  const handleRegionChange = (region) => {
+    setActiveRegion(region);
+    if (sortMode === "random") {
+      // Generate new random order for the selected region
+      const regionCities = region === "All" 
+        ? ALL_POPULAR_CITIES 
+        : ALL_POPULAR_CITIES.filter((c) => REGION_COUNTRIES[region]?.has(c.country));
+      
+      setRandomizedCities(prev => ({
+        ...prev,
+        [region]: shuffleArray(regionCities)
+      }));
+    }
+  };
+
+  const sortedPopularCities = (() => {
+    switch (sortMode) {
+      case "az":
+        return [...filteredPopularCities].sort((a, b) =>
           a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
-        )
-      : filteredPopularCities;
+        );
+      case "random":
+        return randomizedCities[activeRegion] || filteredPopularCities;
+      default: // "curated"
+        return filteredPopularCities;
+    }
+  })();
 
   // Pagination logic: Show 20 cities initially, then 20 more with each "Show More" click
   const CITIES_PER_PAGE = 20;
@@ -267,44 +365,46 @@ const SearchPage = () => {
         </div>
 
         {/* Search Form */}
-        <form onSubmit={handleSearch} className="search-form search-form--page">
-          <div className="search-form__input-group">
-            <Search size={20} className="search-form__icon" />
-            <input
-              type="text"
-              placeholder="Enter city name (e.g., London, New York, NY, Tokyo)"
-              value={localSearchQuery}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Prevent XSS and invalid characters
-                const sanitizedValue = value.replace(/[<>]/g, '');
-                setLocalSearchQuery(sanitizedValue);
-              }}
-              className="search-form__input search-form__input--large"
-              autoFocus
-            />
-            {localSearchQuery && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                className="search-form__clear"
-                onClick={() => {
-                  setLocalSearchQuery("");
-                }}
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="search-form__submit search-form__submit--large"
-            disabled={!localSearchQuery.trim()}
-          >
-            <Search size={20} />
-            Search Weather
-          </button>
-        </form>
+        <div className="search-page__search-container">
+          <SearchDropdown
+            onSelect={(location) => {
+              console.log("SearchPage dropdown selected:", location);
+              // Use the location data to search for weather
+              const fullName = location.displayName || location.name;
+              const city = location.city;
+              
+              setSearchedCity(city);
+              searchLocation(fullName);
+              selectLocation({ 
+                city, 
+                name: fullName,
+                state: location.state,
+                country: location.country,
+                type: 'city' 
+              });
+              
+              // Reset forecast toggle when searching for a new city
+              setShowSearchForecast(false);
+              
+              // Clear input and focus on weather card
+              setLocalSearchQuery("");
+              focusOnWeatherCard();
+            }}
+            onClear={() => {
+              setLocalSearchQuery("");
+            }}
+            placeholder="Search for any US city with state (e.g., Austin, TX, Los Angeles, CA)"
+            className="search-page__dropdown"
+            maxSuggestions={10}
+            minQueryLength={1}
+            debounceMs={250}
+            autoFocus={true}
+            prioritizeUS={true}
+          />
+          <p className="search-page__help-text">
+            Try searching for "California" to see cities in that state, or type any city name for instant suggestions
+          </p>
+        </div>
 
         {/* Search Results */}
         <div className="search-results">
@@ -330,7 +430,7 @@ const SearchPage = () => {
           )}
 
           {/* Success State */}
-          {currentWeather.isSuccess && currentWeather.data && (
+          {currentWeather.isSuccess && currentWeather?.data?.data && (
             <div className="search-results__content">
               {/* Current Weather */}
               <section
@@ -341,7 +441,10 @@ const SearchPage = () => {
                   <h2 className="section__title">Current Weather</h2>
                   <div className="section__actions">
                     {(() => {
-                      const loc = currentWeather.data.data.location;
+                      // Safe access to location data with proper null checking
+                      const loc = currentWeather?.data?.data?.location;
+                      if (!loc) return null;
+                      
                       const fav = isFavorite(loc);
                       return (
                         <button
@@ -361,65 +464,77 @@ const SearchPage = () => {
                 </div>
 
                 <WeatherCard
-                  weather={currentWeather.data.data}
+                  weather={currentWeather?.data?.data}
+                  showForecastLink={true}
                   onAddToFavorites={handleAddToFavorites}
                   onRemoveFromFavorites={handleRemoveFromFavorites}
+                  onToggleForecast={() => {
+                    const newValue = !showSearchForecast;
+                    setShowSearchForecast(newValue);
+                    // Scroll to forecast section when showing forecast
+                    if (newValue) {
+                      scrollToForecastSection();
+                    }
+                  }}
+                  isForecastVisible={showSearchForecast}
                 />
               </section>
 
-              {/* Forecast */}
-              {forecast.isSuccess && forecast.data && (
-                <section className="search-results__forecast">
-                  <h2 className="section__title">5-Day Forecast</h2>
+              {/* Show 5-day forecast if toggled and available */}
+              {showSearchForecast &&
+                forecast.isSuccess &&
+                forecast?.data?.data?.forecast && (
+                  <section className="search-results__forecast" ref={forecastSectionRef}>
+                    <h2 className="section__title">5-Day Forecast</h2>
 
-                  <div className="forecast-grid">
-                    {forecast.data.data.forecast
-                      .slice(0, 5)
-                      .map((day, index) => (
-                        <div key={day.date} className="forecast-day">
-                          <div className="forecast-day__header">
-                            <h4 className="forecast-day__date">
-                              {index === 0
-                                ? "Today"
-                                : index === 1
-                                ? "Tomorrow"
-                                : new Date(day.date).toLocaleDateString(
-                                    "en-US",
-                                    { weekday: "short" }
-                                  )}
-                            </h4>
-                            <span className="forecast-day__date-full">
-                              {new Date(day.date).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          </div>
-
-                          <div className="forecast-day__weather">
-                            <img
-                              src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
-                              alt={day.description}
-                              className="forecast-day__icon"
-                            />
-                            <div className="forecast-day__temps">
-                              <span className="forecast-day__temp-max">
-                                {Math.round(day.maxTemp)}°
-                              </span>
-                              <span className="forecast-day__temp-min">
-                                {Math.round(day.minTemp)}°
+                    <div className="forecast-grid">
+                      {forecast.data.data.forecast
+                        .slice(0, 5)
+                        .map((day, index) => (
+                          <div key={day.date} className="forecast-day">
+                            <div className="forecast-day__header">
+                              <h4 className="forecast-day__date">
+                                {index === 0
+                                  ? "Today"
+                                  : index === 1
+                                  ? "Tomorrow"
+                                  : new Date(day.date).toLocaleDateString(
+                                      "en-US",
+                                      { weekday: "short" }
+                                    )}
+                              </h4>
+                              <span className="forecast-day__date-full">
+                                {new Date(day.date).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
                               </span>
                             </div>
-                          </div>
 
-                          <div className="forecast-day__description">
-                            {day.description}
+                            <div className="forecast-day__weather">
+                              <img
+                                src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
+                                alt={day.description}
+                                className="forecast-day__icon"
+                              />
+                              <div className="forecast-day__temps">
+                                <span className="forecast-day__temp-max">
+                                  {Math.round(day.maxTemp)}°
+                                </span>
+                                <span className="forecast-day__temp-min">
+                                  {Math.round(day.minTemp)}°
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="forecast-day__description">
+                              {day.description}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                  </div>
-                </section>
-              )}
+                        ))}
+                    </div>
+                  </section>
+                )}
 
               {/* Explore More Locations Button */}
               <button
@@ -477,7 +592,7 @@ const SearchPage = () => {
                           ? "btn--primary"
                           : "btn--secondary"
                       }`}
-                      onClick={() => setActiveRegion(region)}
+                      onClick={() => handleRegionChange(region)}
                     >
                       {region}
                     </button>
@@ -488,6 +603,27 @@ const SearchPage = () => {
                   role="group"
                   aria-label="Sort popular cities"
                 >
+                  <button
+                    type="button"
+                    className={`btn btn--small ${
+                      sortMode === "random" ? "btn--primary" : "btn--secondary"
+                    }`}
+                    aria-pressed={sortMode === "random"}
+                    onClick={() => {
+                      setSortMode("random");
+                      // Re-randomize current region when switching to random mode
+                      const regionCities = activeRegion === "All" 
+                        ? ALL_POPULAR_CITIES 
+                        : ALL_POPULAR_CITIES.filter((c) => REGION_COUNTRIES[activeRegion]?.has(c.country));
+                      
+                      setRandomizedCities(prev => ({
+                        ...prev,
+                        [activeRegion]: shuffleArray(regionCities)
+                      }));
+                    }}
+                  >
+                    Random
+                  </button>
                   <button
                     type="button"
                     className={`btn btn--small ${
@@ -517,14 +653,18 @@ const SearchPage = () => {
                         // Parse the location query to extract city and full name
                         const { city, fullName } = parseLocationQuery(query);
 
-                        // Trigger search immediately but keep the input clear
-                        setSearchedCity(city);
-                        searchLocation(fullName); // Use full name for context
-                        selectLocation({ city, name: label }); // city for API, name for display (prefer label over fullName)
-                        setLocalSearchQuery("");
+                                // Trigger search immediately but keep the input clear
+        setSearchedCity(city);
+        searchLocation(fullName); // Use full name for context
+        selectLocation({ city, name: label }); // city for API, name for display (prefer label over fullName)
+        
+        // Reset forecast toggle when searching for a new city
+        setShowSearchForecast(false);
+        
+        setLocalSearchQuery("");
 
-                        // Focus on current weather card with highlight effect
-                        focusOnWeatherCard();
+        // Focus on current weather card with highlight effect
+        focusOnWeatherCard();
                       }}
                       className="search-suggestion"
                       role="listitem"

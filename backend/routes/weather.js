@@ -131,19 +131,46 @@ router.get(
  */
 router.get(
   "/forecast/city/:city",
+  cacheMiddleware(CACHE_DURATION.FORECAST),
   asyncHandler(async (req, res) => {
     const { city } = req.params;
     const { units = "metric", originalName } = req.query;
 
-    if (!city) {
+    // Input validation and sanitization
+    if (!city || typeof city !== 'string') {
       return res.status(400).json({
         success: false,
-        error: "City name is required",
+        error: "City name is required and must be a string",
+      });
+    }
+
+    // Sanitize city name
+    const sanitizedCity = city.trim().replace(/[<>]/g, '');
+    if (sanitizedCity.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "City name cannot be empty",
+      });
+    }
+
+    if (sanitizedCity.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: "City name too long",
+      });
+    }
+
+    // Validate units parameter
+    const validUnits = ['metric', 'imperial', 'kelvin'];
+    if (!validUnits.includes(units)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid units parameter. Must be metric, imperial, or kelvin",
       });
     }
 
     const forecastData = await weatherService.getForecastByCity(
-      city,
+      sanitizedCity,
       units,
       originalName
     );

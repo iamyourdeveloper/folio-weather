@@ -40,15 +40,15 @@ const handleSearch = async (e, rawQuery) => {
   }
 
   setIsSearching(true);
-  
+
   try {
     // Parse location and update context
     await searchLocation(fullName);
     selectLocation({ city, name: fullName, type: "city" });
-    
+
     // Navigate to results
     navigate(`/search?city=${encodeURIComponent(fullName)}`);
-    
+
     // Reset state with proper timing
     requestAnimationFrame(() => {
       setTimeout(resetState, 150);
@@ -71,6 +71,7 @@ const handleSearch = async (e, rawQuery) => {
 ### 4. Improved Event Handling
 
 #### Search Input Focus/Blur:
+
 ```javascript
 onFocus={(e) => {
   console.log("Search input focused");
@@ -86,7 +87,7 @@ onBlur={(e) => {
     console.log("Keeping search active during search operation");
     return;
   }
-  
+
   // Enhanced logic to keep search open for form interactions
   setTimeout(() => {
     if (!isSearching) {
@@ -97,24 +98,25 @@ onBlur={(e) => {
 ```
 
 #### Click Outside Detection:
+
 ```javascript
 // More robust outside click detection
 const handleClickOutside = (e) => {
   if (!isSearchActive || isSearching) return;
-  
+
   const allowedElements = [
     ".header__theme-toggle",
     ".header-weather",
     ".nav__link",
     ".search-form__submit",
     ".search-form__clear",
-    ".search-form__icon"
+    ".search-form__icon",
   ];
-  
+
   const isAllowedClick = allowedElements.some((selector) => {
     return e.target.closest(selector) !== null;
   });
-  
+
   if (!isAllowedClick) {
     console.log("Closing search due to outside click");
     setIsSearchActive(false);
@@ -195,7 +197,7 @@ useEffect(() => {
 ## Testing Instructions
 
 1. **Open the app**: http://localhost:3000
-2. **Test basic search**: 
+2. **Test basic search**:
    - Click search icon in header
    - Type "London" and press Enter
    - Wait for results to load

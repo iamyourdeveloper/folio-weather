@@ -6,6 +6,7 @@ import {
   useCurrentWeatherByCity,
   useCurrentWeatherByCoords,
 } from "@hooks/useWeather";
+import { resolveFullLocationName } from "@utils/searchUtils";
 
 /**
  * Small, live temperature display used in the header.
@@ -79,7 +80,7 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
 
   const temp = formatTemperature(data.current.temperature);
   const locName =
-    data.location?.name ?? effectiveLocation?.name ?? effectiveLocation?.city;
+    data.location?.name ?? resolveFullLocationName(effectiveLocation) ?? "Unknown";
 
   // Link target: on Home, just show; elsewhere, link back to Home for context
   const isHome = routerLocation.pathname === "/";
