@@ -351,26 +351,6 @@ This project serves as a comprehensive learning resource for modern web developm
 
 Check the `docs/` directory for detailed guides and the `Chat History/` folder for development insights.
 
-## 🤝 Contributing
-
-We welcome contributions to FolioWeather! Here's how you can help:
-
-### Getting Started with Contributions
-
-1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
-   ```bash
-   git clone https://github.com/your-username/folio-weather.git
-   ```
-3. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-4. **Make your changes** following the project structure and coding standards
-5. **Test thoroughly** using the built-in test page and manual testing
-6. **Commit your changes** with descriptive commit messages
-7. **Push to your fork** and submit a pull request
-
 ### Areas for Contribution
 
 - **New Features**: Weather alerts, user authentication, additional weather data
@@ -488,4 +468,4 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 **Built with ❤️ using the MERN stack and modern web technologies**
 
-_For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/your-username/folio-weather) or check the [Chat History](Chat%20History/) for development insights._
+_For questions or insights, please visit the [GitHub repository](https://github.com/iamyourdeveloper/folio-weather) above or check the [Chat History](Chat%20History/) for development insights._
