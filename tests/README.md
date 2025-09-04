@@ -5,11 +5,13 @@ This directory contains all test files organized by purpose and type.
 ## Directory Structure
 
 ### `/api/` - API Integration Tests
+
 - `test-api.mjs` - Basic API connectivity tests
 - `test-api-location-fix.mjs` - Location API specific tests
 - `test-connection.mjs` - Connection and health check tests
 
 ### `/integration/` - Integration Tests
+
 - `test-header-search*.mjs` - Header search functionality tests (8 files)
 - `test-header-dropdown*.mjs` - Header dropdown functionality tests (3 files)
 - `test-mobile-search-alignment.mjs` - Mobile search alignment tests
@@ -18,6 +20,7 @@ This directory contains all test files organized by purpose and type.
 - `test-comprehensive-city-state-search.mjs` - Comprehensive search tests
 
 ### `/development/` - Development & Debug Tests
+
 - `demo-us-cities-solution.mjs` - US cities solution demo
 - `test-formatting*.mjs` - Data formatting tests (3 files)
 - `test-pagination.mjs` - Pagination functionality tests
@@ -30,6 +33,7 @@ This directory contains all test files organized by purpose and type.
 - `test-weather-api-state-integration.mjs` - Weather API state integration
 
 ### `/performance/` - Performance Tests
+
 Currently empty - reserved for future performance testing scripts.
 
 ## Usage
