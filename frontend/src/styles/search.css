@@ -1,0 +1,64 @@
+/* Search Page Specific Styles */
+
+/* Search page specific dropdown styling */
+.search-page__search-container {
+  margin-bottom: 2rem;
+}
+
+.search-page__dropdown {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-page__help-text {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Header search dropdown styling */
+.header__search-dropdown {
+  width: 100%;
+}
+
+.nav__search-dropdown {
+  width: 100%;
+  margin-top: 0;
+}
+
+.explore-more-btn {
+  transition: all 0.2s ease-in-out;
+  background: #4f7fff !important;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  max-width: 90%;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* Responsive adjustments */
+@media (min-width: 640px) {
+  .explore-more-btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+.explore-more-btn:hover {
+  background: #3b6beb !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.explore-more-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Current Weather Card Focus Effect */
+.search-results__current {
+  scroll-margin-top: 20px; /* Ensures proper spacing when scrolled to */
+}
