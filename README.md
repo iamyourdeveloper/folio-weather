@@ -375,7 +375,7 @@ This project serves as a comprehensive learning resource for modern web developm
 
 Check the `docs/` directory for detailed guides and the `Chat History/` folder for development insights.
 
-### Areas for Contribution
+### Areas for Enhancement & Contribution upon App
 
 - **New Features**: Weather alerts, user authentication, additional weather data
 - **UI/UX Improvements**: Enhanced responsive design, accessibility features
