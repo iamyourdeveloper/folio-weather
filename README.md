@@ -123,11 +123,12 @@ folio-weather/
 │   │   ├── components/         # Reusable React components
 │   │   │   ├── common/         # Common components (ErrorBoundary)
 │   │   │   ├── layout/         # Layout components (Header, Footer)
-│   │   │   ├── ui/             # UI components (LoadingSpinner, ErrorMessage)
+│   │   │   ├── ui/             # UI components (LoadingSpinner, ErrorMessage, SearchDropdown, ConnectionStatus, TopBarProgress)
 │   │   │   └── weather/        # Weather-specific components (WeatherCard, ForecastCard)
 │   │   ├── context/            # React Context providers
 │   │   │   ├── WeatherContext.jsx    # Weather data and preferences state
 │   │   │   └── QueryProvider.jsx     # API query state management
+│   │   ├── data/               # Static data and constants
 │   │   ├── hooks/              # Custom React hooks
 │   │   │   ├── useWeather.js   # Weather data fetching hooks
 │   │   │   └── useGeolocation.js     # Geolocation functionality
@@ -139,6 +140,7 @@ folio-weather/
 │   │   │   └── TestPage.jsx    # API testing interface
 │   │   ├── services/           # API and external service integrations
 │   │   │   ├── api.js          # Base API configuration
+│   │   │   ├── searchApi.js    # Search API service calls (NEW)
 │   │   │   └── weatherService.js     # Weather API service calls
 │   │   ├── styles/             # CSS stylesheets
 │   │   │   ├── App.css         # Main application styles
@@ -153,16 +155,24 @@ folio-weather/
 ├── backend/                    # Node.js/Express Backend Server
 │   ├── config/                # Configuration files
 │   │   └── database.js        # MongoDB connection configuration
+│   ├── data/                  # Search databases and city data (NEW)
+│   │   ├── allUSCitiesComplete.js     # Consolidated US cities database
+│   │   ├── comprehensiveUSCities.js   # 15,000+ US cities by state
+│   │   ├── randomCities.js           # International cities database
+│   │   └── usCitiesStateMapping.js   # US cities state mapping & disambiguation
 │   ├── middleware/            # Express middleware
-│   │   └── errorHandler.js    # Global error handling middleware
+│   │   ├── errorHandler.js    # Global error handling middleware
+│   │   └── searchCache.js     # Search caching middleware (NEW)
 │   ├── models/                # MongoDB/Mongoose data models
 │   │   ├── User.js            # User account model
 │   │   ├── FavoriteLocation.js # Favorite locations model
 │   │   └── WeatherAlert.js    # Weather alerts model
 │   ├── routes/                # API route handlers
+│   │   ├── search.js          # Search API endpoints (NEW)
 │   │   ├── weather.js         # Weather API endpoints
 │   │   └── users.js           # User management endpoints
 │   ├── utils/                 # Backend utilities
+│   │   ├── cache.js           # Caching utilities
 │   │   └── weatherService.js  # OpenWeatherMap API integration
 │   ├── .env.example          # Backend environment variables template
 │   ├── server.js             # Main Express server file
@@ -170,14 +180,28 @@ folio-weather/
 ├── docs/                      # Comprehensive Documentation
 │   ├── API_REFERENCE.md       # Complete API endpoint documentation
 │   ├── API_SETUP.md          # API setup and configuration guide
+│   ├── BACKEND_PORT_AND_DATABASE.md # Backend configuration details
 │   └── DEVELOPMENT_GUIDE.md   # Development setup and workflow guide
+├── tests/                     # Comprehensive Test Suite (NEW)
+│   ├── api/                  # API integration tests
+│   ├── development/          # Development and feature tests
+│   ├── integration/          # Integration test suites
+│   ├── performance/          # Performance testing (reserved)
+│   └── README.md             # Testing documentation
+├── logs/                      # Application logs directory
 ├── Chat History/              # Development Session Documentation
 │   ├── README.md             # Chat history organization guide
 │   ├── Development-Session-Overview.md  # Complete development timeline
 │   └── [Session Files]       # Individual development session logs
+├── CHANGELOG.md              # Version history and feature changes
+├── COMPREHENSIVE_SEARCH_SYSTEM.md # Search system documentation (NEW)
+├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
 ├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
 ├── NEXT_STEPS.md             # Future development roadmap
-├── TODO.md                   # Original project requirements and planning
+├── TODO.md                   # Project requirements and planning
+├── demo-us-cities-solution.mjs # Search system demo script (NEW)
+├── test-header-search-complete-fix.mjs # Header search test script (NEW)
+├── start-app.sh              # Application startup script
 ├── package.json              # Root package.json with development scripts
 └── README.md                 # This comprehensive project guide
 ```
