@@ -10,16 +10,24 @@ This directory contains all test files organized by purpose and type.
 - `test-connection.mjs` - Connection and health check tests
 
 ### `/integration/` - Integration Tests
-- `test-header-search*.mjs` - Header search functionality tests
+- `test-header-search*.mjs` - Header search functionality tests (8 files)
+- `test-header-dropdown*.mjs` - Header dropdown functionality tests (3 files)
+- `test-mobile-search-alignment.mjs` - Mobile search alignment tests
+- `test-realtime-dropdown.mjs` - Real-time dropdown functionality
 - `test-location-fix.mjs` - Location service integration tests
-- `test-location-enhancement.js` - Location feature enhancement tests
+- `test-comprehensive-city-state-search.mjs` - Comprehensive search tests
 
 ### `/development/` - Development & Debug Tests
-- `test-formatting*.mjs` - Data formatting tests
+- `demo-us-cities-solution.mjs` - US cities solution demo
+- `test-formatting*.mjs` - Data formatting tests (3 files)
 - `test-pagination.mjs` - Pagination functionality tests
 - `test-fixes.js` - General fix validation tests
-- `test-search-*.js` - Search functionality tests
+- `test-search-*.js` - Search functionality tests (4 files)
 - `test-random-cities.js` - Random city selection tests
+- `test-location-*.mjs` - Location enhancement and error fix tests (2 files)
+- `test-comprehensive-city-search.mjs` - Comprehensive city search tests
+- `test-us-city-state-display.mjs` - US city state display tests
+- `test-weather-api-state-integration.mjs` - Weather API state integration
 
 ### `/performance/` - Performance Tests
 Currently empty - reserved for future performance testing scripts.
