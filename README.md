@@ -146,8 +146,10 @@ folio-weather/
 │   │   │   ├── App.css         # Main application styles
 │   │   │   ├── components.css  # Component-specific styles
 │   │   │   ├── pages.css       # Page-specific styles
+│   │   │   ├── search.css      # Search interface styles
 │   │   │   └── index.css       # Global styles and CSS reset
 │   │   └── utils/              # Utility functions and helpers
+│   │   │   └── searchUtils.js  # Search parsing and validation utilities
 │   ├── public/                 # Static assets
 │   ├── .env.example           # Frontend environment variables template
 │   ├── vite.config.js         # Vite build configuration
@@ -178,30 +180,44 @@ folio-weather/
 │   ├── server.js             # Main Express server file
 │   └── package.json          # Backend dependencies and scripts
 ├── docs/                      # Comprehensive Documentation
+│   ├── fixes-and-implementations/     # Fix & Implementation Documentation (NEW)
+│   │   ├── README.md         # Comprehensive fixes index with categories
+│   │   ├── CRASH_FIX_SUMMARY.md      # Critical crash fixes
+│   │   ├── FINAL_HEADER_SEARCH_FIX.md # Final header search solutions
+│   │   ├── HEADER_DROPDOWN_*.md      # Header dropdown fixes (3 files)
+│   │   ├── HEADER_SEARCH_*.md        # Header search fixes (4 files)
+│   │   ├── LOCATION_ERROR_FIX_SUMMARY.md # Location service fixes
+│   │   ├── MOBILE_SEARCH_ALIGNMENT_FIX.md # Mobile interface fixes
+│   │   ├── REALTIME_DROPDOWN_*.md    # Real-time dropdown features
+│   │   └── COMPREHENSIVE_*.md        # Complete implementation solutions (4 files)
 │   ├── API_REFERENCE.md       # Complete API endpoint documentation
 │   ├── API_SETUP.md          # API setup and configuration guide
 │   ├── BACKEND_PORT_AND_DATABASE.md # Backend configuration details
 │   └── DEVELOPMENT_GUIDE.md   # Development setup and workflow guide
 ├── tests/                     # Comprehensive Test Suite (NEW)
-│   ├── api/                  # API integration tests
-│   ├── development/          # Development and feature tests
-│   ├── integration/          # Integration test suites
-│   ├── performance/          # Performance testing (reserved)
-│   └── README.md             # Testing documentation
-├── logs/                      # Application logs directory
+│   ├── api/                  # API integration tests (3 files)
+│   ├── development/          # Development and feature tests (16 files)
+│   │   └── demo-us-cities-solution.mjs # Search system demo
+│   ├── integration/          # Integration test suites (13 files)
+│   │   ├── test-header-dropdown-*.mjs # Header dropdown tests (3 files)
+│   │   ├── test-header-search-*.mjs   # Header search tests (8 files)
+│   │   ├── test-mobile-search-alignment.mjs # Mobile search tests
+│   │   └── test-realtime-dropdown.mjs # Real-time dropdown tests
+│   └── README.md             # Testing documentation with organized file index
 ├── Chat History/              # Development Session Documentation
 │   ├── README.md             # Chat history organization guide
 │   ├── Development-Session-Overview.md  # Complete development timeline
 │   └── [Session Files]       # Individual development session logs
+├── fix-crashes.sh            # Crash fix utility script
+├── start-app.sh              # Application startup script
 ├── CHANGELOG.md              # Version history and feature changes
-├── COMPREHENSIVE_SEARCH_SYSTEM.md # Search system documentation (NEW)
 ├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
+├── GIT_GUIDE.md              # Git workflow and repository management
 ├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
 ├── NEXT_STEPS.md             # Future development roadmap
+├── QUICK_IMPROVEMENTS_CHECKLIST.md # Quick reference for enhancements
+├── SCROLL_TEST_INSTRUCTIONS.md # Scroll testing procedures
 ├── TODO.md                   # Project requirements and planning
-├── demo-us-cities-solution.mjs # Search system demo script (NEW)
-├── test-header-search-complete-fix.mjs # Header search test script (NEW)
-├── start-app.sh              # Application startup script
 ├── package.json              # Root package.json with development scripts
 └── README.md                 # This comprehensive project guide
 ```
