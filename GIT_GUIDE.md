@@ -4,10 +4,15 @@ This project already uses Git. Use this guide to commit your changes and push th
 
 ## 1) One‑time setup (identity and auth)
 
-- Set your commit identity (local to this repo):
+- Set your commit identity (local to this repo/run terminal 'zsh'):
+
   - `git config user.name "Your Name"`
   - `git config user.email "your-email@example.com"`
+  - git config --global user.email "tavong1594@gmail.com"
+  - git config --global user.name "iamyourdeveloper"
+
   - Tip: To keep your email private on GitHub, use the GitHub noreply format: `12345678+username@users.noreply.github.com`.
+
 - Choose your auth method for GitHub:
   - HTTPS + Personal Access Token (recommended for simplicity), or
   - SSH keys (`ssh-keygen -t ed25519 -C "your-email@example.com"`, then add the public key to GitHub).
@@ -25,6 +30,7 @@ This project already uses Git. Use this guide to commit your changes and push th
 ## 3) Create or connect a GitHub repo
 
 Option A — Create on GitHub.com (web):
+
 - Create a new repository in your GitHub account (without initializing files).
 - Copy the repo URL (HTTPS or SSH).
 - In this project folder, connect it:
@@ -33,6 +39,7 @@ Option A — Create on GitHub.com (web):
 - Verify: `git remote -v`
 
 Option B — Create with GitHub CLI (if installed):
+
 - Log in: `gh auth login`
 - Create and push in one go: `gh repo create <repo-name> --source . --private --push`
 
@@ -59,7 +66,8 @@ Option B — Create with GitHub CLI (if installed):
 ---
 
 Quick checklist to push right now:
-1) `git add -A`
-2) `git commit -m "chore: initial commit for Folio Weather"`
-3) `git remote add origin https://github.com/<you>/<repo>.git`
-4) `git push -u origin main`
+
+1. `git add -A`
+2. `git commit -m "chore: initial commit for Folio Weather"`
+3. `git remote add origin https://github.com/<you>/<repo>.git`
+4. `git push -u origin main`

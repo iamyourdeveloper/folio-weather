@@ -41,6 +41,7 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 - **Random City**: One-click action on Home to preview weather for a randomly selected city (drawn from a broad, global list to reduce repeats)
 - **Connection Status**: Real-time network connectivity monitoring
 - **Smart City Display**: US cities automatically show with state information (e.g., "Springfield, IL")
+- **Forecast Toggle Reset**: Clicking favorite locations automatically resets forecast toggle to "View Forecast" state
 
 ### 🎨 Interface & Design
 
@@ -140,7 +141,7 @@ folio-weather/
 │   │   │   └── TestPage.jsx    # API testing interface
 │   │   ├── services/           # API and external service integrations
 │   │   │   ├── api.js          # Base API configuration
-│   │   │   ├── searchApi.js    # Search API service calls (NEW)
+│   │   │   ├── searchApi.js    # Search API service calls
 │   │   │   └── weatherService.js     # Weather API service calls
 │   │   ├── styles/             # CSS stylesheets
 │   │   │   ├── App.css         # Main application styles
@@ -149,7 +150,7 @@ folio-weather/
 │   │   │   ├── search.css      # Search interface styles
 │   │   │   └── index.css       # Global styles and CSS reset
 │   │   └── utils/              # Utility functions and helpers
-│   │   │   └── searchUtils.js  # Search parsing and validation utilities
+│   │       └── searchUtils.js  # Search parsing and validation utilities
 │   ├── public/                 # Static assets
 │   ├── .env.example           # Frontend environment variables template
 │   ├── vite.config.js         # Vite build configuration
@@ -157,20 +158,20 @@ folio-weather/
 ├── backend/                    # Node.js/Express Backend Server
 │   ├── config/                # Configuration files
 │   │   └── database.js        # MongoDB connection configuration
-│   ├── data/                  # Search databases and city data (NEW)
+│   ├── data/                  # Search databases and city data
 │   │   ├── allUSCitiesComplete.js     # Consolidated US cities database
 │   │   ├── comprehensiveUSCities.js   # 15,000+ US cities by state
 │   │   ├── randomCities.js           # International cities database
 │   │   └── usCitiesStateMapping.js   # US cities state mapping & disambiguation
 │   ├── middleware/            # Express middleware
 │   │   ├── errorHandler.js    # Global error handling middleware
-│   │   └── searchCache.js     # Search caching middleware (NEW)
+│   │   └── searchCache.js     # Search caching middleware
 │   ├── models/                # MongoDB/Mongoose data models
 │   │   ├── User.js            # User account model
 │   │   ├── FavoriteLocation.js # Favorite locations model
 │   │   └── WeatherAlert.js    # Weather alerts model
 │   ├── routes/                # API route handlers
-│   │   ├── search.js          # Search API endpoints (NEW)
+│   │   ├── search.js          # Search API endpoints
 │   │   ├── weather.js         # Weather API endpoints
 │   │   └── users.js           # User management endpoints
 │   ├── utils/                 # Backend utilities
@@ -180,10 +181,11 @@ folio-weather/
 │   ├── server.js             # Main Express server file
 │   └── package.json          # Backend dependencies and scripts
 ├── docs/                      # Comprehensive Documentation
-│   ├── fixes-and-implementations/     # Fix & Implementation Documentation (NEW)
+│   ├── fixes-and-implementations/     # Fix & Implementation Documentation
 │   │   ├── README.md         # Comprehensive fixes index with categories
 │   │   ├── CRASH_FIX_SUMMARY.md      # Critical crash fixes
 │   │   ├── FINAL_HEADER_SEARCH_FIX.md # Final header search solutions
+│   │   ├── FORECAST_TOGGLE_RESET_IMPLEMENTATION.md # Forecast toggle reset feature
 │   │   ├── HEADER_DROPDOWN_*.md      # Header dropdown fixes (3 files)
 │   │   ├── HEADER_SEARCH_*.md        # Header search fixes (4 files)
 │   │   ├── LOCATION_ERROR_FIX_SUMMARY.md # Location service fixes
@@ -193,11 +195,14 @@ folio-weather/
 │   ├── API_REFERENCE.md       # Complete API endpoint documentation
 │   ├── API_SETUP.md          # API setup and configuration guide
 │   ├── BACKEND_PORT_AND_DATABASE.md # Backend configuration details
-│   └── DEVELOPMENT_GUIDE.md   # Development setup and workflow guide
-├── tests/                     # Comprehensive Test Suite (NEW)
+│   ├── DEVELOPMENT_GUIDE.md   # Development setup and workflow guide
+│   └── TEST_FORECAST_TOGGLE_RESET.md # Forecast toggle reset testing guide
+├── tests/                     # Comprehensive Test Suite
 │   ├── api/                  # API integration tests (3 files)
 │   ├── development/          # Development and feature tests (16 files)
 │   │   └── demo-us-cities-solution.mjs # Search system demo
+│   ├── frontend/             # Frontend-specific tests
+│   │   └── test-favorite-forecast-toggle-reset.js # Forecast toggle reset test
 │   ├── integration/          # Integration test suites (13 files)
 │   │   ├── test-header-dropdown-*.mjs # Header dropdown tests (3 files)
 │   │   ├── test-header-search-*.mjs   # Header search tests (8 files)
@@ -213,6 +218,7 @@ folio-weather/
 ├── CHANGELOG.md              # Version history and feature changes
 ├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
 ├── GIT_GUIDE.md              # Git workflow and repository management
+├── GITHUB_CONFIG_TEST.md     # GitHub configuration testing
 ├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
 ├── NEXT_STEPS.md             # Future development roadmap
 ├── QUICK_IMPROVEMENTS_CHECKLIST.md # Quick reference for enhancements
@@ -221,6 +227,31 @@ folio-weather/
 ├── package.json              # Root package.json with development scripts
 └── README.md                 # This comprehensive project guide
 ```
+
+│ ├── integration/ # Integration test suites (13 files)
+│ │ ├── test-header-dropdown-_.mjs # Header dropdown tests (3 files)
+│ │ ├── test-header-search-_.mjs # Header search tests (8 files)
+│ │ ├── test-mobile-search-alignment.mjs # Mobile search tests
+│ │ └── test-realtime-dropdown.mjs # Real-time dropdown tests
+│ └── README.md # Testing documentation with organized file index
+├── Chat History/ # Development Session Documentation
+│ ├── README.md # Chat history organization guide
+│ ├── Development-Session-Overview.md # Complete development timeline
+│ └── [Session Files] # Individual development session logs
+├── fix-crashes.sh # Crash fix utility script
+├── start-app.sh # Application startup script
+├── CHANGELOG.md # Version history and feature changes
+├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
+├── GIT_GUIDE.md # Git workflow and repository management
+├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
+├── NEXT_STEPS.md # Future development roadmap
+├── QUICK_IMPROVEMENTS_CHECKLIST.md # Quick reference for enhancements
+├── SCROLL_TEST_INSTRUCTIONS.md # Scroll testing procedures
+├── TODO.md # Project requirements and planning
+├── package.json # Root package.json with development scripts
+└── README.md # This comprehensive project guide
+
+````
 
 ## 🚀 Getting Started
 
@@ -239,7 +270,7 @@ folio-weather/
 ```bash
 git clone <repository-url>
 cd "Folio Weather (Weather API App)"
-```
+````
 
 2. **Install all dependencies:**
 

@@ -7,7 +7,12 @@
 - **Repository**: https://github.com/iamyourdeveloper/folio-weather
 - **Date**: September 5, 2025
 
-This file confirms that the GitHub connection is properly configured and ready for commits.
+# Run below in Terminal, for Github acc. configuration (zsh):
+
+git config --global user.email "tavong1594@gmail.com"
+git config --global user.name "iamyourdeveloper"
+
+# This file confirms that the GitHub connection is properly configured and ready for commits.
 
 ## Test Status
 

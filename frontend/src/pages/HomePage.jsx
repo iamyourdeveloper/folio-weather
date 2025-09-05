@@ -488,6 +488,8 @@ const HomePage = () => {
                         tabIndex={0}
                         title={`Show ${resolvedName} on Home`}
                         onClick={() => {
+                          // Reset forecast toggle when selecting a new location
+                          setShowHomeForecast(false);
                           selectLocation({
                             type: "city",
                             city: favorite.city || favorite.name,
@@ -502,6 +504,8 @@ const HomePage = () => {
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
+                            // Reset forecast toggle when selecting a new location
+                            setShowHomeForecast(false);
                             selectLocation({
                               type: "city",
                               city: favorite.city || favorite.name,

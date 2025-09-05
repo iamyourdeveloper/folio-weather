@@ -20,6 +20,7 @@
 - ✅ Global loading states and error boundaries
 - ✅ Smooth animations and transitions
 - ✅ Mobile-first responsive design
+- ✅ Forecast toggle reset on favorite location selection
 
 #### Location Services
 
