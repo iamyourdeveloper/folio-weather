@@ -227,30 +227,6 @@ folio-weather/
 ├── package.json              # Root package.json with development scripts
 └── README.md                 # This comprehensive project guide
 ```
-```
-│ ├── integration/ # Integration test suites (13 files)
-│ │ ├── test-header-dropdown-_.mjs # Header dropdown tests (3 files)
-│ │ ├── test-header-search-_.mjs # Header search tests (8 files)
-│ │ ├── test-mobile-search-alignment.mjs # Mobile search tests
-│ │ └── test-realtime-dropdown.mjs # Real-time dropdown tests
-│ └── README.md # Testing documentation with organized file index
-├── Chat History/ # Development Session Documentation
-│ ├── README.md # Chat history organization guide
-│ ├── Development-Session-Overview.md # Complete development timeline
-│ └── [Session Files] # Individual development session logs
-├── fix-crashes.sh # Crash fix utility script
-├── start-app.sh # Application startup script
-├── CHANGELOG.md # Version history and feature changes
-├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
-├── GIT_GUIDE.md # Git workflow and repository management
-├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
-├── NEXT_STEPS.md # Future development roadmap
-├── QUICK_IMPROVEMENTS_CHECKLIST.md # Quick reference for enhancements
-├── SCROLL_TEST_INSTRUCTIONS.md # Scroll testing procedures
-├── TODO.md # Project requirements and planning
-├── package.json # Root package.json with development scripts
-└── README.md # This comprehensive project guide
-````
 
 ## 🚀 Getting Started
 
