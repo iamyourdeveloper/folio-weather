@@ -227,7 +227,7 @@ folio-weather/
 ├── package.json              # Root package.json with development scripts
 └── README.md                 # This comprehensive project guide
 ```
-
+```
 │ ├── integration/ # Integration test suites (13 files)
 │ │ ├── test-header-dropdown-_.mjs # Header dropdown tests (3 files)
 │ │ ├── test-header-search-_.mjs # Header search tests (8 files)
@@ -250,7 +250,6 @@ folio-weather/
 ├── TODO.md # Project requirements and planning
 ├── package.json # Root package.json with development scripts
 └── README.md # This comprehensive project guide
-
 ````
 
 ## 🚀 Getting Started
