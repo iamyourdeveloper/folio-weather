@@ -1,22 +1,22 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 // Create a client with custom default options
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time: 5 minutes for weather data
-      staleTime: 5 * 60 * 1000,
-      // Cache time: 10 minutes
-      cacheTime: 10 * 60 * 1000,
-      // Retry failed requests 3 times
-      retry: 3,
-      // Retry delay: exponential backoff
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch on window focus for fresh data
-      refetchOnWindowFocus: true,
+      // Stale time: 10 minutes for weather data (increased for better performance)
+      staleTime: 10 * 60 * 1000,
+      // Cache time: 20 minutes
+      cacheTime: 20 * 60 * 1000,
+      // Retry failed requests 2 times (reduced to prevent overwhelming the API)
+      retry: 2,
+      // Retry delay: more conservative exponential backoff
+      retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 30000),
+      // Don't refetch on window focus to reduce API calls
+      refetchOnWindowFocus: false,
       // Don't refetch on reconnect immediately
-      refetchOnReconnect: 'always',
+      refetchOnReconnect: false,
     },
     mutations: {
       // Retry failed mutations once
@@ -26,8 +26,8 @@ const queryClient = new QueryClient({
 });
 
 // Optional: Add global error handling for future mutations
-queryClient.setMutationDefaults(['weather'], {
-  mutationFn: async ({ endpoint, data, method = 'POST' }) => {
+queryClient.setMutationDefaults(["weather"], {
+  mutationFn: async ({ endpoint, data, method = "POST" }) => {
     // This would be used for any weather-related mutations
     // Currently we only have queries, but this is for future use
     if (import.meta.env.DEV) {
@@ -47,8 +47,8 @@ export function QueryProvider({ children }) {
       {children}
       {/* Show React Query DevTools in development */}
       {import.meta.env.DEV && (
-        <ReactQueryDevtools 
-          initialIsOpen={false} 
+        <ReactQueryDevtools
+          initialIsOpen={false}
           buttonPosition="bottom-right"
         />
       )}

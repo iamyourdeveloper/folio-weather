@@ -104,11 +104,14 @@ const HomePage = () => {
   const scrollToWeatherSection = () => {
     const el = weatherSectionRef.current;
     if (el) {
-      el.scrollIntoView({ 
-        behavior: "smooth", 
+      console.log("✅ Scrolling to weather section");
+      el.scrollIntoView({
+        behavior: "smooth",
         block: "start",
-        inline: "nearest"
+        inline: "nearest",
       });
+    } else {
+      console.log("❌ Weather section ref not found");
     }
   };
 
@@ -118,22 +121,26 @@ const HomePage = () => {
     const attemptScroll = (attempts = 0) => {
       const el = forecastSectionRef.current;
       if (el) {
-        el.scrollIntoView({ 
-          behavior: "smooth", 
+        el.scrollIntoView({
+          behavior: "smooth",
           block: "center",
-          inline: "nearest"
+          inline: "nearest",
         });
         console.log("✅ Scrolled to forecast section on HomePage");
       } else if (attempts < 5) {
-        console.log(`⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`);
+        console.log(
+          `⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`
+        );
         setTimeout(() => attemptScroll(attempts + 1), 100);
       } else {
-        console.log("❌ Failed to find forecast section ref on HomePage after 5 attempts");
+        console.log(
+          "❌ Failed to find forecast section ref on HomePage after 5 attempts"
+        );
       }
     };
-    
+
     // Initial delay to allow React to render the forecast section
-    setTimeout(() => attemptScroll(), 200);
+    setTimeout(() => attemptScroll(), 50);
   };
 
   // Fetch weather data based on location
@@ -239,9 +246,12 @@ const HomePage = () => {
               type="button"
               className="btn btn--secondary"
               onClick={() => {
+                console.log("🎲 Random City button clicked");
                 // Picking a random default city and showing it
                 setShowHomeForecast(false);
                 selectRandomDefaultCity();
+                // Scroll to the weather section after selecting random city
+                setTimeout(() => scrollToWeatherSection(), 50);
               }}
               title="Show a random city's weather"
               aria-label="Show a random city's weather"
@@ -293,12 +303,18 @@ const HomePage = () => {
                 {autoSelectedLocation.type === "coords" ? (
                   <>
                     <MapPin size={16} />
-                    <span>Showing weather for {resolveFullLocationName(autoSelectedLocation)}</span>
+                    <span>
+                      Showing weather for{" "}
+                      {resolveFullLocationName(autoSelectedLocation)}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Search size={16} />
-                    <span>Showing weather for {resolveFullLocationName(autoSelectedLocation)}</span>
+                    <span>
+                      Showing weather for{" "}
+                      {resolveFullLocationName(autoSelectedLocation)}
+                    </span>
                   </>
                 )}
               </div>
@@ -455,13 +471,15 @@ const HomePage = () => {
                       state: favorite.state,
                       countryCode: favorite.countryCode,
                     };
-                    
-                    const resolvedName = resolveFullLocationName(locationForResolution);
+
+                    const resolvedName = resolveFullLocationName(
+                      locationForResolution
+                    );
                     const enhancedFavorite = {
                       ...favorite,
                       name: resolvedName,
                     };
-                    
+
                     return (
                       <div
                         key={favorite.id}
@@ -498,7 +516,10 @@ const HomePage = () => {
                         }}
                         style={{ cursor: "pointer" }}
                       >
-                        <ForecastCard location={enhancedFavorite} compact={true} />
+                        <ForecastCard
+                          location={enhancedFavorite}
+                          compact={true}
+                        />
                       </div>
                     );
                   })}

@@ -7,16 +7,18 @@ class CircuitBreaker {
     this.resetTimeout = resetTimeout;
     this.failureCount = 0;
     this.lastFailureTime = null;
-    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+    this.state = "CLOSED"; // CLOSED, OPEN, HALF_OPEN
   }
 
   async call(fn) {
-    if (this.state === 'OPEN') {
+    if (this.state === "OPEN") {
       if (Date.now() - this.lastFailureTime > this.resetTimeout) {
-        this.state = 'HALF_OPEN';
-        console.log('🔄 Circuit breaker moving to HALF_OPEN state');
+        this.state = "HALF_OPEN";
+        console.log("🔄 Circuit breaker moving to HALF_OPEN state");
       } else {
-        throw new Error('Circuit breaker is OPEN - service temporarily unavailable');
+        throw new Error(
+          "Circuit breaker is OPEN - service temporarily unavailable"
+        );
       }
     }
 
@@ -32,39 +34,43 @@ class CircuitBreaker {
 
   onSuccess() {
     this.failureCount = 0;
-    this.state = 'CLOSED';
+    this.state = "CLOSED";
   }
 
   onFailure() {
     this.failureCount++;
     this.lastFailureTime = Date.now();
-    
+
     if (this.failureCount >= this.failureThreshold) {
-      this.state = 'OPEN';
-      console.warn(`⚠️ Circuit breaker OPEN - too many failures (${this.failureCount})`);
+      this.state = "OPEN";
+      console.warn(
+        `⚠️ Circuit breaker OPEN - too many failures (${this.failureCount})`
+      );
     }
   }
 }
 
-const circuitBreaker = new CircuitBreaker(3, 30000);
+const circuitBreaker = new CircuitBreaker(5, 60000); // Increased threshold to 5 failures and timeout to 1 minute
 
 // Request debouncing to prevent duplicate requests
 const pendingRequests = new Map();
 
 const createRequestKey = (config) => {
-  return `${config.method}:${config.url}:${JSON.stringify(config.params || {})}`;
+  return `${config.method}:${config.url}:${JSON.stringify(
+    config.params || {}
+  )}`;
 };
 
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
-  timeout: 10000, // Reduced timeout to 10 seconds
+  timeout: 30000, // Increased timeout to 30 seconds for better reliability
   headers: {
     "Content-Type": "application/json",
   },
   // Add retry configuration
-  retryDelayMs: 1000,
-  maxRetries: 2, // Reduced from 3 to 2 retries
+  retryDelayMs: 2000, // Increased delay between retries
+  maxRetries: 1, // Reduced retries to prevent overwhelming the API
 });
 
 // Retry function for failed requests
@@ -72,8 +78,10 @@ const retryRequest = async (error) => {
   const config = error.config;
 
   // Don't retry if we've already exceeded max retries
-  if (!config || config.__retryCount >= (config.maxRetries || 2)) {
-    console.log(`❌ Max retries (${config.maxRetries || 2}) exceeded for ${config.url}`);
+  if (!config || config.__retryCount >= (config.maxRetries || 1)) {
+    console.log(
+      `❌ Max retries (${config.maxRetries || 1}) exceeded for ${config.url}`
+    );
     return Promise.reject(error);
   }
 
@@ -82,24 +90,30 @@ const retryRequest = async (error) => {
   config.__retryCount += 1;
 
   // Only retry on specific error conditions
-  const shouldRetry = 
-    (!error.response || error.response.status >= 500 || error.code === 'ECONNABORTED') &&
-    config.__retryCount <= (config.maxRetries || 2);
-    
+  const shouldRetry =
+    (!error.response ||
+      error.response.status >= 500 ||
+      error.code === "ECONNABORTED") &&
+    config.__retryCount <= (config.maxRetries || 1);
+
   if (!shouldRetry) {
-    console.log(`⚠️ Not retrying request to ${config.url} - reason: ${error.response?.status || error.code}`);
+    console.log(
+      `⚠️ Not retrying request to ${config.url} - reason: ${
+        error.response?.status || error.code
+      }`
+    );
     return Promise.reject(error);
   }
 
-  // Calculate delay with exponential backoff (max 4 seconds)
+  // Calculate delay with exponential backoff (max 8 seconds for better reliability)
   const delay = Math.min(
-    (config.retryDelayMs || 1000) * Math.pow(2, config.__retryCount - 1),
-    4000
+    (config.retryDelayMs || 2000) * Math.pow(1.5, config.__retryCount - 1), // More conservative backoff
+    8000
   );
 
   console.log(
     `🔄 Retrying request (attempt ${config.__retryCount}/${
-      config.maxRetries || 2
+      config.maxRetries || 1
     }) in ${delay}ms... URL: ${config.url}`
   );
 
@@ -116,7 +130,9 @@ api.interceptors.request.use(
     // Check for duplicate requests
     const requestKey = createRequestKey(config);
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Duplicate request detected, returning existing promise: ${requestKey}`);
+      console.log(
+        `🔄 Duplicate request detected, returning existing promise: ${requestKey}`
+      );
       return pendingRequests.get(requestKey);
     }
 
@@ -165,18 +181,20 @@ api.interceptors.response.use(
   async (error) => {
     console.error("❌ Response Error:", error);
 
-    // Try to retry the request first
-    try {
-      return await circuitBreaker.call(() => retryRequest(error));
-    } catch (retryError) {
-      // If retry fails, handle the error normally
-      error = retryError;
-    }
-
-    // Clean up pending request on error
+    // Clean up pending request on error first
     if (error.config) {
       const requestKey = createRequestKey(error.config);
       pendingRequests.delete(requestKey);
+    }
+
+    // Only try circuit breaker retry for network errors, not for retries
+    if (!error.config?.__retryCount && circuitBreaker.canMakeRequest()) {
+      try {
+        return await circuitBreaker.call(() => retryRequest(error));
+      } catch (retryError) {
+        // If retry fails, continue with normal error handling
+        error = retryError;
+      }
     }
 
     // Handle common error scenarios
@@ -226,7 +244,8 @@ api.interceptors.response.use(
       if (error.code === "ECONNREFUSED") {
         message = "Unable to connect to the weather service. Please try again.";
       } else if (error.code === "ECONNABORTED") {
-        message = "Request timeout. The weather service is taking too long to respond.";
+        message =
+          "Request timeout. The weather service is taking too long to respond.";
       } else if (error.code === "NETWORK_ERROR") {
         message =
           "Network connection failed. Please check your connection and try again.";
