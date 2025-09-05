@@ -10,6 +10,35 @@
   margin: 0 auto;
 }
 
+/* Inline search + button on Search page */
+.search-page__search-form {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.search-page__submit-btn {
+  white-space: nowrap;
+  height: 48px; /* visually match dropdown input */
+  padding: 0 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .search-page__search-form {
+    flex-direction: column;
+  }
+
+  .search-page__submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .search-page__help-text {
   margin-top: 12px;
   text-align: center;

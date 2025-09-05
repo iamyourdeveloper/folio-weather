@@ -36,8 +36,10 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 - **Auto Location**: Automatic weather for current location on app load
 - **Enhanced Header Search**: Real-time search with autocomplete suggestions and state information
 - **Search Integration**: Header search with instant results and mobile-optimized interface
+- **Search Suggestions Explorer**: Curated popular cities on the Search page with region tabs (All, North America, Europe, Asia, Middle East, Africa, Oceania), sort modes (Random/Curated/A–Z), and progressive “Show More” loading
 - **Favorited Indicator**: Filled-heart visual when a location is already saved
 - **Header Weather Badge**: Live temperature + location badge in the header that mirrors the active location and updates immediately after searches
+- **Smooth Anchor Navigation**: Header weather badge and hash links (e.g., `#current-weather`, `#top`) smoothly scroll to key sections
 - **Random City**: One-click action on Home to preview weather for a randomly selected city (drawn from a broad, global list to reduce repeats)
 - **Connection Status**: Real-time network connectivity monitoring
 - **Smart City Display**: US cities automatically show with state information (e.g., "Springfield, IL")
@@ -123,8 +125,8 @@ folio-weather/
 │   ├── src/
 │   │   ├── components/         # Reusable React components
 │   │   │   ├── common/         # Common components (ErrorBoundary)
-│   │   │   ├── layout/         # Layout components (Header, Footer)
-│   │   │   ├── ui/             # UI components (LoadingSpinner, ErrorMessage, SearchDropdown, ConnectionStatus, TopBarProgress)
+│   │   │   ├── layout/         # Layout components (Header, HeaderWeatherBadge, Footer)
+│   │   │   ├── ui/             # UI components (LoadingSpinner, ErrorMessage, SearchDropdown, HeaderSearchDropdown, ConnectionStatus, TopBarProgress)
 │   │   │   └── weather/        # Weather-specific components (WeatherCard, ForecastCard)
 │   │   ├── context/            # React Context providers
 │   │   │   ├── WeatherContext.jsx    # Weather data and preferences state
@@ -199,15 +201,16 @@ folio-weather/
 │   └── TEST_FORECAST_TOGGLE_RESET.md # Forecast toggle reset testing guide
 ├── tests/                     # Comprehensive Test Suite
 │   ├── api/                  # API integration tests (3 files)
-│   ├── development/          # Development and feature tests (16 files)
+│   ├── development/          # Development and feature tests (17 files)
 │   │   └── demo-us-cities-solution.mjs # Search system demo
 │   ├── frontend/             # Frontend-specific tests
 │   │   └── test-favorite-forecast-toggle-reset.js # Forecast toggle reset test
-│   ├── integration/          # Integration test suites (13 files)
+│   ├── integration/          # Integration test suites (16 files)
 │   │   ├── test-header-dropdown-*.mjs # Header dropdown tests (3 files)
 │   │   ├── test-header-search-*.mjs   # Header search tests (8 files)
 │   │   ├── test-mobile-search-alignment.mjs # Mobile search tests
-│   │   └── test-realtime-dropdown.mjs # Real-time dropdown tests
+│   │   ├── test-realtime-dropdown.mjs # Real-time dropdown tests
+│   │   └── [other integration tests]  # Comprehensive city/state search, location fixes, header refinements
 │   └── README.md             # Testing documentation with organized file index
 ├── Chat History/              # Development Session Documentation
 │   ├── README.md             # Chat history organization guide
@@ -245,7 +248,7 @@ folio-weather/
 ```bash
 git clone <repository-url>
 cd "Folio Weather (Weather API App)"
-````
+```
 
 2. **Install all dependencies:**
 
@@ -432,6 +435,48 @@ Check the `docs/` directory for detailed guides and the `Chat History/` folder f
 - **Live Demo**: [Add your deployed URL here]
 - **API Endpoints**: http://localhost:8000/api (when running locally)
 - **Test Interface**: http://localhost:3000/test (when running locally)
+
+## 📸 Screenshots & GIFs
+
+Add short, focused visuals to showcase key interactions. Place assets in `docs/media/` and reference them here.
+
+### Suggested Demos
+
+- Header Weather Badge – Smooth Scroll: Demonstrates clicking the header badge to jump to Current Weather on Home
+  - `![Header Weather Badge – Smooth Scroll](docs/media/header-badge-scroll.gif)`
+- Search – Popular Cities Tabs: Shows region tabs (All, North America, Europe, Asia, Middle East, Africa, Oceania), sort modes (Random/Curated/A–Z), and “Show More” pagination
+  - `![Search – Popular Cities Tabs](docs/media/search-suggestions-tabs.gif)`
+- Header – Real-time Autocomplete: Shows typing, suggestions, and selecting a city from the header search
+  - `![Header – Real-time Autocomplete](docs/media/header-autocomplete.gif)`
+- Favorites – Reorder + Forecast Reset: Drag-and-drop to reorder, then select a favorite to show forecast toggle reset on Home
+  - `![Favorites – Reorder + Forecast Reset](docs/media/favorites-reorder-forecast-reset.gif)`
+- Settings – Theme Preview + Staged Save: Live theme preview when selecting, then Save toast and brief refresh indicator on unit change
+  - `![Settings – Theme Preview](docs/media/settings-theme-preview.gif)`
+
+### Quick Capture Tips
+
+- Keep each clip under ~8s; target width ~1200px; 15 fps works well.
+- Name files descriptively (e.g., `header-badge-scroll.gif`).
+
+#### ffmpeg one-liner (convert screen recording to GIF)
+
+```bash
+# Convert a short .mov/.mp4 to an optimized looping GIF
+ffmpeg -i input.mov -vf "fps=15,scale=1200:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 output.gif
+```
+
+### Scripted Steps (for consistency)
+
+- Header Badge – Smooth Scroll
+  - Open Home, ensure a location is active; click the header temperature badge; observe smooth scroll and brief highlight.
+- Search – Popular Cities
+  - Navigate to `/search`; switch among region tabs; toggle Random/Curated/A–Z; click “Show More”; select a city to load results.
+- Header – Autocomplete
+  - Focus header search; type “Chi”; pick “Chicago, IL”; confirm navigation and header badge updates.
+- Favorites – Reorder + Forecast Reset
+  - On `/favorites`, drag a card to reorder; go to Home and click a favorite; forecast toggle resets to default state.
+- Settings – Theme Preview
+  - On `/settings`, toggle theme to preview immediately; click Save to show toast; switch units to trigger brief refresh indicator.
 
 ## 🚀 Deployment
 

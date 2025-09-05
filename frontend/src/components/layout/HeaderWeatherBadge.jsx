@@ -82,7 +82,8 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
   const locName =
     data.location?.name ?? resolveFullLocationName(effectiveLocation) ?? "Unknown";
 
-  // Link target: on Home, just show; elsewhere, link back to Home for context
+  // We always link to Home's Current Weather section via hash.
+  // Even on Home, this updates the hash and triggers a smooth scroll.
   const isHome = routerLocation.pathname === "/";
   const content = (
     <div
@@ -101,13 +102,11 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
     </div>
   );
 
-  return isHome ? (
-    content
-  ) : (
+  return (
     <Link
-      to="/"
+      to="/#current-weather"
       className="header-weather__link"
-      title="View on Home"
+      title={isHome ? "Jump to current weather" : "View on Home"}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
     >

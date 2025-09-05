@@ -41,6 +41,8 @@ const Header = () => {
   const [headerSearchQuery, setHeaderSearchQuery] = useState("");
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const navigate = useNavigate();
+  // Preserve flag: only used to keep an already-open search open across allowed navigations
+  const preserveSearchOnNextNavRef = useRef(false);
 
   // Navigation items
   const navItems = [
@@ -253,6 +255,15 @@ const Header = () => {
     if (wasOpen && !willOpen) setMobileSearchQuery("");
   };
 
+  // Smoothly scroll viewport to the top on header nav clicks
+  const scrollToTop = () => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  };
+
   // Close the expandable search on outside clicks - improved event handling
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -265,18 +276,19 @@ const Header = () => {
       // Don't close if clicking inside the search form or its children
       if (formEl.contains(e.target)) return;
 
-      // Don't close if clicking on specific header controls
+      // Keep search open for interactions with the search itself and select header controls
+      // that are allowed to keep it open (logo, theme toggle, weather badge)
       const allowedElements = [
-        ".header__theme-toggle",
-        ".header-weather",
-        ".header-weather__link",
-        ".header__logo",
-        ".header__brand",
-        ".header__menu-toggle",
-        ".nav__link",
         ".search-form__submit",
         ".search-form__clear",
         ".search-form__icon",
+        ".header-search-dropdown__suggestions",
+        ".header-search-dropdown__suggestion",
+        ".header__logo",
+        ".header__brand",
+        ".header__theme-toggle",
+        ".header-weather",
+        ".header-weather__link",
       ];
 
       const isAllowedClick = allowedElements.some((selector) => {
@@ -313,18 +325,33 @@ const Header = () => {
     }
   }, [isSearchActive, isSearching]);
 
-  // Reset search state when location changes - improved to prevent race conditions
+  // Reset/search state on navigation: preserve if flagged, otherwise close
   useEffect(() => {
     // Only reset if we're not currently searching to avoid race conditions
     if (!isSearching) {
       const resetTimer = setTimeout(() => {
         // Only reset if we're still not searching (double-check)
         if (!isSearching) {
-          console.log("Resetting search state due to location change");
-          setIsSearchActive(false);
-          setHeaderSearchQuery("");
-          if (inputRef.current && document.activeElement !== inputRef.current) {
-            inputRef.current.blur();
+          if (preserveSearchOnNextNavRef.current) {
+            // Preserve open search across this navigation
+            preserveSearchOnNextNavRef.current = false; // consume flag
+            console.log(
+              "Preserving open search across navigation from allowed control"
+            );
+            setIsSearchActive(true);
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          } else {
+            console.log("Resetting search state due to location change");
+            setIsSearchActive(false);
+            setHeaderSearchQuery("");
+            if (
+              inputRef.current &&
+              document.activeElement !== inputRef.current
+            ) {
+              inputRef.current.blur();
+            }
           }
         }
       }, 100); // Reduced timeout for better responsiveness
@@ -367,7 +394,25 @@ const Header = () => {
       <div className="header__container">
         {/* Logo and Brand */}
         <div className="header__brand">
-          <Link to="/" className="header__logo">
+          <Link
+            to="/#top"
+            className="header__logo"
+            onMouseDown={() => {
+              // Only preserve if search is already open
+              if (isSearchActive) preserveSearchOnNextNavRef.current = true;
+            }}
+            onClick={(e) => {
+              // If already on Home, smoothly scroll to top instead of re-navigating
+              if (location.pathname === "/") {
+                e.preventDefault();
+                // update hash to reflect intent
+                if (window.location.hash !== "#top") {
+                  window.history.replaceState({}, "", "/#top");
+                }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+          >
             <Cloud size={32} />
             <span className="header__brand-text">
               {import.meta.env.VITE_APP_NAME || "Weather App"}
@@ -389,6 +434,7 @@ const Header = () => {
                     className={`nav__link ${
                       isActive ? "nav__link--active" : ""
                     }`}
+                    onClick={scrollToTop}
                   >
                     <Icon size={20} />
                     <span className="nav__link-text">{item.label}</span>
@@ -402,7 +448,15 @@ const Header = () => {
         {/* Actions: Weather badge, Search, Theme toggle, Mobile menu */}
         <div className="header__actions">
           {/* Live temperature badge for the active location */}
-          <HeaderWeatherBadge />
+          <HeaderWeatherBadge
+            onMouseDown={() => {
+              // Only preserve if search is already open
+              if (isSearchActive) preserveSearchOnNextNavRef.current = true;
+            }}
+            onTouchStart={() => {
+              if (isSearchActive) preserveSearchOnNextNavRef.current = true;
+            }}
+          />
 
           <button
             onClick={toggleTheme}
@@ -437,20 +491,20 @@ const Header = () => {
                     setIsMenuOpen(false);
                   }
                 }}
-                onBlur={(e) => {
-                  // Only close search if we're not interacting with search form elements
-                  // and we're not currently searching
-                  if (isSearching) {
-                    console.log(
-                      "Keeping search active during search operation"
-                    );
-                    return;
-                  }
+              onBlur={(e) => {
+                // Only close search if we're not interacting with search form elements
+                // and we're not currently searching
+                if (isSearching) {
+                  console.log(
+                    "Keeping search active during search operation"
+                  );
+                  return;
+                }
 
-                  const relatedTarget = e.relatedTarget;
-                  const formEl = formRef.current;
+                const relatedTarget = e.relatedTarget;
+                const formEl = formRef.current;
 
-                  // Keep search active if focusing on form elements or search-related buttons
+                // Keep search active if focusing on form elements or search-related buttons
                   if (
                     relatedTarget &&
                     (formEl?.contains(relatedTarget) ||
@@ -462,7 +516,12 @@ const Header = () => {
                       ) ||
                       relatedTarget.closest(
                         ".header-search-dropdown__suggestion"
-                      ))
+                      ) ||
+                      // Also allow focus to these header controls without closing
+                      relatedTarget.closest(".header__logo") ||
+                      relatedTarget.closest(".header__theme-toggle") ||
+                      relatedTarget.closest(".header-weather") ||
+                      relatedTarget.closest(".header-weather__link"))
                   ) {
                     console.log(
                       "Keeping search active - focus moved to search element"
@@ -529,6 +588,7 @@ const Header = () => {
                     onClick={() => {
                       setIsMenuOpen(false);
                       setMobileSearchQuery("");
+                      scrollToTop();
                     }}
                   >
                     <Icon size={20} />

@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 // Load environment variables
 dotenv.config();
@@ -97,25 +98,16 @@ app.use("/api/weather", weatherRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/search", searchRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: "Something went wrong!",
-    message:
-      process.env.NODE_ENV === "development"
-        ? err.message
-        : "Internal server error",
-  });
-});
-
-// 404 handler
+// 404 handler (keep before the error handler)
 app.use("*", (req, res) => {
   res.status(404).json({
     error: "Route not found",
     message: `Cannot ${req.method} ${req.originalUrl}`,
   });
 });
+
+// Centralized error handler (must be after routes and 404)
+app.use(errorHandler);
 
 // Add global error handlers to prevent crashes
 process.on("uncaughtException", (error) => {

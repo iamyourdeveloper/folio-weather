@@ -1,32 +1,38 @@
 // Global error handling middleware
 export const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+  // Normalize error fields from various sources
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.message || 'Server Error';
 
-  // Log error
-  console.error(err);
+  // Log full error for diagnosis
+  console.error('Global Error Handler:', {
+    message: err.message,
+    status: err.status,
+    statusCode: err.statusCode,
+    stack: err.stack,
+  });
+
+  let normalized = { statusCode, message };
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
-    const message = 'Resource not found';
-    error = { message, statusCode: 404 };
+    normalized = { statusCode: 404, message: 'Resource not found' };
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const message = 'Duplicate field value entered';
-    error = { message, statusCode: 400 };
+    normalized = { statusCode: 400, message: 'Duplicate field value entered' };
   }
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
-    error = { message, statusCode: 400 };
+    const msg = Object.values(err.errors).map(val => val.message).join(', ');
+    normalized = { statusCode: 400, message: msg };
   }
 
-  res.status(error.statusCode || 500).json({
+  res.status(normalized.statusCode).json({
     success: false,
-    error: error.message || 'Server Error',
+    error: normalized.message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };
@@ -34,4 +40,3 @@ export const errorHandler = (err, req, res, next) => {
 // Async handler to avoid try-catch in controllers
 export const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
-

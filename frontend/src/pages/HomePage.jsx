@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   MapPin,
   Search,
@@ -27,6 +27,7 @@ import { resolveFullLocationName } from "@utils/searchUtils";
  * HomePage component - Main landing page with current weather and quick actions
  */
 const HomePage = () => {
+  const location = useLocation();
   const {
     currentLocation,
     locationError,
@@ -60,6 +61,8 @@ const HomePage = () => {
 
   // Toggle state for revealing the 5-day forecast on Home
   const [showHomeForecast, setShowHomeForecast] = useState(false);
+  // Transient highlight when jumping to current weather
+  const [highlightWeather, setHighlightWeather] = useState(false);
 
   // Favorites slider state and helpers
   const sliderRef = useRef(null);
@@ -114,6 +117,25 @@ const HomePage = () => {
       console.log("❌ Weather section ref not found");
     }
   };
+
+  // When arriving with #current-weather, scroll to the section and highlight
+  useEffect(() => {
+    if (location.hash === "#current-weather") {
+      // slight delay to allow initial layout
+      setTimeout(() => scrollToWeatherSection(), 50);
+      // trigger subtle highlight for a moment
+      setHighlightWeather(true);
+      const t = setTimeout(() => setHighlightWeather(false), 1400);
+      return () => clearTimeout(t);
+    }
+  }, [location.hash]);
+
+  // Scroll to top when hash is #top
+  useEffect(() => {
+    if (location.hash === "#top") {
+      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 10);
+    }
+  }, [location.hash]);
 
   // Function to scroll to forecast section
   const scrollToForecastSection = () => {
@@ -212,6 +234,9 @@ const HomePage = () => {
   return (
     <div className="home-page">
       <div className="home-page__container">
+        {/* Anchor for top-of-page jumps */}
+        <span id="top" aria-hidden="true" />
+
         {/* Hero Section */}
         <section className="home-hero">
           <div className="home-hero__content">
@@ -239,7 +264,11 @@ const HomePage = () => {
         </section>
 
         {/* Current Weather Section */}
-        <section className="home-weather" ref={weatherSectionRef}>
+        <section
+          id="current-weather"
+          className="home-weather"
+          ref={weatherSectionRef}
+        >
           <div className="section__header">
             <h2 className="section__title">Current Weather</h2>
             <button
@@ -339,7 +368,8 @@ const HomePage = () => {
 
             {activeWeather.isSuccess && activeWeather.data && (
               <div className="weather-display">
-                <WeatherCard
+                <div className={`focus-highlight ${highlightWeather ? "is-active" : ""}`}>
+                  <WeatherCard
                   weather={activeWeather.data.data}
                   showForecastLink={true}
                   onAddToFavorites={(loc) => addFavorite(loc)}
@@ -353,7 +383,8 @@ const HomePage = () => {
                     }
                   }}
                   isForecastVisible={showHomeForecast}
-                />
+                  />
+                </div>
 
                 {/* Show 5-day forecast if available */}
                 {showHomeForecast &&

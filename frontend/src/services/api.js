@@ -10,6 +10,17 @@ class CircuitBreaker {
     this.state = "CLOSED"; // CLOSED, OPEN, HALF_OPEN
   }
 
+  // Allow checking without throwing
+  canMakeRequest() {
+    if (this.state === "OPEN") {
+      if (Date.now() - (this.lastFailureTime || 0) > this.resetTimeout) {
+        return true; // eligible to try again
+      }
+      return false;
+    }
+    return true;
+  }
+
   async call(fn) {
     if (this.state === "OPEN") {
       if (Date.now() - this.lastFailureTime > this.resetTimeout) {
@@ -52,7 +63,9 @@ class CircuitBreaker {
 
 const circuitBreaker = new CircuitBreaker(5, 60000); // Increased threshold to 5 failures and timeout to 1 minute
 
-// Request debouncing to prevent duplicate requests
+// Track in-flight requests to cancel duplicates
+const inFlightControllers = new Map();
+// Legacy map kept for cleanup compatibility
 const pendingRequests = new Map();
 
 const createRequestKey = (config) => {
@@ -127,14 +140,20 @@ const retryRequest = async (error) => {
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Check for duplicate requests
+    // Cancel previous in-flight request with the same signature
     const requestKey = createRequestKey(config);
-    if (pendingRequests.has(requestKey)) {
-      console.log(
-        `🔄 Duplicate request detected, returning existing promise: ${requestKey}`
-      );
-      return pendingRequests.get(requestKey);
+    const existing = inFlightControllers.get(requestKey);
+    if (existing) {
+      try {
+        existing.abort();
+        console.log(`🛑 Canceled previous request: ${requestKey}`);
+      } catch {}
     }
+
+    // Create controller for this request
+    const controller = new AbortController();
+    config.signal = controller.signal;
+    inFlightControllers.set(requestKey, controller);
 
     // Add auth token if available
     const token = localStorage.getItem("token");
@@ -166,6 +185,7 @@ api.interceptors.response.use(
     // Clean up pending request
     const requestKey = createRequestKey(response.config);
     pendingRequests.delete(requestKey);
+    inFlightControllers.delete(requestKey);
 
     // Log responses in development
     if (import.meta.env.VITE_DEBUG === "true") {
@@ -185,6 +205,21 @@ api.interceptors.response.use(
     if (error.config) {
       const requestKey = createRequestKey(error.config);
       pendingRequests.delete(requestKey);
+      inFlightControllers.delete(requestKey);
+    }
+
+    // Gracefully handle cancellations
+    if (
+      (axios.isCancel && axios.isCancel(error)) ||
+      error.code === "ERR_CANCELED" ||
+      error.name === "CanceledError" ||
+      (typeof error.message === "string" && error.message.toLowerCase().includes("canceled"))
+    ) {
+      return Promise.reject({
+        status: 499, // Client closed request
+        message: "Request canceled",
+        originalError: error,
+      });
     }
 
     // Only try circuit breaker retry for network errors, not for retries

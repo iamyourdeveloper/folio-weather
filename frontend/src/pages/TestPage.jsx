@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   useCurrentWeatherByCity,
   useForecastByCity,
@@ -7,11 +7,47 @@ import {
 } from "@hooks/useWeather";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
+import weatherService from "@services/weatherService.js";
 
 const TestPage = () => {
+  // Separate input value from the city used for queries
+  const [inputCity, setInputCity] = useState("London");
   const [testCity, setTestCity] = useState("London");
-  const [enableWeatherTest, setEnableWeatherTest] = useState(true);
-  const [enableForecastTest, setEnableForecastTest] = useState(true);
+  // Start with tests disabled so buttons show "Start"
+  const [enableWeatherTest, setEnableWeatherTest] = useState(false);
+  const [enableForecastTest, setEnableForecastTest] = useState(false);
+  // Reduce network chatter while typing
+  const [onlyFetchOnEnter, setOnlyFetchOnEnter] = useState(true);
+  const [debounceMs, setDebounceMs] = useState(500);
+  const inputRef = useRef(null);
+  const lastTypedRef = useRef(0);
+
+  // Run once state
+  const [runOnceLoading, setRunOnceLoading] = useState(false);
+  const [runOnceError, setRunOnceError] = useState(null);
+  const [runOnceData, setRunOnceData] = useState(null);
+  const runOnceTokenRef = useRef(0);
+
+  // Clear one-off results if any test is started
+  useEffect(() => {
+    if (enableWeatherTest || enableForecastTest) {
+      setRunOnceLoading(false);
+      setRunOnceError(null);
+      setRunOnceData(null);
+    }
+  }, [enableWeatherTest, enableForecastTest]);
+
+  // Helpers for Integration Summary reflecting Run Once
+  // (computed after queries are defined below)
+
+  // Debounce updating testCity while typing (if enabled)
+  useEffect(() => {
+    if (onlyFetchOnEnter) return;
+    const handle = setTimeout(() => {
+      setTestCity(inputCity.trim());
+    }, debounceMs);
+    return () => clearTimeout(handle);
+  }, [inputCity, onlyFetchOnEnter, debounceMs]);
 
   // API Tests
   const apiTest = useWeatherApiTest();
@@ -21,12 +57,66 @@ const TestPage = () => {
   const weatherTest = useCurrentWeatherByCity(testCity, "metric", null, {
     enabled: enableWeatherTest,
   });
-  const forecastTest = useForecastByCity(testCity, "metric", {
-    enabled: enableForecastTest,
-  });
+  const forecastTest = useForecastByCity(
+    testCity,
+    "metric",
+    null,
+    {
+      enabled: enableForecastTest,
+    }
+  );
 
-  const TestSection = ({ title, children }) => (
+  const runOnceSuccess = !!runOnceData && !runOnceError;
+  const weatherSummary = {
+    bg: enableWeatherTest
+      ? weatherTest.isSuccess
+        ? "#d4edda"
+        : "#f8d7da"
+      : runOnceSuccess
+      ? "#d4edda"
+      : "#fff3cd",
+    status: enableWeatherTest
+      ? weatherTest.isSuccess
+        ? "success"
+        : "error"
+      : runOnceSuccess
+      ? "success"
+      : "idle",
+    text: enableWeatherTest
+      ? weatherTest.isSuccess
+        ? "PASS"
+        : "FAIL"
+      : runOnceSuccess
+      ? "PASS"
+      : "NOT TESTED",
+  };
+  const forecastSummary = {
+    bg: enableForecastTest
+      ? forecastTest.isSuccess
+        ? "#d4edda"
+        : "#f8d7da"
+      : runOnceSuccess
+      ? "#d4edda"
+      : "#fff3cd",
+    status: enableForecastTest
+      ? forecastTest.isSuccess
+        ? "success"
+        : "error"
+      : runOnceSuccess
+      ? "success"
+      : "idle",
+    text: enableForecastTest
+      ? forecastTest.isSuccess
+        ? "PASS"
+        : "FAIL"
+      : runOnceSuccess
+      ? "PASS"
+      : "NOT TESTED",
+  };
+
+  const TestSection = ({ title, children, id }) => (
     <div
+      id={id}
       style={{
         margin: "20px 0",
         padding: "20px",
@@ -180,16 +270,122 @@ const TestPage = () => {
             Test City:
             <input
               type="text"
-              value={testCity}
-              onChange={(e) => setTestCity(e.target.value)}
+              value={inputCity}
+              ref={inputRef}
+              autoFocus
+              onChange={(e) => setInputCity(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && onlyFetchOnEnter) {
+                  setTestCity(inputCity.trim());
+                }
+              }}
+              onInput={() => {
+                lastTypedRef.current = Date.now();
+              }}
+              onBlur={(e) => {
+                // If blur happens right after typing due to re-renders, keep focus
+                if (Date.now() - lastTypedRef.current < 600) {
+                  // Don't steal focus if user intentionally clicked another control
+                  if (!e.relatedTarget) {
+                    requestAnimationFrame(() => inputRef.current?.focus());
+                  }
+                }
+              }}
               style={{ marginLeft: "10px", padding: "5px" }}
             />
           </label>
+          <button
+            onClick={() => setTestCity(inputCity.trim())}
+            style={{
+              padding: "6px 10px",
+              marginLeft: "10px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            Apply City
+          </button>
+          <button
+            onClick={async () => {
+              const city = inputCity.trim();
+              if (!city) return;
+              const token = ++runOnceTokenRef.current;
+              setRunOnceLoading(true);
+              setRunOnceError(null);
+              setRunOnceData(null);
+              setTestCity(city); // keep UI in sync
+              try {
+                const [w, f] = await Promise.all([
+                  weatherService.getCurrentWeatherByCity(city, "metric", null),
+                  weatherService.getForecastByCity(city, "metric", null),
+                ]);
+                if (runOnceTokenRef.current === token) {
+                  setRunOnceData({ weather: w, forecast: f });
+                }
+              } catch (err) {
+                if (runOnceTokenRef.current === token) {
+                  setRunOnceError(err);
+                }
+              } finally {
+                if (runOnceTokenRef.current === token) {
+                  setRunOnceLoading(false);
+                }
+              }
+            }}
+            disabled={enableWeatherTest || enableForecastTest || runOnceLoading}
+            style={{
+              padding: "6px 10px",
+              marginLeft: "10px",
+              backgroundColor:
+                enableWeatherTest || enableForecastTest || runOnceLoading
+                  ? "#74c0d0"
+                  : "#17a2b8",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Run Once
+          </button>
+          <button
+            onClick={() => {
+              runOnceTokenRef.current++;
+              setRunOnceLoading(false);
+              setRunOnceError(null);
+              setRunOnceData(null);
+            }}
+            style={{
+              padding: "6px 10px",
+              marginLeft: "10px",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Clear Run Once
+          </button>
         </div>
 
         <div style={{ marginBottom: "20px" }}>
           <button
-            onClick={() => setEnableWeatherTest(!enableWeatherTest)}
+            onClick={() => {
+              const next = !enableWeatherTest;
+              setEnableWeatherTest(next);
+              if (next) {
+                // Clear any Run Once results when tests are started
+                setRunOnceLoading(false);
+                setRunOnceError(null);
+                setRunOnceData(null);
+              }
+            }}
             style={{
               padding: "10px 15px",
               margin: "5px",
@@ -204,7 +400,16 @@ const TestPage = () => {
           </button>
 
           <button
-            onClick={() => setEnableForecastTest(!enableForecastTest)}
+            onClick={() => {
+              const next = !enableForecastTest;
+              setEnableForecastTest(next);
+              if (next) {
+                // Clear any Run Once results when tests are started
+                setRunOnceLoading(false);
+                setRunOnceError(null);
+                setRunOnceData(null);
+              }
+            }}
             style={{
               padding: "10px 15px",
               margin: "5px",
@@ -218,8 +423,28 @@ const TestPage = () => {
             {enableForecastTest ? "Stop Forecast Test" : "Start Forecast Test"}
           </button>
 
+          <button
+            onClick={() =>
+              document
+                .getElementById("integration-summary")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            style={{
+              padding: "10px 15px",
+              margin: "5px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            View Summary
+          </button>
+
           <p style={{ fontSize: "14px", color: "#666", fontStyle: "italic" }}>
-            💡 Weather and Forecast tests run automatically on page load. Use
+            💡 Weather and Forecast tests do not run automatically. Use the
             buttons above to start/stop tests.
           </p>
         </div>
@@ -239,7 +464,52 @@ const TestPage = () => {
         )}
       </TestSection>
 
-      <TestSection title="📊 Integration Summary">
+      {/* Run Once Results */}
+      <TestSection title="⚡ Run Once Results">
+        {runOnceLoading && <LoadingSpinner />}
+        {runOnceError && <ErrorMessage error={runOnceError} />}
+        {!runOnceLoading && !runOnceError && runOnceData && (
+          <div>
+            <div style={{ marginBottom: 12 }}>
+              <h4>
+                Current Weather - <StatusBadge status="success">SUCCESS</StatusBadge>
+              </h4>
+              <pre
+                style={{
+                  background: "#f1f1f1",
+                  padding: "10px",
+                  borderRadius: "4px",
+                  overflow: "auto",
+                  fontSize: "12px",
+                }}
+              >
+                {JSON.stringify(runOnceData.weather, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <h4>
+                5-Day Forecast - <StatusBadge status="success">SUCCESS</StatusBadge>
+              </h4>
+              <pre
+                style={{
+                  background: "#f1f1f1",
+                  padding: "10px",
+                  borderRadius: "4px",
+                  overflow: "auto",
+                  fontSize: "12px",
+                }}
+              >
+                {JSON.stringify(runOnceData.forecast, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+        {!runOnceLoading && !runOnceError && !runOnceData && (
+          <p style={{ color: "#666" }}>Click "Run Once" to fetch data without starting tests.</p>
+        )}
+      </TestSection>
+
+      <TestSection id="integration-summary" title="📊 Integration Summary">
         <div
           style={{
             display: "grid",
@@ -281,30 +551,16 @@ const TestPage = () => {
             style={{
               textAlign: "center",
               padding: "10px",
-              background: !enableWeatherTest
-                ? "#fff3cd"
-                : weatherTest.isSuccess
-                ? "#d4edda"
-                : "#f8d7da",
+              background: weatherSummary.bg,
               borderRadius: "4px",
             }}
           >
             <strong>Weather Data</strong>
             <br />
             <StatusBadge
-              status={
-                !enableWeatherTest
-                  ? "idle"
-                  : weatherTest.isSuccess
-                  ? "success"
-                  : "error"
-              }
+              status={weatherSummary.status}
             >
-              {!enableWeatherTest
-                ? "NOT TESTED"
-                : weatherTest.isSuccess
-                ? "PASS"
-                : "FAIL"}
+              {weatherSummary.text}
             </StatusBadge>
           </div>
 
@@ -312,30 +568,16 @@ const TestPage = () => {
             style={{
               textAlign: "center",
               padding: "10px",
-              background: !enableForecastTest
-                ? "#fff3cd"
-                : forecastTest.isSuccess
-                ? "#d4edda"
-                : "#f8d7da",
+              background: forecastSummary.bg,
               borderRadius: "4px",
             }}
           >
             <strong>Forecast Data</strong>
             <br />
             <StatusBadge
-              status={
-                !enableForecastTest
-                  ? "idle"
-                  : forecastTest.isSuccess
-                  ? "success"
-                  : "error"
-              }
+              status={forecastSummary.status}
             >
-              {!enableForecastTest
-                ? "NOT TESTED"
-                : forecastTest.isSuccess
-                ? "PASS"
-                : "FAIL"}
+              {forecastSummary.text}
             </StatusBadge>
           </div>
         </div>

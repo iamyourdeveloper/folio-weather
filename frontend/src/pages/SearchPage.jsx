@@ -44,6 +44,8 @@ const SearchPage = () => {
   const currentWeatherRef = useRef(null);
   // Ref for scrolling to forecast section
   const forecastSectionRef = useRef(null);
+  // Transient highlight for current weather card
+  const [highlightCurrent, setHighlightCurrent] = useState(false);
 
   // Debounce search to prevent excessive API calls
   const debounce = (func, wait) => {
@@ -73,29 +75,56 @@ const SearchPage = () => {
     }
   );
 
+  // Function to focus on current weather card
+  const focusOnWeatherCard = useCallback(() => {
+    const attemptScroll = (attempts = 0) => {
+      const el = currentWeatherRef.current;
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+        // Trigger a brief highlight once
+        setHighlightCurrent(true);
+        setTimeout(() => setHighlightCurrent(false), 1100);
+      } else if (attempts < 5) {
+        setTimeout(() => attemptScroll(attempts + 1), 150);
+      }
+    };
+    // Initial delay to allow render/data to begin
+    setTimeout(() => attemptScroll(), 300);
+  }, []);
+
   // Memoize the navigation handler to prevent infinite re-renders
-  const handleCityParamNavigation = useCallback((cityParam) => {
-    if (cityParam && cityParam.trim() && cityParam !== searchedCity) {
-      const rawQuery = cityParam.trim();
+  const handleCityParamNavigation = useCallback(
+    (cityParam) => {
+      if (cityParam && cityParam.trim() && cityParam !== searchedCity) {
+        const rawQuery = cityParam.trim();
 
-      // Parse the location query to extract city and full name
-      const { city, fullName } = parseLocationQuery(rawQuery);
+        // Parse the location query to extract city and full name
+        const { city, fullName } = parseLocationQuery(rawQuery);
 
-      // Do not keep the typed query in the input; show placeholder instead
-      setLocalSearchQuery("");
-      setSearchedCity(city);
-      searchLocation(fullName); // Use full name for context
-      selectLocation({ city, name: fullName }); // city for API, name for display
-      
-      // Reset forecast toggle when navigating to a new city
-      setShowSearchForecast(false);
+        // Do not keep the typed query in the input; show placeholder instead
+        setLocalSearchQuery("");
+        setSearchedCity(city);
+        searchLocation(fullName); // Use full name for context
+        selectLocation({ city, name: fullName }); // city for API, name for display
 
-      // Clear the query string so a browser refresh on the Search page
-      // doesn't re-hydrate results. This preserves the immediate view
-      // when navigating from Favorites but resets on reload.
-      navigate("/search", { replace: true });
-    }
-  }, [searchedCity, searchLocation, selectLocation, navigate]);
+        // Reset forecast toggle when navigating to a new city
+        setShowSearchForecast(false);
+
+        // Clear the query string so a browser refresh on the Search page
+        // doesn't re-hydrate results. This preserves the immediate view
+        // when navigating from Favorites but resets on reload.
+        navigate("/search", { replace: true });
+
+        // Bring the Current Weather card into view for Favorites → Search
+        focusOnWeatherCard();
+      }
+    },
+    [searchedCity, searchLocation, selectLocation, navigate, focusOnWeatherCard]
+  );
 
   // If a ?city= parameter is present, hydrate the page and fetch immediately
   useEffect(() => {
@@ -111,7 +140,7 @@ const SearchPage = () => {
       setSearchedCity(city);
       searchLocation(fullName);
       selectLocation({ city, name: fullName });
-      
+
       // Reset forecast toggle when searching for a new city
       setShowSearchForecast(false);
 
@@ -147,10 +176,10 @@ const SearchPage = () => {
       setSearchedCity(city);
       searchLocation(fullName); // Use full name for context
       selectLocation({ city, name: fullName }); // city for API, name for display
-      
+
       // Reset forecast toggle when searching for a new city
       setShowSearchForecast(false);
-      
+
       // Clear input so placeholder returns after submit
       setLocalSearchQuery("");
 
@@ -164,43 +193,30 @@ const SearchPage = () => {
   const handleRemoveFromFavorites = (location) =>
     removeFavoriteByLocation(location);
 
-  // Function to focus on current weather card
-  const focusOnWeatherCard = () => {
-    const timeoutId = setTimeout(() => {
-      if (currentWeatherRef.current) {
-        // Scroll to the element with instant behavior
-        currentWeatherRef.current.scrollIntoView({
-          behavior: "instant",
-          block: "center",
-          inline: "nearest",
-        });
-      }
-    }, 300); // Wait for data to start loading
-    
-    // Return timeout ID for potential cleanup
-    return timeoutId;
-  };
-
   // Function to scroll to forecast section
   const scrollToForecastSection = () => {
     // Try multiple times in case the element isn't ready immediately
     const attemptScroll = (attempts = 0) => {
       const el = forecastSectionRef.current;
       if (el) {
-        el.scrollIntoView({ 
-          behavior: "smooth", 
+        el.scrollIntoView({
+          behavior: "smooth",
           block: "center",
-          inline: "nearest"
+          inline: "nearest",
         });
         console.log("✅ Scrolled to forecast section on SearchPage");
       } else if (attempts < 5) {
-        console.log(`⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`);
+        console.log(
+          `⏳ Forecast section not ready, retrying... (attempt ${attempts + 1})`
+        );
         setTimeout(() => attemptScroll(attempts + 1), 100);
       } else {
-        console.log("❌ Failed to find forecast section ref on SearchPage after 5 attempts");
+        console.log(
+          "❌ Failed to find forecast section ref on SearchPage after 5 attempts"
+        );
       }
     };
-    
+
     // Initial delay to allow React to render the forecast section
     setTimeout(() => attemptScroll(), 200);
   };
@@ -289,9 +305,9 @@ const SearchPage = () => {
   // Initialize randomized cities for the current region if not already cached
   useEffect(() => {
     if (sortMode === "random" && !randomizedCities[activeRegion]) {
-      setRandomizedCities(prev => ({
+      setRandomizedCities((prev) => ({
         ...prev,
-        [activeRegion]: shuffleArray(filteredPopularCities)
+        [activeRegion]: shuffleArray(filteredPopularCities),
       }));
     }
   }, [activeRegion, sortMode, filteredPopularCities, randomizedCities]);
@@ -301,7 +317,7 @@ const SearchPage = () => {
     // Set initial random order for "All" region on app load
     if (sortMode === "random" && Object.keys(randomizedCities).length === 0) {
       setRandomizedCities({
-        "All": shuffleArray(ALL_POPULAR_CITIES)
+        All: shuffleArray(ALL_POPULAR_CITIES),
       });
     }
   }, [sortMode, randomizedCities, ALL_POPULAR_CITIES]);
@@ -311,13 +327,16 @@ const SearchPage = () => {
     setActiveRegion(region);
     if (sortMode === "random") {
       // Generate new random order for the selected region
-      const regionCities = region === "All" 
-        ? ALL_POPULAR_CITIES 
-        : ALL_POPULAR_CITIES.filter((c) => REGION_COUNTRIES[region]?.has(c.country));
-      
-      setRandomizedCities(prev => ({
+      const regionCities =
+        region === "All"
+          ? ALL_POPULAR_CITIES
+          : ALL_POPULAR_CITIES.filter((c) =>
+              REGION_COUNTRIES[region]?.has(c.country)
+            );
+
+      setRandomizedCities((prev) => ({
         ...prev,
-        [region]: shuffleArray(regionCities)
+        [region]: shuffleArray(regionCities),
       }));
     }
   };
@@ -366,43 +385,54 @@ const SearchPage = () => {
 
         {/* Search Form */}
         <div className="search-page__search-container">
-          <SearchDropdown
-            onSelect={(location) => {
-              console.log("SearchPage dropdown selected:", location);
-              // Use the location data to search for weather
-              const fullName = location.displayName || location.name;
-              const city = location.city;
-              
-              setSearchedCity(city);
-              searchLocation(fullName);
-              selectLocation({ 
-                city, 
-                name: fullName,
-                state: location.state,
-                country: location.country,
-                type: 'city' 
-              });
-              
-              // Reset forecast toggle when searching for a new city
-              setShowSearchForecast(false);
-              
-              // Clear input and focus on weather card
-              setLocalSearchQuery("");
-              focusOnWeatherCard();
-            }}
-            onClear={() => {
-              setLocalSearchQuery("");
-            }}
-            placeholder="Search for any US city with state (e.g., Austin, TX, Los Angeles, CA)"
-            className="search-page__dropdown"
-            maxSuggestions={10}
-            minQueryLength={1}
-            debounceMs={250}
-            autoFocus={true}
-            prioritizeUS={true}
-          />
+          <form className="search-page__search-form" onSubmit={handleSearch}>
+            <SearchDropdown
+              onSelect={(location) => {
+                console.log("SearchPage dropdown selected:", location);
+                // Use the location data to search for weather
+                const fullName = location.displayName || location.name;
+                const city = location.city;
+
+                setSearchedCity(city);
+                searchLocation(fullName);
+                selectLocation({
+                  city,
+                  name: fullName,
+                  state: location.state,
+                  country: location.country,
+                  type: "city",
+                });
+
+                // Reset forecast toggle when searching for a new city
+                setShowSearchForecast(false);
+
+                // Clear input and focus on weather card
+                setLocalSearchQuery("");
+                focusOnWeatherCard();
+              }}
+              onQueryChange={(value) => setLocalSearchQuery(value)}
+              onClear={() => {
+                setLocalSearchQuery("");
+              }}
+              placeholder="Enter city name (e.g., London, New York, Tokyo)"
+              className="search-page__dropdown"
+              maxSuggestions={10}
+              minQueryLength={1}
+              debounceMs={250}
+              autoFocus={true}
+              prioritizeUS={true}
+            />
+            <button
+              type="submit"
+              className="btn btn--primary search-page__submit-btn"
+            >
+              <Search size={20} />
+              Search Weather
+            </button>
+          </form>
           <p className="search-page__help-text">
-            Try searching for "California" to see cities in that state, or type any city name for instant suggestions
+            Try searching for "New York" or "London", to discover instant
+            suggestions and weather details for your city, state, & country.
           </p>
         </div>
 
@@ -444,7 +474,7 @@ const SearchPage = () => {
                       // Safe access to location data with proper null checking
                       const loc = currentWeather?.data?.data?.location;
                       if (!loc) return null;
-                      
+
                       const fav = isFavorite(loc);
                       return (
                         <button
@@ -463,28 +493,33 @@ const SearchPage = () => {
                   </div>
                 </div>
 
-                <WeatherCard
-                  weather={currentWeather?.data?.data}
-                  showForecastLink={true}
-                  onAddToFavorites={handleAddToFavorites}
-                  onRemoveFromFavorites={handleRemoveFromFavorites}
-                  onToggleForecast={() => {
-                    const newValue = !showSearchForecast;
-                    setShowSearchForecast(newValue);
-                    // Scroll to forecast section when showing forecast
-                    if (newValue) {
-                      scrollToForecastSection();
-                    }
-                  }}
-                  isForecastVisible={showSearchForecast}
-                />
+                <div className={`focus-highlight ${highlightCurrent ? "is-active" : ""}`}>
+                  <WeatherCard
+                    weather={currentWeather?.data?.data}
+                    showForecastLink={true}
+                    onAddToFavorites={handleAddToFavorites}
+                    onRemoveFromFavorites={handleRemoveFromFavorites}
+                    onToggleForecast={() => {
+                      const newValue = !showSearchForecast;
+                      setShowSearchForecast(newValue);
+                      // Scroll to forecast section when showing forecast
+                      if (newValue) {
+                        scrollToForecastSection();
+                      }
+                    }}
+                    isForecastVisible={showSearchForecast}
+                  />
+                </div>
               </section>
 
               {/* Show 5-day forecast if toggled and available */}
               {showSearchForecast &&
                 forecast.isSuccess &&
                 forecast?.data?.data?.forecast && (
-                  <section className="search-results__forecast" ref={forecastSectionRef}>
+                  <section
+                    className="search-results__forecast"
+                    ref={forecastSectionRef}
+                  >
                     <h2 className="section__title">5-Day Forecast</h2>
 
                     <div className="forecast-grid">
@@ -504,10 +539,13 @@ const SearchPage = () => {
                                     )}
                               </h4>
                               <span className="forecast-day__date-full">
-                                {new Date(day.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
+                                {new Date(day.date).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )}
                               </span>
                             </div>
 
@@ -612,13 +650,16 @@ const SearchPage = () => {
                     onClick={() => {
                       setSortMode("random");
                       // Re-randomize current region when switching to random mode
-                      const regionCities = activeRegion === "All" 
-                        ? ALL_POPULAR_CITIES 
-                        : ALL_POPULAR_CITIES.filter((c) => REGION_COUNTRIES[activeRegion]?.has(c.country));
-                      
-                      setRandomizedCities(prev => ({
+                      const regionCities =
+                        activeRegion === "All"
+                          ? ALL_POPULAR_CITIES
+                          : ALL_POPULAR_CITIES.filter((c) =>
+                              REGION_COUNTRIES[activeRegion]?.has(c.country)
+                            );
+
+                      setRandomizedCities((prev) => ({
                         ...prev,
-                        [activeRegion]: shuffleArray(regionCities)
+                        [activeRegion]: shuffleArray(regionCities),
                       }));
                     }}
                   >
@@ -653,18 +694,18 @@ const SearchPage = () => {
                         // Parse the location query to extract city and full name
                         const { city, fullName } = parseLocationQuery(query);
 
-                                // Trigger search immediately but keep the input clear
-        setSearchedCity(city);
-        searchLocation(fullName); // Use full name for context
-        selectLocation({ city, name: label }); // city for API, name for display (prefer label over fullName)
-        
-        // Reset forecast toggle when searching for a new city
-        setShowSearchForecast(false);
-        
-        setLocalSearchQuery("");
+                        // Trigger search immediately but keep the input clear
+                        setSearchedCity(city);
+                        searchLocation(fullName); // Use full name for context
+                        selectLocation({ city, name: label }); // city for API, name for display (prefer label over fullName)
 
-        // Focus on current weather card with highlight effect
-        focusOnWeatherCard();
+                        // Reset forecast toggle when searching for a new city
+                        setShowSearchForecast(false);
+
+                        setLocalSearchQuery("");
+
+                        // Focus on current weather card with highlight effect
+                        focusOnWeatherCard();
                       }}
                       className="search-suggestion"
                       role="listitem"

@@ -1,5 +1,5 @@
 import { Heart, Trash2, MapPin, Plus, GripVertical } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useWeatherContext } from '@context/WeatherContext';
 import ForecastCard from '@components/weather/ForecastCard';
 import { resolveFullLocationName } from '@utils/searchUtils';
@@ -9,7 +9,8 @@ import { useState, useCallback } from 'react';
  * FavoritesPage component for managing favorite locations
  */
 const FavoritesPage = () => {
-  const { favorites, removeFavorite, reorderFavorites } = useWeatherContext();
+  const { favorites, removeFavorite, reorderFavorites, clearSelection } = useWeatherContext();
+  const navigate = useNavigate();
 
   // DnD state
   const [draggingId, setDraggingId] = useState(null);
@@ -61,6 +62,14 @@ const FavoritesPage = () => {
     setDraggingId(null);
   }, []);
 
+  // Navigate to a fresh Search page state
+  const handleAddNewLocation = useCallback(() => {
+    // Clear any previously selected/search state so Search loads empty
+    clearSelection();
+    // Navigate to Search. New mount will show the refreshed initial view
+    navigate('/search');
+  }, [clearSelection, navigate]);
+
   return (
     <div className="favorites-page">
       <div className="favorites-page__container">
@@ -74,10 +83,10 @@ const FavoritesPage = () => {
             Quick access to weather for your saved locations. Drag cards to reorder — this order is used on Home.
           </p>
           
-          <Link to="/search" className="btn btn--primary">
+          <button onClick={handleAddNewLocation} className="btn btn--primary">
             <Plus size={16} />
             Add New Location
-          </Link>
+          </button>
         </div>
 
         {/* Favorites Grid */}
@@ -138,10 +147,10 @@ const FavoritesPage = () => {
               <p>
                 Add locations to your favorites for quick access to their weather information.
               </p>
-              <Link to="/search" className="btn btn--primary">
+              <button onClick={handleAddNewLocation} className="btn btn--primary">
                 <Plus size={16} />
                 Add Your First Favorite
-              </Link>
+              </button>
             </div>
           )}
         </div>

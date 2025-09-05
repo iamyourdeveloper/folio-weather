@@ -11,6 +11,7 @@ import '@/styles/components.css';
 const SearchDropdown = ({
   onSelect,
   onClear,
+  onQueryChange,
   placeholder = "Search for a city...",
   initialValue = "",
   className = "",
@@ -78,6 +79,14 @@ const SearchDropdown = ({
   const handleInputChange = (e) => {
     const value = e.target.value;
     setQuery(value);
+    // Surface current query to parent when requested
+    if (typeof onQueryChange === 'function') {
+      try {
+        onQueryChange(value);
+      } catch (_) {
+        // no-op: guard against consumer errors
+      }
+    }
     setSelectedIndex(-1);
     
     if (value.trim().length >= minQueryLength) {
@@ -112,6 +121,8 @@ const SearchDropdown = ({
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
+    // If dropdown isn't open or there are no suggestions, allow default behavior
+    // so Enter will submit the parent form.
     if (!isOpen || suggestions.length === 0) return;
 
     switch (e.key) {
@@ -128,9 +139,13 @@ const SearchDropdown = ({
         );
         break;
       case 'Enter':
-        e.preventDefault();
+        // If a suggestion is highlighted, choose it and prevent submit.
+        // Otherwise, let the event bubble to submit the form with current input.
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+          e.preventDefault();
           handleSelectSuggestion(suggestions[selectedIndex]);
+        } else {
+          setIsOpen(false);
         }
         break;
       case 'Escape':
@@ -267,6 +282,7 @@ const SearchDropdown = ({
           
           {suggestions.map((suggestion, index) => (
             <button
+              type="button"
               key={suggestion.id}
               ref={el => suggestionRefs.current[index] = el}
               onClick={() => handleSelectSuggestion(suggestion)}
