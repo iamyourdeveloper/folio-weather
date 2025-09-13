@@ -56,7 +56,9 @@ const HomePage = () => {
     (currentLocation &&
       !selectedLocation &&
       !autoSelectedLocation &&
-      preferences.autoLocation);
+      preferences.autoLocation &&
+      !locationError &&
+      !locationLoading);
   // Only fetch by city when the effective selection is a city
   const shouldFetchByCity = effectiveLocation?.type === "city";
 
@@ -392,7 +394,7 @@ const HomePage = () => {
               </div>
             )}
 
-            {currentLocation && !selectedLocation && (
+            {currentLocation && !selectedLocation && !locationError && (
               <div className="location-status__item location-status__item--success">
                 <MapPin size={16} />
                 <span>Using your current location</span>

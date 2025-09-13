@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation as useRouterLocation } from "react-router-dom";
 import { queryClient } from "@context/QueryProvider";
 import { useCurrentLocation } from "@hooks/useGeolocation";
 import RANDOM_CITIES from "../data/randomCities.js";
@@ -146,6 +147,8 @@ const DEFAULT_PREFERENCES = {
  * @param {React.ReactNode} props.children - Child components
  */
 export const WeatherProvider = ({ children }) => {
+  // Current route to scope certain auto behaviors (e.g., favorite rotation only on Home)
+  const routerLocation = useRouterLocation();
   // User preferences - hydrate from localStorage before first render
   const [preferences, setPreferences] = useState(() => {
     try {
@@ -266,12 +269,22 @@ export const WeatherProvider = ({ children }) => {
 
   // Auto-select location when app initializes
   useEffect(() => {
-    // Wait for location loading to complete and favorites to be loaded
-    if (!locationLoading && !hasInitialized) {
+    // Initialize once per real page load.
+    // Do not wait for geolocation to finish loading — this enables
+    // favorite-based selection immediately when location is disabled/blocked.
+    if (!hasInitialized) {
       let autoLocation = null;
 
       // Priority 1: Use geolocation if available and no manual selection exists
-      if (currentLocation && preferences.autoLocation && !selectedLocation) {
+      if (
+        currentLocation &&
+        preferences.autoLocation &&
+        !selectedLocation &&
+        !locationError &&
+        !locationLoading &&
+        currentLocation.lat != null &&
+        currentLocation.lon != null
+      ) {
         autoLocation = {
           type: "coords",
           coordinates: currentLocation,
@@ -279,6 +292,9 @@ export const WeatherProvider = ({ children }) => {
         };
       }
       // Priority 2: Rotate through favorites if available and no geolocation
+      // Rotate once per real page load (on refresh) to advance the favorite
+      // for both Home and the header badge when location services are disabled.
+      // This replaces the previous timed rotation behavior.
       else if (!currentLocation && favorites.length > 0) {
         const rotationIndexKey = "weatherAppFavoriteRotationIndex";
         const guardProp = "__weatherAppFavoriteRotationConsumed__";
@@ -326,11 +342,14 @@ export const WeatherProvider = ({ children }) => {
     locationLoading,
     hasInitialized,
     currentLocation,
+    locationError,
     preferences.autoLocation,
     selectedLocation,
     favorites,
+    routerLocation?.pathname,
   ]);
 
+  // Timed background rotation removed per request: favorites advance only on refresh
   // Upgrade to current coordinates when they arrive after initial load
   // This ensures that on refresh, if geolocation responds slightly later
   // than our initialization, we still switch to the user's location
@@ -338,6 +357,7 @@ export const WeatherProvider = ({ children }) => {
   useEffect(() => {
     if (!preferences.autoLocation) return; // respect user preference
     if (selectedLocation) return; // do not override manual selections
+    if (locationError) return; // do not promote coords when permissions are denied
     if (!currentLocation) return; // nothing to promote yet
 
     const isAlreadyCoords = autoSelectedLocation?.type === "coords";
@@ -357,6 +377,7 @@ export const WeatherProvider = ({ children }) => {
     currentLocation,
     preferences.autoLocation,
     selectedLocation,
+    locationError,
     autoSelectedLocation,
   ]);
 
@@ -366,6 +387,7 @@ export const WeatherProvider = ({ children }) => {
     if (!hasInitialized) return;
     if (!preferences.autoLocation) return;
     if (selectedLocation) return; // respect manual choice
+    if (locationError) return; // do not adopt coords on error/denied
     if (!currentLocation || currentLocation.lat == null || currentLocation.lon == null) return;
 
     setAutoSelectedLocation((prev) => {
@@ -380,7 +402,17 @@ export const WeatherProvider = ({ children }) => {
         name: "Current Location",
       };
     });
-  }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation]);
+  }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation, locationError]);
+
+  // If geolocation becomes blocked/denied after startup, ensure we do not keep
+  // showing an auto-selected "current location" that was chosen earlier.
+  // This guarantees the UI won't display a current location badge/card while
+  // location services are disabled.
+  useEffect(() => {
+    if (!locationError) return;
+    if (autoSelectedLocation?.type !== "coords") return;
+    setAutoSelectedLocation(null);
+  }, [locationError, autoSelectedLocation]);
 
   // Function to update preferences - memoized to prevent unnecessary re-renders
   const updatePreferences = useCallback((newPreferences) => {

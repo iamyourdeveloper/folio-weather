@@ -16,9 +16,9 @@ import "@styles/App.css";
 function App() {
   return (
     <ErrorBoundary>
-      <QueryProvider>
-        <WeatherProvider>
-          <Router>
+      <Router>
+        <QueryProvider>
+          <WeatherProvider>
             <div className="app">
               <TopBarProgress />
               <ConnectionStatus />
@@ -34,9 +34,9 @@ function App() {
               </main>
               <Footer />
             </div>
-          </Router>
-        </WeatherProvider>
-      </QueryProvider>
+          </WeatherProvider>
+        </QueryProvider>
+      </Router>
     </ErrorBoundary>
   );
 }

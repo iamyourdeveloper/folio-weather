@@ -17,6 +17,8 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
   const {
     getEffectiveLocation,
     currentLocation,
+    locationLoading,
+    locationError,
     selectedLocation,
     autoSelectedLocation,
     preferences,
@@ -26,16 +28,21 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
 
   const routerLocation = useRouterLocation();
 
-  // Match Home's effective location logic
+  // Prefer current coordinates whenever location services are enabled/available.
+  // This keeps the badge consistently tied to your current location across pages.
   const effectiveLocation = getEffectiveLocation();
-  const shouldFetchByCoords =
-    effectiveLocation?.type === "coords" ||
-    (currentLocation &&
-      !selectedLocation &&
-      !autoSelectedLocation &&
-      preferences.autoLocation);
-  // Only fetch by city when the effective selection is a city
-  const shouldFetchByCity = effectiveLocation?.type === "city";
+  // Only prefer coordinates when we actually have valid coordinates.
+  // Do not prefer coords merely because geolocation is still loading —
+  // this allows favorites to drive the badge while location is disabled/blocked.
+  const hasCoords = !!(
+    currentLocation &&
+    currentLocation.lat != null &&
+    currentLocation.lon != null
+  );
+  const preferCoords = preferences.autoLocation && !locationError && !locationLoading && hasCoords;
+  const shouldFetchByCoords = preferCoords || effectiveLocation?.type === "coords";
+  // Only fetch by city if we're not preferring coords and an explicit city is selected
+  const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
 
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
@@ -96,8 +103,6 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
       <span className="header-weather__text">Loading</span>
     </div>
   );
-
-  if (!effectiveLocation) return null;
 
   if (active.isLoading) return Loading;
   if (active.isError) return null; // stay subtle if there’s an error

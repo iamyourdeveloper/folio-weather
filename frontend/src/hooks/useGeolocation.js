@@ -1,12 +1,33 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
+// LocalStorage key for last known coordinates so we can hydrate on refresh
+const LAST_KNOWN_COORDS_KEY = 'weatherAppLastKnownCoords';
+
 /**
  * Custom hook for handling geolocation functionality
  * @param {Object} options - Geolocation options
  * @returns {Object} Geolocation state and functions
  */
 export const useGeolocation = (options = {}) => {
-  const [location, setLocation] = useState(null);
+  const [location, setLocation] = useState(() => {
+    // Hydrate last known coords to show weather immediately on refresh
+    try {
+      if (typeof window === 'undefined') return null;
+      const raw = window.localStorage?.getItem(LAST_KNOWN_COORDS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed.lat === 'number' &&
+        typeof parsed.lon === 'number'
+      ) {
+        return parsed;
+      }
+    } catch (_) {
+      // ignore hydration errors
+    }
+    return null;
+  });
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
@@ -28,6 +49,40 @@ export const useGeolocation = (options = {}) => {
     } catch (_) {
       setIsSupported(false);
     }
+  }, []);
+
+  // Proactively react to permission state so we don't surface
+  // stale last-known coordinates when access is blocked.
+  // This avoids showing a "current location" badge/card when
+  // location services are disabled/denied.
+  useEffect(() => {
+    let permissionRef = null;
+    const syncFromPermission = (state) => {
+      if (state === 'denied') {
+        // Clear any hydrated/stored coordinates if permission is denied
+        try {
+          window.localStorage?.removeItem(LAST_KNOWN_COORDS_KEY);
+        } catch (_) {}
+        setLocation(null);
+      }
+    };
+
+    (async () => {
+      try {
+        if (typeof navigator === 'undefined' || !navigator.permissions) return;
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
+        permissionRef = perm;
+        syncFromPermission(perm.state);
+        // Keep in sync if user changes the permission while app is open
+        perm.onchange = () => syncFromPermission(perm.state);
+      } catch (_) {
+        // Permission API not supported — nothing to proactively clean up
+      }
+    })();
+
+    return () => {
+      if (permissionRef) try { permissionRef.onchange = null; } catch (_) {}
+    };
   }, []);
 
   // Function to check permission status
@@ -75,12 +130,22 @@ export const useGeolocation = (options = {}) => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        setLocation({
+        const next = {
           lat: latitude,
           lon: longitude,
           accuracy,
           timestamp: position.timestamp,
-        });
+        };
+        setLocation(next);
+        // Persist for next startup
+        try {
+          window.localStorage?.setItem(
+            LAST_KNOWN_COORDS_KEY,
+            JSON.stringify(next)
+          );
+        } catch (_) {
+          // non-fatal
+        }
         setIsLoading(false);
         setError(null);
       },
@@ -123,12 +188,22 @@ export const useGeolocation = (options = {}) => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        setLocation({
+        const next = {
           lat: latitude,
           lon: longitude,
           accuracy,
           timestamp: position.timestamp,
-        });
+        };
+        setLocation(next);
+        // Persist updates to keep last-known fresh
+        try {
+          window.localStorage?.setItem(
+            LAST_KNOWN_COORDS_KEY,
+            JSON.stringify(next)
+          );
+        } catch (_) {
+          // non-fatal
+        }
         setIsLoading(false);
         setError(null);
       },
@@ -232,3 +307,4 @@ export const useCurrentLocation = (options = {}, autoFetch = true) => {
 };
 
 export default useGeolocation;
+  // No extra bootstrap permission probe; initial hydration above is enough
