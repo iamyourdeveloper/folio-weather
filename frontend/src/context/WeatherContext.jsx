@@ -328,9 +328,20 @@ export const WeatherProvider = ({ children }) => {
           coordinates: favorite.coordinates,
         };
       }
-      // Priority 3 removed by request:
-      // Do NOT auto-pick a random city when there's no geolocation and no favorites.
-      // Instead, leave Home empty and prompt the user to search or add favorites.
+      // Priority 3: Pick a random city when there's no geolocation and no favorites.
+      // Apply once per real page load so a new city appears on refresh.
+      else if (!currentLocation && favorites.length === 0) {
+        const randomGuardProp = "__weatherAppRandomSelectionConsumed__";
+        if (!window[randomGuardProp]) {
+          try {
+            const next = getRandomDefaultCity();
+            autoLocation = next;
+          } catch (_) {
+            // non-fatal; leave autoLocation null if something unexpected happens
+          }
+          window[randomGuardProp] = true;
+        }
+      }
 
       if (autoLocation) {
         setAutoSelectedLocation(autoLocation);
