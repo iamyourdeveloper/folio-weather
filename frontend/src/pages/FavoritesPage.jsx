@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
  * FavoritesPage component for managing favorite locations
  */
 const FavoritesPage = () => {
-  const { favorites, removeFavorite, reorderFavorites, clearSelection } = useWeatherContext();
+  const { favorites, removeFavorite, reorderFavorites } = useWeatherContext();
   const navigate = useNavigate();
 
   // DnD state
@@ -62,13 +62,14 @@ const FavoritesPage = () => {
     setDraggingId(null);
   }, []);
 
-  // Navigate to a fresh Search page state
+  // Navigate to Search without clearing the currently selected location
+  // This preserves the header weather badge (which follows selectedLocation)
   const handleAddNewLocation = useCallback(() => {
-    // Clear any previously selected/search state so Search loads empty
-    clearSelection();
-    // Navigate to Search. New mount will show the refreshed initial view
-    navigate('/search');
-  }, [clearSelection, navigate]);
+    // Do NOT clear selection here; keep current selection so the header badge
+    // remains on the actively viewed location while the user adds another.
+    // Tell Search page to open fresh while preserving header selection
+    navigate('/search?new=1');
+  }, [navigate]);
 
   return (
     <div className="favorites-page">

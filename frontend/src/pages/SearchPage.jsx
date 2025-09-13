@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Search, MapPin, Star, Plus, X } from "lucide-react";
 import "@/styles/search.css";
 import { useWeatherContext } from "@context/WeatherContext";
+import { queryClient } from "@context/QueryProvider";
 import { useCurrentWeatherByCity, useForecastByCity } from "@hooks/useWeather";
 import WeatherCard from "@components/weather/WeatherCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
@@ -12,6 +13,7 @@ import RANDOM_CITIES from "@/data/randomCities.js";
 import {
   parseLocationQuery,
   isValidLocationQuery,
+  searchAllCities,
 } from "@/utils/searchUtils.js";
 
 /**
@@ -29,16 +31,27 @@ const SearchPage = () => {
     selectLocation,
   } = useWeatherContext();
 
+  // Router helpers (place before state so we can read query params for initial state)
+  const routerLocation = useLocation();
+  const navigate = useNavigate();
+
   // Keep the Search page input empty by default.
   // Do not hydrate from global search state to avoid lingering text
   // like a previous header search (e.g., "Mumbai").
   const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const [searchedCity, setSearchedCity] = useState(
-    selectedLocation?.city || ""
-  );
+  const [searchedCity, setSearchedCity] = useState(() => {
+    // Open Search fresh by default. Do not hydrate from global selection
+    // so actions like Home's "Random City" don't auto-populate Search.
+    // If a specific city is intended, it will be provided via ?city=
+    // and handled by the effect below.
+    return "";
+  });
 
   // Toggle state for revealing the 5-day forecast on Search
   const [showSearchForecast, setShowSearchForecast] = useState(false);
+  // Remember the last attempted query that produced no results or was invalid
+  const [noMatchQuery, setNoMatchQuery] = useState("");
+  const [showNoMatch, setShowNoMatch] = useState(false);
 
   // Ref for scrolling to current weather section
   const currentWeatherRef = useRef(null);
@@ -46,6 +59,8 @@ const SearchPage = () => {
   const forecastSectionRef = useRef(null);
   // Transient highlight for current weather card
   const [highlightCurrent, setHighlightCurrent] = useState(false);
+  // Force-remount key for SearchDropdown to reset its internal input value on demand
+  const [searchInputKey, setSearchInputKey] = useState(0);
 
   // Debounce search to prevent excessive API calls
   const debounce = (func, wait) => {
@@ -55,25 +70,69 @@ const SearchPage = () => {
       timeout = setTimeout(() => func(...args), wait);
     };
   };
-  const routerLocation = useLocation();
-  const navigate = useNavigate();
+  // routerLocation and navigate are declared above
 
   // Fetch weather data for searched city
+  // Prefer the current attempted full name for backend disambiguation
+  const originalAttemptName = searchQuery || selectedLocation?.name || null;
+
   const currentWeather = useCurrentWeatherByCity(
     searchedCity,
     preferences.units,
-    selectedLocation?.name || null, // Pass originalName properly
-    { enabled: !!searchedCity }
+    originalAttemptName,
+    {
+      enabled: !!searchedCity,
+      onError: (err) => {
+        const isNotFound =
+          err?.type === "NOT_FOUND" ||
+          err?.status === 404 ||
+          (typeof err?.message === "string" &&
+            /not available|not found/i.test(err.message));
+        if (isNotFound) {
+          const attemptedLabel =
+            selectedLocation?.name || searchQuery || searchedCity || "";
+          setNoMatchQuery(attemptedLabel);
+          setShowNoMatch(true);
+        }
+      },
+      onSuccess: (data) => {
+        // Clear any previous no-match message when data loads
+        setNoMatchQuery("");
+        setShowNoMatch(false);
+        try {
+          const loc = data?.data?.location;
+          if (loc && loc.city && loc.name) {
+            selectLocation({
+              type: "city",
+              city: loc.city,
+              name: loc.name,
+              state: loc.state,
+              country: loc.country,
+              coordinates: loc.coordinates,
+            });
+          }
+        } catch (_) {}
+      },
+    }
   );
 
   const forecast = useForecastByCity(
     searchedCity,
     preferences.units,
-    selectedLocation?.name || null, // Pass originalName properly
+    originalAttemptName,
     {
       enabled: !!searchedCity && showSearchForecast,
     }
   );
+
+  // Helper: scroll to top safely
+  const scrollToTop = useCallback(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (_) {
+      window.scrollTo(0, 0);
+    }
+  }, []);
 
   // Function to focus on current weather card
   const focusOnWeatherCard = useCallback(() => {
@@ -99,37 +158,77 @@ const SearchPage = () => {
   // Memoize the navigation handler to prevent infinite re-renders
   const handleCityParamNavigation = useCallback(
     (cityParam) => {
-      if (cityParam && cityParam.trim() && cityParam !== searchedCity) {
+      if (cityParam && cityParam.trim()) {
         const rawQuery = cityParam.trim();
+        const invalidArrival = !isValidLocationQuery(rawQuery);
 
         // Parse the location query to extract city and full name
         const { city, fullName } = parseLocationQuery(rawQuery);
 
-        // Do not keep the typed query in the input; show placeholder instead
+        // Always set the intent so repeated same-city searches still trigger UI updates
         setLocalSearchQuery("");
         setSearchedCity(city);
         searchLocation(fullName); // Use full name for context
-        selectLocation({ city, name: fullName }); // city for API, name for display
+        // Do not update global selectedLocation yet; wait for a successful fetch
 
-        // Reset forecast toggle when navigating to a new city
+        // Pre-fill attempted label so UI doesn't appear blank before error arrives
+        setNoMatchQuery(rawQuery);
+        setShowNoMatch(true);
+        setShowNoMatch(true);
+
+        // Force a refetch even if the city hasn't changed (repeat bad input)
+        try {
+          queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
+          queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+        } catch (_) {
+          // Non-fatal in environments without a provider
+        }
+
+        // Reset forecast toggle when navigating to a (possibly same) city
         setShowSearchForecast(false);
 
-        // Clear the query string so a browser refresh on the Search page
-        // doesn't re-hydrate results. This preserves the immediate view
-        // when navigating from Favorites but resets on reload.
-        navigate("/search", { replace: true });
+        // Clear the Search page input field (remount the dropdown) when arriving from header/mobile search
+        setSearchInputKey((k) => k + 1);
 
-        // Bring the Current Weather card into view for Favorites → Search
-        focusOnWeatherCard();
+        // Clear the query string so a browser refresh on the Search page
+        navigate("/search", { replace: true });
+        
+        // If the incoming query is invalid, show error at top instead of focusing weather
+        if (invalidArrival) {
+          scrollToTop();
+        } else {
+          // Bring the Current Weather card into view
+          focusOnWeatherCard();
+        }
       }
     },
-    [searchedCity, searchLocation, selectLocation, navigate, focusOnWeatherCard]
+    [searchLocation, selectLocation, navigate, focusOnWeatherCard]
   );
 
   // If a ?city= parameter is present, hydrate the page and fetch immediately
   useEffect(() => {
     const params = new URLSearchParams(routerLocation.search);
     const cityParam = params.get("city");
+    const isFresh = params.get("new") === "1";
+
+    if (isFresh) {
+      // Open Search fresh: clear local query and prevent initial fetch.
+      setLocalSearchQuery("");
+      setSearchedCity("");
+      setShowSearchForecast(false);
+      // Clear any previous error/placeholder state
+      setShowNoMatch(false);
+      setNoMatchQuery("");
+      // Reset the dropdown's internal input by remounting it
+      setSearchInputKey((k) => k + 1);
+      // Do not modify selectedLocation here; header badge remains on current selection.
+      // Remove the flag from the URL for a clean state if the user refreshes.
+      navigate("/search", { replace: true });
+      // Ensure user is at the top of the Search page
+      scrollToTop();
+      return;
+    }
+
     handleCityParamNavigation(cityParam);
   }, [routerLocation.search, handleCityParamNavigation]);
 
@@ -139,10 +238,19 @@ const SearchPage = () => {
       const { city, fullName } = parseLocationQuery(query);
       setSearchedCity(city);
       searchLocation(fullName);
-      selectLocation({ city, name: fullName });
+      // Do not update global selectedLocation until a successful fetch confirms it
 
       // Reset forecast toggle when searching for a new city
       setShowSearchForecast(false);
+
+      // Pre-fill attempted label (only shown if request ultimately 404s)
+      setNoMatchQuery(fullName);
+
+      // Force a refetch even if the same city is searched repeatedly
+      try {
+        queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
+        queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+      } catch (_) {}
 
       // Focus on current weather card with highlight effect
       focusOnWeatherCard();
@@ -161,12 +269,24 @@ const SearchPage = () => {
   // Handle search form submission
   const handleSearch = (e) => {
     e.preventDefault();
+    if (!localSearchQuery.trim()) {
+      // Do nothing on empty submit; keep current placeholder visibility/state
+      return;
+    }
+
     if (localSearchQuery.trim()) {
       const rawQuery = localSearchQuery.trim();
 
       // Validate the query before processing
       if (!isValidLocationQuery(rawQuery)) {
-        // Could add user feedback here for invalid queries
+        // Show friendly placeholder for invalid input
+        setNoMatchQuery(rawQuery);
+        // Clear any existing results
+        setSearchedCity("");
+        setShowSearchForecast(false);
+        setShowNoMatch(true);
+        // Bring the error into view at the top
+        scrollToTop();
         return;
       }
 
@@ -175,13 +295,39 @@ const SearchPage = () => {
 
       setSearchedCity(city);
       searchLocation(fullName); // Use full name for context
-      selectLocation({ city, name: fullName }); // city for API, name for display
+      // Optimistically reflect selection when the query matches our city database
+      try {
+        const [first] = searchAllCities(fullName, 1);
+        if (first) {
+          const optimisticName = first.name || first.displayName || fullName;
+          selectLocation({
+            type: "city",
+            city: first.city || city,
+            name: optimisticName,
+            state: first.state,
+            country: first.country,
+            coordinates: first.coordinates,
+          });
+        }
+      } catch (_) {}
+
+      // Ensure the no-match placeholder is primed immediately so there is no blank state
+      setNoMatchQuery(fullName);
+      setShowNoMatch(true);
+
+      // Force re-fetch in case the same query is submitted again
+      try {
+        queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
+        queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+      } catch (_) {}
 
       // Reset forecast toggle when searching for a new city
       setShowSearchForecast(false);
 
       // Clear input so placeholder returns after submit
       setLocalSearchQuery("");
+
+      // Don't clear placeholder yet; clear only after a successful result
 
       // Focus on current weather card with highlight effect
       focusOnWeatherCard();
@@ -322,6 +468,55 @@ const SearchPage = () => {
     }
   }, [sortMode, randomizedCities, ALL_POPULAR_CITIES]);
 
+  // Helper: randomize visible cities for the current region and for "All"
+  const randomizePopularCities = useCallback(() => {
+    if (sortMode !== "random") return;
+    const regionCities =
+      activeRegion === "All"
+        ? ALL_POPULAR_CITIES
+        : ALL_POPULAR_CITIES.filter((c) =>
+            REGION_COUNTRIES[activeRegion]?.has(c.country)
+          );
+
+    setRandomizedCities((prev) => ({
+      ...prev,
+      [activeRegion]: shuffleArray(regionCities),
+      All: shuffleArray(ALL_POPULAR_CITIES),
+    }));
+  }, [sortMode, activeRegion, ALL_POPULAR_CITIES]);
+
+  // Persist the nicer no-results message when header/mobile triggers 404s
+  useEffect(() => {
+    const notFoundError =
+      (currentWeather.isError && currentWeather?.error?.type === "NOT_FOUND") ||
+      (forecast.isError && forecast?.error?.type === "NOT_FOUND");
+
+    if (notFoundError) {
+      const attemptedLabel =
+        selectedLocation?.name || searchQuery || searchedCity || "";
+      if (attemptedLabel) setNoMatchQuery(attemptedLabel);
+      setShowNoMatch(true);
+      // Ensure user sees the error message at the top
+      scrollToTop();
+    }
+
+    // Clear message when we have a successful result
+    if (currentWeather.isSuccess && currentWeather?.data?.data) {
+      setNoMatchQuery("");
+      setShowNoMatch(false);
+    }
+  }, [
+    currentWeather.isError,
+    currentWeather.error,
+    forecast.isError,
+    forecast.error,
+    currentWeather.isSuccess,
+    currentWeather.data,
+    selectedLocation?.name,
+    searchQuery,
+    searchedCity,
+  ]);
+
   // Re-randomize cities when switching regions (tab navigation)
   const handleRegionChange = (region) => {
     setActiveRegion(region);
@@ -387,6 +582,7 @@ const SearchPage = () => {
         <div className="search-page__search-container">
           <form className="search-page__search-form" onSubmit={handleSearch}>
             <SearchDropdown
+              key={`search-dropdown-${searchInputKey}`}
               onSelect={(location) => {
                 console.log("SearchPage dropdown selected:", location);
                 // Use the location data to search for weather
@@ -395,24 +591,44 @@ const SearchPage = () => {
 
                 setSearchedCity(city);
                 searchLocation(fullName);
-                selectLocation({
-                  city,
-                  name: fullName,
-                  state: location.state,
-                  country: location.country,
-                  type: "city",
-                });
+                // Immediately reflect the user's intent globally so Home and the header badge update
+                try {
+                  selectLocation({
+                    type: "city",
+                    city,
+                    name: fullName,
+                    state: location.state,
+                    country: location.country,
+                  });
+                } catch (_) {}
 
                 // Reset forecast toggle when searching for a new city
                 setShowSearchForecast(false);
 
                 // Clear input and focus on weather card
                 setLocalSearchQuery("");
+                setNoMatchQuery("");
+                setShowNoMatch(false);
                 focusOnWeatherCard();
               }}
-              onQueryChange={(value) => setLocalSearchQuery(value)}
+              onQueryChange={(value) => {
+                setLocalSearchQuery(value);
+                // If the user is editing/clearing input, don't keep showing the no-match banner
+                if (!value || !value.trim()) {
+                  setShowNoMatch(false);
+                  setNoMatchQuery("");
+                  // Revert to empty-state suggestions when input is cleared by backspace/delete
+                  setSearchedCity("");
+                  setShowSearchForecast(false);
+                }
+              }}
               onClear={() => {
+                // Reset input and results to show the empty state
                 setLocalSearchQuery("");
+                setSearchedCity("");
+                setShowSearchForecast(false);
+                setNoMatchQuery("");
+                setShowNoMatch(false);
               }}
               placeholder="Enter city name (e.g., London, New York, Tokyo)"
               className="search-page__dropdown"
@@ -438,6 +654,60 @@ const SearchPage = () => {
 
         {/* Search Results */}
         <div className="search-results">
+          {/* No-match placeholder for invalid input or not-found responses */}
+          {(() => {
+            const notFoundError =
+              (currentWeather.isError &&
+                currentWeather?.error?.type === "NOT_FOUND") ||
+              (forecast.isError && forecast?.error?.type === "NOT_FOUND");
+
+            const attemptedLabel =
+              (noMatchQuery && noMatchQuery.trim()) ||
+              selectedLocation?.name ||
+              searchQuery ||
+              searchedCity ||
+              "your search";
+
+            // If we're in the middle of a fresh-open navigation, hide the placeholder immediately
+            const isFreshNav = (() => {
+              try { return new URLSearchParams(routerLocation.search).get("new") === "1"; } catch (_) { return false; }
+            })();
+
+            if (!isFreshNav && (notFoundError || showNoMatch)) {
+              return (
+                <div className="search-results__error" style={{ textAlign: "center" }}>
+                  <p className="search-header__subtitle" style={{ marginTop: 12 }}>
+                    {`Hmm, we couldn't find a match for "${attemptedLabel}". Try searching for a known location or explore more locations below.`}
+                  </p>
+                  <div style={{ marginTop: 16 }}>
+                    <button
+                      type="button"
+                      className="btn btn--primary explore-more-btn"
+                      onClick={() => {
+                        // Hide placeholder immediately and reset local state
+                        setShowNoMatch(false);
+                        setNoMatchQuery("");
+                        setLocalSearchQuery("");
+                        setSearchedCity("");
+                        setShowSearchForecast(false);
+                        setSearchInputKey((k) => k + 1);
+                        // Optional: encourage exploration by reshuffling
+                        try { randomizePopularCities(); } catch (_) {}
+                        // Scroll to top right away for immediate feedback
+                        scrollToTop();
+                        // Navigate to a fresh Search view
+                        navigate('/search?new=1');
+                      }}
+                    >
+                      <Search size={20} />
+                      Explore Locations
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
           {/* Loading State */}
           {(currentWeather.isLoading || forecast.isLoading) && (
             <div className="search-results__loading">
@@ -446,18 +716,23 @@ const SearchPage = () => {
             </div>
           )}
 
-          {/* Error State */}
-          {(currentWeather.isError || forecast.isError) && (
-            <div className="search-results__error">
-              <ErrorMessage
-                error={currentWeather.error || forecast.error}
-                onRetry={() => {
-                  currentWeather.refetch();
-                  forecast.refetch();
-                }}
-              />
-            </div>
-          )}
+          {/* Error State (non-404 errors only) */}
+          {(currentWeather.isError || forecast.isError) &&
+            !(
+              (currentWeather.isError &&
+                currentWeather?.error?.type === "NOT_FOUND") ||
+              (forecast.isError && forecast?.error?.type === "NOT_FOUND")
+            ) && (
+              <div className="search-results__error">
+                <ErrorMessage
+                  error={currentWeather.error || forecast.error}
+                  onRetry={() => {
+                    currentWeather.refetch();
+                    forecast.refetch();
+                  }}
+                />
+              </div>
+            )}
 
           {/* Success State */}
           {currentWeather.isSuccess && currentWeather?.data?.data && (
@@ -593,7 +868,8 @@ const SearchPage = () => {
                   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                 }}
                 onClick={() => {
-                  window.location.reload();
+                  // Navigate to a fresh Search page state and scroll to top
+                  navigate('/search?new=1');
                 }}
               >
                 <Search size={24} />
@@ -697,7 +973,10 @@ const SearchPage = () => {
                         // Trigger search immediately but keep the input clear
                         setSearchedCity(city);
                         searchLocation(fullName); // Use full name for context
-                        selectLocation({ city, name: label }); // city for API, name for display (prefer label over fullName)
+                        // Immediately reflect the user's intent globally so Home and the header badge update
+                        try {
+                          selectLocation({ type: "city", city, name: fullName });
+                        } catch (_) {}
 
                         // Reset forecast toggle when searching for a new city
                         setShowSearchForecast(false);
