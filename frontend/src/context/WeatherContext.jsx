@@ -275,27 +275,29 @@ export const WeatherProvider = ({ children }) => {
     if (!hasInitialized) {
       let autoLocation = null;
 
-      // Priority 1: Use geolocation if available and no manual selection exists
-      if (
-        currentLocation &&
+      // Determine if we are allowed to use geolocation based on user preference
+      const canUseGeo =
         preferences.autoLocation &&
         !selectedLocation &&
         !locationError &&
         !locationLoading &&
+        currentLocation &&
         currentLocation.lat != null &&
-        currentLocation.lon != null
-      ) {
+        currentLocation.lon != null;
+
+      // Priority 1: Use geolocation only when auto-detect is enabled
+      if (canUseGeo) {
         autoLocation = {
           type: "coords",
           coordinates: currentLocation,
           name: "Current Location",
         };
       }
-      // Priority 2: Rotate through favorites if available and no geolocation
-      // Rotate once per real page load (on refresh) to advance the favorite
-      // for both Home and the header badge when location services are disabled.
-      // This replaces the previous timed rotation behavior.
-      else if (!currentLocation && favorites.length > 0) {
+
+      // Priority 2: Rotate through favorites if available (regardless of whether
+      // geolocation is available but disabled). This ensures that when
+      // auto-detect is OFF, the app still shows a favorite on Home/badge.
+      if (!autoLocation && favorites.length > 0) {
         const rotationIndexKey = "weatherAppFavoriteRotationIndex";
         const guardProp = "__weatherAppFavoriteRotationConsumed__";
 
@@ -328,9 +330,10 @@ export const WeatherProvider = ({ children }) => {
           coordinates: favorite.coordinates,
         };
       }
-      // Priority 3: Pick a random city when there's no geolocation and no favorites.
+
+      // Priority 3: Pick a random city when there are no favorites
       // Apply once per real page load so a new city appears on refresh.
-      else if (!currentLocation && favorites.length === 0) {
+      if (!autoLocation && favorites.length === 0) {
         const randomGuardProp = "__weatherAppRandomSelectionConsumed__";
         if (!window[randomGuardProp]) {
           try {
@@ -414,6 +417,51 @@ export const WeatherProvider = ({ children }) => {
       };
     });
   }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation, locationError]);
+
+  // When auto-detect is turned OFF during a session, immediately switch to a
+  // non-geo fallback so Home and the header badge keep showing something.
+  useEffect(() => {
+    if (!hasInitialized) return; // avoid duplicate work with init flow
+    if (preferences.autoLocation) return; // only run when toggled OFF
+    if (selectedLocation) return; // respect explicit user selection
+
+    // Prefer favorites, otherwise pick a random default city
+    if (favorites.length > 0) {
+      try {
+        const rotationIndexKey = "weatherAppFavoriteRotationIndex";
+        const guardProp = "__weatherAppFavoriteRotationConsumedOnToggle__";
+
+        let lastIndex = parseInt(localStorage.getItem(rotationIndexKey) ?? "-1", 10);
+        if (Number.isNaN(lastIndex)) lastIndex = -1;
+        lastIndex = ((lastIndex % favorites.length) + favorites.length) % favorites.length;
+
+        // Advance once per toggle (same guard concept as init but independent)
+        let targetIndex = lastIndex;
+        if (!window[guardProp]) {
+          targetIndex = (lastIndex + 1) % favorites.length;
+          localStorage.setItem(rotationIndexKey, String(targetIndex));
+          window[guardProp] = true;
+        }
+
+        const favorite = favorites[targetIndex] || favorites[0];
+        setAutoSelectedLocation({
+          type: "city",
+          city: favorite.city || favorite.name,
+          name: favorite.name || favorite.city,
+          country: favorite.country,
+          coordinates: favorite.coordinates,
+        });
+        return;
+      } catch (_) {}
+    }
+
+    // No favorites: pick a random city
+    try {
+      setAutoSelectedLocation(getRandomDefaultCity());
+    } catch (_) {
+      // non-fatal
+    }
+  }, [hasInitialized, preferences.autoLocation, selectedLocation, favorites]);
 
   // If geolocation becomes blocked/denied after startup, ensure we do not keep
   // showing an auto-selected "current location" that was chosen earlier.
