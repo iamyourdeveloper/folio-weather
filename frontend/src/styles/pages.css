@@ -179,6 +179,13 @@
   margin-bottom: 2rem;
 }
 
+/* Actions area on section headers (e.g., Home current weather) */
+.section__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .section__title {
   font-size: 2rem;
   font-weight: 700;

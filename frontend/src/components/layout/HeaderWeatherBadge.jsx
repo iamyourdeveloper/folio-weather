@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Link, useLocation as useRouterLocation } from "react-router-dom";
 import { Thermometer, MapPin } from "lucide-react";
 import { useWeatherContext } from "@context/WeatherContext";
@@ -21,6 +21,7 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
     autoSelectedLocation,
     preferences,
     formatTemperature,
+    selectLocation,
   } = useWeatherContext();
 
   const routerLocation = useRouterLocation();
@@ -33,8 +34,8 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
       !selectedLocation &&
       !autoSelectedLocation &&
       preferences.autoLocation);
-  const shouldFetchByCity =
-    effectiveLocation?.type === "city" || selectedLocation;
+  // Only fetch by city when the effective selection is a city
+  const shouldFetchByCity = effectiveLocation?.type === "city";
 
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
@@ -58,6 +59,32 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
   );
 
   const active = shouldFetchByCity ? cityWeather : coordsWeather;
+
+  // Promote a successful city result to the global selection to keep badge/Home in sync
+  useEffect(() => {
+    if (!shouldFetchByCity) return; // only promote city-based lookups
+    const payload = active?.data?.data;
+    const loc = payload?.location;
+    if (!active?.isSuccess || !loc?.name || !loc?.city) return;
+
+    const different =
+      !selectedLocation ||
+      selectedLocation.name !== loc.name ||
+      (selectedLocation.city || "").toLowerCase() !== (loc.city || "").toLowerCase();
+
+    if (different) {
+      try {
+        selectLocation({
+          type: "city",
+          city: loc.city,
+          name: loc.name,
+          state: loc.state,
+          country: loc.country,
+          coordinates: loc.coordinates,
+        });
+      } catch (_) {}
+    }
+  }, [shouldFetchByCity, active?.isSuccess, active?.data, selectLocation, selectedLocation]);
 
   // Compact render helpers
   const Loading = (

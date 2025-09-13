@@ -18,6 +18,7 @@ import HeaderSearchDropdown from "../ui/HeaderSearchDropdown";
 import {
   parseLocationQuery,
   isValidLocationQuery,
+  searchAllCities,
 } from "@/utils/searchUtils.js";
 
 /**
@@ -72,7 +73,12 @@ const Header = () => {
 
     // Validate the query before processing
     if (!isValidLocationQuery(fullQuery)) {
-      console.log("Invalid location query format:", fullQuery);
+      console.log("Invalid location query format:", fullQuery, "– routing to Search to show helpful error");
+      navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
+      // Reset state promptly so UI feels responsive
+      setHeaderSearchQuery("");
+      setIsSearchActive(false);
+      setIsSearching(false);
       return;
     }
 
@@ -84,9 +90,24 @@ const Header = () => {
       const { city, fullName } = parseLocationQuery(fullQuery);
       console.log("Parsed location:", { city, fullName });
 
-      // Update context
+      // Update query context first
       await searchLocation(fullName);
-      selectLocation({ city, name: fullName, type: "city" });
+
+      // Optimistically reflect selection when the query matches our city database
+      try {
+        const [first] = searchAllCities(fullQuery, 1);
+        if (first) {
+          const optimisticName = first.name || first.displayName || fullName;
+          selectLocation({
+            type: "city",
+            city: first.city || fullQuery,
+            name: optimisticName,
+            state: first.state,
+            country: first.country,
+            coordinates: first.coordinates,
+          });
+        }
+      } catch (_) {}
 
       // Navigate to search page
       navigate(`/search?city=${encodeURIComponent(fullName)}`);
@@ -143,15 +164,12 @@ const Header = () => {
     setIsSearching(true);
 
     try {
-      // Update context
+      // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      selectLocation({
-        city: location.city,
-        name: fullQuery,
-        state: location.state,
-        country: location.country,
-        type: "city",
-      });
+      try {
+        const { city, fullName } = parseLocationQuery(fullQuery);
+        selectLocation({ type: "city", city, name: fullName });
+      } catch (_) {}
 
       // Navigate to search page
       navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
@@ -204,15 +222,12 @@ const Header = () => {
     setIsSearching(true);
 
     try {
-      // Update context
+      // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      selectLocation({
-        city: location.city,
-        name: fullQuery,
-        state: location.state,
-        country: location.country,
-        type: "city",
-      });
+      try {
+        const { city, fullName } = parseLocationQuery(fullQuery);
+        selectLocation({ type: "city", city, name: fullName });
+      } catch (_) {}
 
       // Navigate to search page
       navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
@@ -621,7 +636,12 @@ const Header = () => {
                 }
 
                 if (!isValidLocationQuery(fullQuery)) {
-                  console.log("Invalid mobile search query:", fullQuery);
+                  console.log("Invalid mobile search query:", fullQuery, "– routing to Search to show helpful error");
+                  navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
+                  // Reset and close menu for a clear transition
+                  setIsMenuOpen(false);
+                  setMobileSearchQuery("");
+                  setIsSearching(false);
                   return;
                 }
 
@@ -633,9 +653,23 @@ const Header = () => {
                   const { city, fullName } = parseLocationQuery(fullQuery);
                   console.log("Parsed mobile location:", { city, fullName });
 
-                  // Update context
+                  // Update query context first
                   await searchLocation(fullName);
-                  selectLocation({ city, name: fullName, type: "city" });
+                  // Optimistically reflect selection when the query matches our city database
+                  try {
+                    const [first] = searchAllCities(fullName, 1);
+                    if (first) {
+                      const optimisticName = first.name || first.displayName || fullName;
+                      selectLocation({
+                        type: "city",
+                        city: first.city || fullName,
+                        name: optimisticName,
+                        state: first.state,
+                        country: first.country,
+                        coordinates: first.coordinates,
+                      });
+                    }
+                  } catch (_) {}
 
                   // Navigate to search page
                   navigate(`/search?city=${encodeURIComponent(fullName)}`);

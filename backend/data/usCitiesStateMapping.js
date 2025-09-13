@@ -512,6 +512,84 @@ const disambiguateByCoordinates = (cityName, possibleStates, lat, lon) => {
 };
 
 /**
+ * Infer the nearest US state using raw coordinates.
+ * Useful when a city is not present in the mapping but we still want
+ * to display "City, ST" for geolocated results.
+ * @param {number} lat
+ * @param {number} lon
+ * @returns {string|null} Two-letter state code or null
+ */
+export const getNearestUSStateByCoordinates = (lat, lon) => {
+  if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+
+  // Same centers used in disambiguation
+  const stateCenters = {
+    'AL': { lat: 32.7, lon: -86.8 },
+    'AK': { lat: 64.0, lon: -153.0 },
+    'AZ': { lat: 34.2, lon: -111.7 },
+    'AR': { lat: 34.8, lon: -92.2 },
+    'CA': { lat: 36.8, lon: -119.4 },
+    'CO': { lat: 39.0, lon: -105.5 },
+    'CT': { lat: 41.6, lon: -72.7 },
+    'DE': { lat: 39.0, lon: -75.5 },
+    'FL': { lat: 27.8, lon: -81.7 },
+    'GA': { lat: 32.9, lon: -83.6 },
+    'HI': { lat: 21.1, lon: -157.8 },
+    'ID': { lat: 44.2, lon: -114.5 },
+    'IL': { lat: 40.3, lon: -89.0 },
+    'IN': { lat: 39.8, lon: -86.3 },
+    'IA': { lat: 42.0, lon: -93.2 },
+    'KS': { lat: 38.5, lon: -96.7 },
+    'KY': { lat: 37.7, lon: -84.9 },
+    'LA': { lat: 31.0, lon: -91.8 },
+    'ME': { lat: 45.3, lon: -69.8 },
+    'MD': { lat: 39.0, lon: -76.8 },
+    'MA': { lat: 42.2, lon: -71.5 },
+    'MI': { lat: 43.3, lon: -84.5 },
+    'MN': { lat: 45.7, lon: -93.9 },
+    'MS': { lat: 32.7, lon: -89.7 },
+    'MO': { lat: 38.4, lon: -92.3 },
+    'MT': { lat: 47.0, lon: -110.0 },
+    'NE': { lat: 41.1, lon: -98.0 },
+    'NV': { lat: 38.3, lon: -117.1 },
+    'NH': { lat: 43.4, lon: -71.5 },
+    'NJ': { lat: 40.3, lon: -74.5 },
+    'NM': { lat: 34.8, lon: -106.2 },
+    'NY': { lat: 42.2, lon: -74.9 },
+    'NC': { lat: 35.6, lon: -79.8 },
+    'ND': { lat: 47.5, lon: -99.8 },
+    'OH': { lat: 40.3, lon: -82.8 },
+    'OK': { lat: 35.6, lon: -96.9 },
+    'OR': { lat: 44.6, lon: -122.0 },
+    'PA': { lat: 40.6, lon: -77.2 },
+    'RI': { lat: 41.6, lon: -71.5 },
+    'SC': { lat: 33.8, lon: -80.9 },
+    'SD': { lat: 44.2, lon: -99.8 },
+    'TN': { lat: 35.7, lon: -86.7 },
+    'TX': { lat: 31.1, lon: -97.5 },
+    'UT': { lat: 40.1, lon: -111.9 },
+    'VT': { lat: 44.0, lon: -72.7 },
+    'VA': { lat: 37.8, lon: -78.2 },
+    'WA': { lat: 47.4, lon: -121.5 },
+    'WV': { lat: 38.5, lon: -80.9 },
+    'WI': { lat: 44.3, lon: -89.6 },
+    'WY': { lat: 42.8, lon: -107.3 },
+    'DC': { lat: 38.9, lon: -77.0 },
+  };
+
+  let nearest = null;
+  let min = Infinity;
+  for (const [state, center] of Object.entries(stateCenters)) {
+    const d = Math.sqrt(Math.pow(lat - center.lat, 2) + Math.pow(lon - center.lon, 2));
+    if (d < min) {
+      min = d;
+      nearest = state;
+    }
+  }
+  return nearest;
+};
+
+/**
  * Format a US city name with state abbreviation
  * @param {string} cityName - The city name
  * @param {string} state - The state abbreviation

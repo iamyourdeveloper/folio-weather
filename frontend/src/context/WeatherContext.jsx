@@ -312,23 +312,9 @@ export const WeatherProvider = ({ children }) => {
           coordinates: favorite.coordinates,
         };
       }
-      // Priority 3: Use random default city if no location and no favorites
-      else if (!currentLocation && favorites.length === 0) {
-        // Use the full RANDOM_CITIES array for maximum variety
-        const citySource =
-          Array.isArray(RANDOM_CITIES) && RANDOM_CITIES.length > 0
-            ? RANDOM_CITIES
-            : DEFAULT_CITIES;
-        const randomCity =
-          citySource[Math.floor(Math.random() * citySource.length)];
-        autoLocation = {
-          type: "city",
-          city: randomCity.city,
-          name: randomCity.name,
-          country: randomCity.country,
-          coordinates: randomCity.coordinates,
-        };
-      }
+      // Priority 3 removed by request:
+      // Do NOT auto-pick a random city when there's no geolocation and no favorites.
+      // Instead, leave Home empty and prompt the user to search or add favorites.
 
       if (autoLocation) {
         setAutoSelectedLocation(autoLocation);
@@ -344,6 +330,57 @@ export const WeatherProvider = ({ children }) => {
     selectedLocation,
     favorites,
   ]);
+
+  // Upgrade to current coordinates when they arrive after initial load
+  // This ensures that on refresh, if geolocation responds slightly later
+  // than our initialization, we still switch to the user's location
+  // (without overriding any manual selection).
+  useEffect(() => {
+    if (!preferences.autoLocation) return; // respect user preference
+    if (selectedLocation) return; // do not override manual selections
+    if (!currentLocation) return; // nothing to promote yet
+
+    const isAlreadyCoords = autoSelectedLocation?.type === "coords";
+    const sameCoords =
+      isAlreadyCoords &&
+      autoSelectedLocation?.coordinates?.lat === currentLocation.lat &&
+      autoSelectedLocation?.coordinates?.lon === currentLocation.lon;
+
+    if (!sameCoords) {
+      setAutoSelectedLocation({
+        type: "coords",
+        coordinates: currentLocation,
+        name: "Current Location",
+      });
+    }
+  }, [
+    currentLocation,
+    preferences.autoLocation,
+    selectedLocation,
+    autoSelectedLocation,
+  ]);
+
+  // After initialization, adopt current geolocation when it becomes available
+  // without overriding a manual selection.
+  useEffect(() => {
+    if (!hasInitialized) return;
+    if (!preferences.autoLocation) return;
+    if (selectedLocation) return; // respect manual choice
+    if (!currentLocation || currentLocation.lat == null || currentLocation.lon == null) return;
+
+    setAutoSelectedLocation((prev) => {
+      const sameCoords =
+        prev?.type === "coords" &&
+        prev?.coordinates?.lat === currentLocation.lat &&
+        prev?.coordinates?.lon === currentLocation.lon;
+      if (sameCoords) return prev;
+      return {
+        type: "coords",
+        coordinates: currentLocation,
+        name: "Current Location",
+      };
+    });
+  }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation]);
 
   // Function to update preferences - memoized to prevent unnecessary re-renders
   const updatePreferences = useCallback((newPreferences) => {

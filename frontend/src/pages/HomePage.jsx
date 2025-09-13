@@ -44,6 +44,7 @@ const HomePage = () => {
     removeFavoriteByLocation,
     selectLocation,
     selectRandomDefaultCity,
+    setErrorState,
   } = useWeatherContext();
 
   // Get the effective location to use
@@ -56,8 +57,8 @@ const HomePage = () => {
       !selectedLocation &&
       !autoSelectedLocation &&
       preferences.autoLocation);
-  const shouldFetchByCity =
-    effectiveLocation?.type === "city" || selectedLocation;
+  // Only fetch by city when the effective selection is a city
+  const shouldFetchByCity = effectiveLocation?.type === "city";
 
   // Toggle state for revealing the 5-day forecast on Home
   const [showHomeForecast, setShowHomeForecast] = useState(false);
@@ -271,23 +272,104 @@ const HomePage = () => {
         >
           <div className="section__header">
             <h2 className="section__title">Current Weather</h2>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => {
-                console.log("🎲 Random City button clicked");
-                // Picking a random default city and showing it
-                setShowHomeForecast(false);
-                selectRandomDefaultCity();
-                // Scroll to the weather section after selecting random city
-                setTimeout(() => scrollToWeatherSection(), 50);
-              }}
-              title="Show a random city's weather"
-              aria-label="Show a random city's weather"
-            >
-              <Shuffle size={18} />
-              Random City
-            </button>
+            <div className="section__actions">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  console.log("🎲 Random City button clicked");
+                  // Picking a random default city and showing it
+                  setShowHomeForecast(false);
+                  selectRandomDefaultCity();
+                  // Scroll to the weather section after selecting random city
+                  setTimeout(() => scrollToWeatherSection(), 50);
+                }}
+                title="Show a random city's weather"
+                aria-label="Show a random city's weather"
+              >
+                <Shuffle size={18} />
+                Random City
+              </button>
+
+              <button
+                type="button"
+                className="btn btn--secondary"
+                disabled={locationLoading}
+                onClick={() => {
+                  console.log("📍 Use My Location button clicked");
+                  setShowHomeForecast(false);
+
+                  // If we already have a location from permissions, use it immediately
+                  if (currentLocation?.lat && currentLocation?.lon) {
+                    selectLocation({
+                      type: "coords",
+                      coordinates: currentLocation,
+                      name: "Current Location",
+                    });
+                    setTimeout(() => scrollToWeatherSection(), 50);
+                    return;
+                  }
+
+                  // Otherwise, try to request it directly (fallback)
+                  try {
+                    if (
+                      typeof navigator !== "undefined" &&
+                      navigator?.geolocation?.getCurrentPosition
+                    ) {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          const coords = {
+                            lat: pos.coords?.latitude,
+                            lon: pos.coords?.longitude,
+                            accuracy: pos.coords?.accuracy,
+                            timestamp: pos.timestamp,
+                          };
+                          selectLocation({
+                            type: "coords",
+                            coordinates: coords,
+                            name: "Current Location",
+                          });
+                          setTimeout(() => scrollToWeatherSection(), 50);
+                        },
+                        () => {
+                          setErrorState(
+                            new Error(
+                              "Unable to retrieve your location. Please allow location access in your browser or use Search."
+                            )
+                          );
+                        },
+                        {
+                          enableHighAccuracy: true,
+                          timeout: 15000,
+                          maximumAge: 10 * 60 * 1000,
+                        }
+                      );
+                    } else {
+                      setErrorState(
+                        new Error(
+                          "Geolocation is not supported in this browser. Please search for your city."
+                        )
+                      );
+                    }
+                  } catch (_) {
+                    setErrorState(
+                      new Error(
+                        "Failed to access your location. Please try again or search for your city."
+                      )
+                    );
+                  }
+                }}
+                title={
+                  locationLoading
+                    ? "Getting your location..."
+                    : "Use your current location"
+                }
+                aria-label="Use your current location"
+              >
+                <MapPin size={18} />
+                Use My Location
+              </button>
+            </div>
           </div>
 
           {/* Location Status */}
@@ -333,8 +415,13 @@ const HomePage = () => {
                   <>
                     <MapPin size={16} />
                     <span>
-                      Showing weather for{" "}
-                      {resolveFullLocationName(autoSelectedLocation)}
+                      {(() => {
+                        // Prefer the resolved name from the latest weather payload if available
+                        const payloadLoc = (shouldFetchByCity ? cityWeather : coordsWeather)?.data?.data?.location;
+                        const name = payloadLoc?.name || (payloadLoc ? resolveFullLocationName(payloadLoc) : null);
+                        const fallback = resolveFullLocationName(autoSelectedLocation);
+                        return `Showing weather for ${name || fallback}`;
+                      })()}
                     </span>
                   </>
                 ) : (

@@ -5,6 +5,7 @@ import {
   getStateForUSCity,
   formatUSCityWithState,
   isUSCity,
+  getNearestUSStateByCoordinates,
 } from "../data/usCitiesStateMapping.js";
 import {
   searchUSCities,
@@ -595,11 +596,17 @@ class WeatherService {
 
     // If this is a US city, try to add state information
     if (countryCode === "US" && data.name) {
-      const detectedState = getStateForUSCity(
+      let detectedState = getStateForUSCity(
         data.name,
         data.coord?.lat,
         data.coord?.lon
       );
+
+      // Fallback: infer state purely from coordinates if city is unknown
+      if (!detectedState && typeof data.coord?.lat === 'number' && typeof data.coord?.lon === 'number') {
+        detectedState = getNearestUSStateByCoordinates(data.coord.lat, data.coord.lon);
+      }
+
       if (detectedState) {
         state = detectedState;
         // Only update the name if the original doesn't already contain state info
@@ -714,11 +721,17 @@ class WeatherService {
 
     // If this is a US city, try to add state information
     if (countryCode === "US" && data.city?.name) {
-      const detectedState = getStateForUSCity(
+      let detectedState = getStateForUSCity(
         data.city.name,
         data.city.coord?.lat,
         data.city.coord?.lon
       );
+
+      // Fallback: infer state purely from coordinates if city is unknown
+      if (!detectedState && typeof data.city?.coord?.lat === 'number' && typeof data.city?.coord?.lon === 'number') {
+        detectedState = getNearestUSStateByCoordinates(data.city.coord.lat, data.city.coord.lon);
+      }
+
       if (detectedState) {
         state = detectedState;
         // Only update the name if the original doesn't already contain state info

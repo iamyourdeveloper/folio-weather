@@ -14,14 +14,20 @@ export const useGeolocation = (options = {}) => {
   // Default options for geolocation - memoized to prevent infinite re-renders
   const defaultOptions = useMemo(() => ({
     enableHighAccuracy: true,
-    timeout: 5000,
+    // Allow more time for GPS (especially on cold start or Safari)
+    timeout: 15000,
     maximumAge: 10 * 60 * 1000, // 10 minutes
     ...options,
   }), [options]);
 
   // Check if geolocation is supported
   useEffect(() => {
-    setIsSupported('geolocation' in navigator);
+    try {
+      const supported = typeof navigator !== 'undefined' && 'geolocation' in navigator;
+      setIsSupported(Boolean(supported));
+    } catch (_) {
+      setIsSupported(false);
+    }
   }, []);
 
   // Function to check permission status
@@ -42,6 +48,17 @@ export const useGeolocation = (options = {}) => {
     if (!isSupported) {
       setError(new Error('Geolocation is not supported by this browser.'));
       return;
+    }
+
+    // Geolocation requires a secure context (HTTPS) except on localhost
+    try {
+      const isLocalhost = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|::1)$/i.test(window.location.hostname || '');
+      if (typeof window !== 'undefined' && !window.isSecureContext && !isLocalhost) {
+        setError(new Error('Location access requires a secure connection (HTTPS). Please use https:// for this site or run locally on http://localhost.'));
+        return;
+      }
+    } catch (_) {
+      // ignore environment probing errors
     }
 
     // Check permission status first
@@ -178,17 +195,36 @@ export const useGeolocation = (options = {}) => {
  */
 export const useCurrentLocation = (options = {}, autoFetch = true) => {
   const geolocation = useGeolocation(options);
+  // Treat auto-fetch on mount as a loading state until we know
+  // whether geolocation is supported and we trigger a request.
+  // This prevents other parts of the app from acting as if
+  // location loading is finished before we even start.
+  const [bootLoading, setBootLoading] = useState(Boolean(autoFetch));
 
   useEffect(() => {
-    if (autoFetch && geolocation.isSupported) {
-      geolocation.getCurrentPosition();
+    // If not auto-fetching, clear bootstrap loading immediately
+    if (!autoFetch) {
+      setBootLoading(false);
+      return;
     }
+
+    // When support status is known, either trigger fetch or clear bootstrap
+    if (geolocation.isSupported === true) {
+      // Start the real geolocation request; the inner hook will set isLoading=true
+      geolocation.getCurrentPosition();
+      setBootLoading(false);
+    } else if (geolocation.isSupported === false) {
+      // No support available; end bootstrap loading so callers can react
+      setBootLoading(false);
+    }
+    // While isSupported is still being determined (initial render), remain in bootLoading
   }, [autoFetch, geolocation.isSupported]);
 
   return {
     location: geolocation.location,
     error: geolocation.error,
-    isLoading: geolocation.isLoading,
+    // Consider bootstrap loading to avoid premature "not loading" state
+    isLoading: geolocation.isLoading || bootLoading,
     isSupported: geolocation.isSupported,
     refetch: geolocation.getCurrentPosition,
     reset: geolocation.reset,
@@ -196,4 +232,3 @@ export const useCurrentLocation = (options = {}, autoFetch = true) => {
 };
 
 export default useGeolocation;
-

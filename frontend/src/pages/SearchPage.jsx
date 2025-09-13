@@ -491,6 +491,11 @@ const SearchPage = () => {
       (currentWeather.isError && currentWeather?.error?.type === "NOT_FOUND") ||
       (forecast.isError && forecast?.error?.type === "NOT_FOUND");
 
+    // Scroll to top on any error (network/server/etc.), not just 404s
+    if ((currentWeather.isError || forecast.isError) && !notFoundError) {
+      scrollToTop();
+    }
+
     if (notFoundError) {
       const attemptedLabel =
         selectedLocation?.name || searchQuery || searchedCity || "";
@@ -868,7 +873,9 @@ const SearchPage = () => {
                   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                 }}
                 onClick={() => {
-                  // Navigate to a fresh Search page state and scroll to top
+                  // Scroll to the top immediately for instant feedback,
+                  // then navigate to a fresh Search state.
+                  try { scrollToTop(); } catch (_) {}
                   navigate('/search?new=1');
                 }}
               >

@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
  * FavoritesPage component for managing favorite locations
  */
 const FavoritesPage = () => {
-  const { favorites, removeFavorite, reorderFavorites } = useWeatherContext();
+  const { favorites, removeFavorite, reorderFavorites, selectLocation } = useWeatherContext();
   const navigate = useNavigate();
 
   // DnD state
@@ -134,6 +134,22 @@ const FavoritesPage = () => {
                     <Link 
                       to={`/search?city=${encodeURIComponent(favorite.city || favorite.name)}`}
                       className="btn btn--secondary btn--small"
+                      onClick={(e) => {
+                        // Promote this favorite to the active selection so the
+                        // header badge and Home reflect it immediately.
+                        try {
+                          const name = resolveFullLocationName(favorite);
+                          selectLocation({
+                            type: 'city',
+                            city: favorite.city || favorite.name,
+                            name,
+                            state: favorite.state,
+                            country: favorite.country,
+                            countryCode: favorite.countryCode,
+                            coordinates: favorite.coordinates,
+                          });
+                        } catch (_) {}
+                      }}
                     >
                       View Details
                     </Link>
