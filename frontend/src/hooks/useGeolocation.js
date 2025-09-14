@@ -52,9 +52,9 @@ export const useGeolocation = (options = {}) => {
   }, []);
 
   // Proactively react to permission state so we don't surface
-  // stale last-known coordinates when access is blocked.
-  // This avoids showing a "current location" badge/card when
-  // location services are disabled/denied.
+  // stale last-known coordinates when access is blocked, and
+  // so we clear errors (and optionally refetch) once access
+  // is granted without requiring a button click.
   useEffect(() => {
     let permissionRef = null;
     const syncFromPermission = (state) => {
@@ -64,6 +64,11 @@ export const useGeolocation = (options = {}) => {
           window.localStorage?.removeItem(LAST_KNOWN_COORDS_KEY);
         } catch (_) {}
         setLocation(null);
+        return;
+      }
+      if (state === 'granted') {
+        // Clear any previous permission error instantly so UI banners hide
+        setError(null);
       }
     };
 
@@ -74,7 +79,12 @@ export const useGeolocation = (options = {}) => {
         permissionRef = perm;
         syncFromPermission(perm.state);
         // Keep in sync if user changes the permission while app is open
-        perm.onchange = () => syncFromPermission(perm.state);
+        perm.onchange = () => {
+          syncFromPermission(perm.state);
+          if (perm.state === 'granted') {
+            try { getCurrentPosition(); } catch (_) {}
+          }
+        };
       } catch (_) {
         // Permission API not supported — nothing to proactively clean up
       }

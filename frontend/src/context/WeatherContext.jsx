@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation as useRouterLocation } from "react-router-dom";
 import { queryClient } from "@context/QueryProvider";
 import { useCurrentLocation } from "@hooks/useGeolocation";
@@ -173,6 +173,8 @@ export const WeatherProvider = ({ children }) => {
     location: currentLocation,
     error: locationError,
     isLoading: locationLoading,
+    refetch: requestCurrentLocation,
+    reset: resetLocation,
   } = useCurrentLocation();
 
   // Favorite locations: hydrate from localStorage on first render
@@ -217,6 +219,11 @@ export const WeatherProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  // Track previous auto-detect preference to detect toggles within a session
+  const prevAutoLocationRef = useRef(preferences.autoLocation);
+  // When user enables auto-detect, we may need to wait for a fresh
+  // geolocation response before promoting it to the active selection.
+  const pendingAutoEnableRef = useRef(false);
 
   // Save preferences to localStorage when they change
   useEffect(() => {
@@ -418,11 +425,47 @@ export const WeatherProvider = ({ children }) => {
     });
   }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation, locationError]);
 
-  // When auto-detect is turned OFF during a session, immediately switch to a
-  // non-geo fallback so Home and the header badge keep showing something.
+  // When auto-detect is toggled during a session, react immediately:
+  // - ON: request geolocation and promote coords to the active selection
+  // - OFF: switch to a non-geo fallback so Home and the header badge show something
   useEffect(() => {
     if (!hasInitialized) return; // avoid duplicate work with init flow
-    if (preferences.autoLocation) return; // only run when toggled OFF
+
+    // Detect toggles compared to previous preference within this session.
+    // This prevents double-actions on initial mount when preferences are the same.
+    const wasAuto = prevAutoLocationRef.current;
+    const isAuto = preferences.autoLocation;
+    const toggledOn = !wasAuto && isAuto;
+    const toggledOff = wasAuto && !isAuto;
+    // Keep ref in sync for next run
+    prevAutoLocationRef.current = isAuto;
+
+    // Handle ON -> request current coordinates and show them immediately when available
+    if (toggledOn) {
+      // Kick off a fresh geolocation request so badge/Home show loading then coords
+      try { requestCurrentLocation?.(); } catch (_) {}
+
+      // If we already have valid coords (hydrated or previously fetched), promote now
+      if (
+        currentLocation &&
+        currentLocation.lat != null &&
+        currentLocation.lon != null &&
+        !locationError
+      ) {
+        setSelectedLocation({
+          type: "coords",
+          coordinates: currentLocation,
+          name: "Current Location",
+        });
+      } else {
+        // Otherwise wait for geolocation to resolve, then promote once.
+        pendingAutoEnableRef.current = true;
+      }
+      return;
+    }
+
+    if (!toggledOff) return;
+
     if (selectedLocation) return; // respect explicit user selection
 
     // Prefer favorites, otherwise pick a random default city
@@ -462,6 +505,22 @@ export const WeatherProvider = ({ children }) => {
       // non-fatal
     }
   }, [hasInitialized, preferences.autoLocation, selectedLocation, favorites]);
+
+  // If we enabled auto-detect and were waiting for geolocation to resolve,
+  // promote the coordinates to the active selection once they arrive.
+  useEffect(() => {
+    if (!pendingAutoEnableRef.current) return;
+    if (!preferences.autoLocation) { pendingAutoEnableRef.current = false; return; }
+    if (locationError) { pendingAutoEnableRef.current = false; return; }
+    if (!currentLocation || currentLocation.lat == null || currentLocation.lon == null) return;
+
+    setSelectedLocation({
+      type: "coords",
+      coordinates: currentLocation,
+      name: "Current Location",
+    });
+    pendingAutoEnableRef.current = false;
+  }, [currentLocation, preferences.autoLocation, locationError]);
 
   // If geolocation becomes blocked/denied after startup, ensure we do not keep
   // showing an auto-selected "current location" that was chosen earlier.
@@ -762,6 +821,8 @@ export const WeatherProvider = ({ children }) => {
     currentLocation,
     locationError,
     locationLoading,
+    requestCurrentLocation,
+    resetLocation,
 
     // Search state
     searchQuery,
@@ -802,6 +863,8 @@ export const WeatherProvider = ({ children }) => {
     currentLocation,
     locationError,
     locationLoading,
+    requestCurrentLocation,
+    resetLocation,
     searchQuery,
     selectedLocation,
     autoSelectedLocation,
