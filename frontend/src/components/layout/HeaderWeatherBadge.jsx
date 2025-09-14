@@ -39,17 +39,17 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
     currentLocation.lat != null &&
     currentLocation.lon != null
   );
-  const preferCoords = preferences.autoLocation && !locationError && !locationLoading && hasCoords;
+  const preferCoords = preferences.autoLocation && !locationError && hasCoords;
   const shouldFetchByCoords = preferCoords || effectiveLocation?.type === "coords";
   // Only fetch by city if we're not preferring coords and an explicit city is selected
   const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
 
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
       : null,
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name, // Pass original name when available

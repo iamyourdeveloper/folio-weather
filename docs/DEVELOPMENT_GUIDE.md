@@ -14,7 +14,8 @@ This guide will help you set up and run the FolioWeather for development.
 
    ```bash
    git clone <your-repo-url>
-   cd weather-api
+   cd <repo-folder>
+   # e.g., cd "Folio Weather (Weather API App)"
    ```
 
 2. **Install Dependencies**

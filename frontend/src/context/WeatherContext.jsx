@@ -224,6 +224,9 @@ export const WeatherProvider = ({ children }) => {
   // When user enables auto-detect, we may need to wait for a fresh
   // geolocation response before promoting it to the active selection.
   const pendingAutoEnableRef = useRef(false);
+  // Track whether we previously had valid coordinates to detect a first-time
+  // permission grant while the user is browsing anywhere in the app.
+  const hadCoordsRef = useRef(false);
 
   // Save preferences to localStorage when they change
   useEffect(() => {
@@ -521,6 +524,36 @@ export const WeatherProvider = ({ children }) => {
     });
     pendingAutoEnableRef.current = false;
   }, [currentLocation, preferences.autoLocation, locationError]);
+
+  // Globally promote current coordinates the first time they become available
+  // during a session (e.g., the user enables location services or grants
+  // browser permission while on any page). This ensures the header badge and
+  // any views that follow the active selection adopt the current location
+  // without requiring a visit to Home.
+  useEffect(() => {
+    if (!hasInitialized) return;
+    if (!preferences.autoLocation) return;
+
+    const hasCoords = Boolean(
+      currentLocation &&
+      currentLocation.lat != null &&
+      currentLocation.lon != null
+    );
+
+    // Detect a transition from no coords -> coords available
+    if (!hadCoordsRef.current && hasCoords) {
+      try {
+        setSelectedLocation({
+          type: "coords",
+          coordinates: currentLocation,
+          name: "Current Location",
+        });
+      } catch (_) {}
+    }
+
+    // Keep the ref in sync for future transitions
+    hadCoordsRef.current = hasCoords;
+  }, [hasInitialized, preferences.autoLocation, currentLocation]);
 
   // If geolocation becomes blocked/denied after startup, ensure we do not keep
   // showing an auto-selected "current location" that was chosen earlier.

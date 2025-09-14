@@ -1,12 +1,54 @@
-# React + Vite
+# FolioWeather Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React 19 frontend for FolioWeather. It provides a responsive, modern UI for searching weather, viewing forecasts, managing favorites, and adjusting settings. It communicates with the backend via `/api/*` routes (proxied to port 8000 in development).
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1) Install dependencies
 
-## Expanding the ESLint configuration
+```bash
+cd frontend
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2) Start the dev server
+
+```bash
+npm run dev
+```
+
+By default, the app runs at `http://localhost:3000` and proxies API calls to `http://localhost:8000/api` (see `VITE_API_BASE_URL`).
+
+## Environment
+
+Copy the example and adjust as needed:
+
+```bash
+cp .env.example .env
+```
+
+Key variables:
+
+- `VITE_APP_NAME`: App title shown in the UI
+- `VITE_API_BASE_URL`: Backend API base (default `http://localhost:8000/api`)
+- `VITE_DEBUG`: Enable verbose console logs when `true`
+- `VITE_ENABLE_GEOLOCATION`: Toggle geolocation features
+
+## Notable Features
+
+- Real-time header search with autocomplete and US city prioritization
+- Advanced Search page with curated regions, sort modes, and progressive loading
+- Home favorites slider + quick actions (Random City, Use My Location)
+- Favorites management with drag-and-drop reordering and duplicate prevention
+- Settings with staged save, live theme preview, and unit selection
+- Global top-bar progress tied to React Query activity
+- Error Boundary, connection status indicator, and graceful error handling
+
+## Development Notes
+
+- UI components live under `src/components/` (layout, ui, weather, common)
+- State: `src/context/` and hooks in `src/hooks/`
+- API and search logic: `src/services/` and `src/utils/`
+- Styles: `src/styles/` split by app, components, pages, and search
+
+For full-stack setup, docs, and backend details, see the project root `README.md` and `docs/`.

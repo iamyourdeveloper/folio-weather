@@ -51,6 +51,8 @@ export const useGeolocation = (options = {}) => {
     }
   }, []);
 
+  // (moved focus/visibility refresh effect below getCurrentPosition definition)
+
   // Proactively react to permission state so we don't surface
   // stale last-known coordinates when access is blocked, and
   // so we clear errors (and optionally refetch) once access
@@ -108,7 +110,7 @@ export const useGeolocation = (options = {}) => {
     }
   }, []);
 
-  // Function to get current position
+  // Function to get current position (fast-then-accurate strategy)
   const getCurrentPosition = useCallback(async () => {
     if (!isSupported) {
       setError(new Error('Geolocation is not supported by this browser.'));
@@ -137,53 +139,111 @@ export const useGeolocation = (options = {}) => {
     setIsLoading(true);
     setError(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        const next = {
-          lat: latitude,
-          lon: longitude,
-          accuracy,
-          timestamp: position.timestamp,
-        };
-        setLocation(next);
-        // Persist for next startup
-        try {
-          window.localStorage?.setItem(
-            LAST_KNOWN_COORDS_KEY,
-            JSON.stringify(next)
-          );
-        } catch (_) {
-          // non-fatal
-        }
-        setIsLoading(false);
-        setError(null);
-      },
-      (error) => {
-        setIsLoading(false);
-        
-        let errorMessage = 'Unable to retrieve your location.';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access has been blocked. To enable location access:\n\n1. Click the location icon (🔒 or 🌐) in your browser\'s address bar\n2. Select "Allow" for location permissions\n3. Refresh the page\n\nAlternatively, you can search for any city manually.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable. Please try searching for your city manually.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out. Please try again or search for your city manually.';
-            break;
-          default:
-            errorMessage = 'Unable to get your location. Please search for your city manually.';
-            break;
-        }
-        
-        setError(new Error(errorMessage));
-      },
-      defaultOptions
-    );
+    // Quick first try: allow cached, coarse results to populate UI fast
+    let quickFinished = false;
+    try {
+      const quickOpts = {
+        enableHighAccuracy: false,
+        timeout: Math.min(3000, Number(defaultOptions.timeout) || 3000),
+        maximumAge: 5 * 60 * 1000, // up to 5 minutes old is ok for a fast boot
+      };
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          quickFinished = true;
+          const { latitude, longitude, accuracy } = position.coords;
+          const next = {
+            lat: latitude,
+            lon: longitude,
+            accuracy,
+            timestamp: position.timestamp,
+          };
+          setLocation(next);
+          try {
+            window.localStorage?.setItem(
+              LAST_KNOWN_COORDS_KEY,
+              JSON.stringify(next)
+            );
+          } catch (_) {}
+          // Don't block UI waiting for high-accuracy fix
+          setIsLoading(false);
+          setError(null);
+        },
+        () => {
+          // Ignore quick failure; fall through to accurate attempt
+        },
+        quickOpts
+      );
+    } catch (_) {
+      // Continue with accurate request
+    }
+
+    // Accurate follow-up: refine coordinates when available
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          const next = {
+            lat: latitude,
+            lon: longitude,
+            accuracy,
+            timestamp: position.timestamp,
+          };
+          setLocation(next);
+          try {
+            window.localStorage?.setItem(
+              LAST_KNOWN_COORDS_KEY,
+              JSON.stringify(next)
+            );
+          } catch (_) {}
+          // If quick didn't finish, end loading now
+          if (!quickFinished) setIsLoading(false);
+          setError(null);
+        },
+        (error) => {
+          if (!quickFinished) setIsLoading(false);
+          let errorMessage = 'Unable to retrieve your location.';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access has been blocked. To enable location access:\n\n1. Click the location icon (🔒 or 🌐) in your browser\'s address bar\n2. Select "Allow" for location permissions\n3. Refresh the page\n\nAlternatively, you can search for any city manually.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information is unavailable. Please try searching for your city manually.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out. Please try again or search for your city manually.';
+              break;
+            default:
+              errorMessage = 'Unable to get your location. Please search for your city manually.';
+              break;
+          }
+          setError(new Error(errorMessage));
+        },
+        defaultOptions
+      );
+    } catch (_) {
+      if (!quickFinished) setIsLoading(false);
+    }
   }, [isSupported, defaultOptions, checkPermissionStatus]);
+
+  // Fallback: When returning to the tab/app (visibility/focus), attempt to
+  // refresh location. This helps on browsers without Permissions API support
+  // (e.g., Safari) after users enable location services at the OS level.
+  useEffect(() => {
+    if (!isSupported) return;
+    const onVisible = () => {
+      try { getCurrentPosition(); } catch (_) {}
+    };
+    try {
+      document.addEventListener('visibilitychange', onVisible, { passive: true });
+      window.addEventListener('focus', onVisible, { passive: true });
+    } catch (_) {}
+    return () => {
+      try {
+        document.removeEventListener('visibilitychange', onVisible);
+        window.removeEventListener('focus', onVisible);
+      } catch (_) {}
+    };
+  }, [isSupported, getCurrentPosition]);
 
   // Function to watch position changes
   const watchPosition = useCallback(() => {
@@ -313,6 +373,8 @@ export const useCurrentLocation = (options = {}, autoFetch = true) => {
     isSupported: geolocation.isSupported,
     refetch: geolocation.getCurrentPosition,
     reset: geolocation.reset,
+    watchPosition: geolocation.watchPosition,
+    clearWatch: geolocation.clearWatch,
   };
 };
 

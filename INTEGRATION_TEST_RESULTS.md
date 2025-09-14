@@ -5,6 +5,8 @@
 **Status:** ✅ ALL TESTS PASSED (Fixed CORS and Port Issues)  
 **Last Updated:** August 28, 2025 - Fixed network connectivity issues
 
+> Note: Current development defaults use frontend `http://localhost:3000` and backend `http://localhost:8000`. Earlier logs in this file reference port 3001 during initial configuration; those have since been unified to 3000.
+
 ## Server Status
 - **Backend Server:** ✅ Running on port 8000
 - **Frontend Server:** ✅ Running on port 3001

@@ -45,22 +45,23 @@ const HomePage = () => {
     selectLocation,
     selectRandomDefaultCity,
     setErrorState,
+    requestCurrentLocation,
   } = useWeatherContext();
 
   // Get the effective location to use
   const effectiveLocation = getEffectiveLocation();
 
   // Determine which weather data to fetch based on effective location
-  const shouldFetchByCoords =
-    effectiveLocation?.type === "coords" ||
-    (currentLocation &&
-      !selectedLocation &&
-      !autoSelectedLocation &&
-      preferences.autoLocation &&
-      !locationError &&
-      !locationLoading);
-  // Only fetch by city when the effective selection is a city
-  const shouldFetchByCity = effectiveLocation?.type === "city";
+  const hasCoords = !!(
+    currentLocation &&
+    currentLocation.lat != null &&
+    currentLocation.lon != null
+  );
+  const preferCoords =
+    preferences.autoLocation && !locationError && hasCoords;
+  const shouldFetchByCoords = preferCoords || effectiveLocation?.type === "coords";
+  // Only fetch by city when we're not preferring coords and a city is selected
+  const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
 
   // Toggle state for revealing the 5-day forecast on Home
   const [showHomeForecast, setShowHomeForecast] = useState(false);
@@ -98,6 +99,29 @@ const HomePage = () => {
       window.removeEventListener("resize", onResize);
     };
   }, [favorites.length]);
+
+  // Listen for permission changes so the error banner hides immediately
+  // after the user enables location in the browser without needing to click.
+  useEffect(() => {
+    let permRef = null;
+    (async () => {
+      try {
+        if (typeof navigator === "undefined" || !navigator.permissions) return;
+        const perm = await navigator.permissions.query({ name: "geolocation" });
+        permRef = perm;
+        perm.onchange = () => {
+          if (perm.state === "granted") {
+            try { requestCurrentLocation?.(); } catch (_) {}
+          }
+        };
+      } catch (_) {
+        // Permission API not supported; rely on button flow
+      }
+    })();
+    return () => {
+      if (permRef) try { permRef.onchange = null; } catch (_) {}
+    };
+  }, [requestCurrentLocation]);
 
   const scrollFavorites = (dir = 1) => {
     const el = sliderRef.current;
@@ -171,10 +195,10 @@ const HomePage = () => {
   // Fetch weather data based on location
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
       : null,
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name // Pass original name when available
@@ -191,10 +215,10 @@ const HomePage = () => {
   // Fetch forecast data (enabled only when toggled open)
   const coordsForecast = useForecastByCoords(
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lat
+      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
       : null,
     shouldFetchByCoords
-      ? (effectiveLocation?.coordinates || currentLocation)?.lon
+      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name, // Pass original name when available
@@ -202,9 +226,10 @@ const HomePage = () => {
       enabled:
         showHomeForecast &&
         !!(
-          shouldFetchByCoords &&
-          (effectiveLocation?.coordinates || currentLocation)?.lat &&
-          (effectiveLocation?.coordinates || currentLocation)?.lon
+          shouldFetchByCoords && (
+            (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat) &&
+            (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
+          )
         ),
     }
   );
@@ -301,6 +326,12 @@ const HomePage = () => {
                   console.log("📍 Use My Location button clicked");
                   setShowHomeForecast(false);
 
+                  // Proactively request geolocation again to clear any stale error
+                  // and update currentLocation when the user just enabled it.
+                  try {
+                    requestCurrentLocation?.();
+                  } catch (_) {}
+
                   // If we already have a location from permissions, use it immediately
                   if (currentLocation?.lat && currentLocation?.lon) {
                     selectLocation({
@@ -383,7 +414,7 @@ const HomePage = () => {
               </div>
             )}
 
-            {locationError && (
+            {locationError && !preferCoords && (
               <div className="location-status__item location-status__item--error">
                 <AlertCircle size={16} />
                 <span>
@@ -394,14 +425,14 @@ const HomePage = () => {
               </div>
             )}
 
-            {currentLocation && !selectedLocation && !locationError && (
+            {preferCoords && (
               <div className="location-status__item location-status__item--success">
                 <MapPin size={16} />
                 <span>Using your current location</span>
               </div>
             )}
 
-            {selectedLocation && (
+            {!preferCoords && selectedLocation && (
               <div className="location-status__item location-status__item--info">
                 <Search size={16} />
                 <span>
@@ -411,7 +442,7 @@ const HomePage = () => {
               </div>
             )}
 
-            {!selectedLocation && autoSelectedLocation && (
+            {!preferCoords && !selectedLocation && autoSelectedLocation && (
               <div className="location-status__item location-status__item--info">
                 {autoSelectedLocation.type === "coords" ? (
                   <>
