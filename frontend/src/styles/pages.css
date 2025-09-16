@@ -839,6 +839,14 @@
   line-height: 1.6;
 }
 
+.favorites-clear-all {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
 /* ===== SETTINGS PAGE ===== */
 .settings-page {
   min-height: calc(100vh - 140px);

@@ -698,21 +698,75 @@ export const WeatherProvider = ({ children }) => {
 
   // Function to check if location is favorited
   const isFavorite = (location) => {
-    // Get the city name from either city or name property
-    const cityName = location?.city || location?.name;
+    if (!location) {
+      return false;
+    }
 
-    if (!location || !cityName) {
+    // Get the city name from either city or name property
+    const locationCity = location?.city || location?.name;
+    const locationName = location?.name;
+    const locationCountry = location?.country;
+    const locationState = location?.state;
+    const locationCoords = location?.coordinates;
+
+    if (!locationCity) {
       return false;
     }
 
     return favorites.some((fav) => {
       const favCity = fav.city || fav.name;
-      return (
-        favCity?.toLowerCase() === cityName?.toLowerCase() &&
-        fav.country === location.country
-      );
+      const favName = fav.name;
+      const favCountry = fav.country;
+      const favState = fav.state;
+      const favCoords = fav.coordinates;
+
+      // First check: exact name match (most precise)
+      if (locationName && favName && locationName === favName) {
+        return true;
+      }
+
+      // Second check: city + country + state match (for US locations)
+      if (locationState && favState && locationCountry === "US" && favCountry === "US") {
+        return (
+          favCity?.toLowerCase() === locationCity?.toLowerCase() &&
+          locationState === favState
+        );
+      }
+
+      // Third check: city + country match (for non-US or when state is not available)
+      if (locationCountry && favCountry) {
+        const cityMatch = favCity?.toLowerCase() === locationCity?.toLowerCase();
+        const countryMatch = locationCountry === favCountry;
+        
+        // For coordinate-based locations, also check proximity if available
+        if (cityMatch && countryMatch && locationCoords && favCoords) {
+          const latDiff = Math.abs(locationCoords.lat - favCoords.lat);
+          const lonDiff = Math.abs(locationCoords.lon - favCoords.lon);
+          // Consider locations within ~0.1 degrees (roughly 11km) as the same
+          const isNearby = latDiff < 0.1 && lonDiff < 0.1;
+          return isNearby;
+        }
+        
+        return cityMatch && countryMatch;
+      }
+
+      // Fallback: basic city name match
+      return favCity?.toLowerCase() === locationCity?.toLowerCase();
     });
   };
+
+  // Function to clear all favorites - memoized to prevent unnecessary re-renders
+  const clearAllFavorites = useCallback(() => {
+    if (window.confirm('Are you sure you want to remove all favorite locations? This action cannot be undone.')) {
+      setFavorites([]);
+      // Clear the rotation index as well
+      try {
+        localStorage.removeItem("weatherAppFavoriteRotationIndex");
+      } catch (_) {
+        // non-fatal
+      }
+    }
+  }, []);
 
   // Function to search for a location - memoized to prevent unnecessary re-renders
   const searchLocation = useCallback((query) => {
@@ -870,6 +924,7 @@ export const WeatherProvider = ({ children }) => {
     favorites,
     addFavorite,
     removeFavorite,
+    clearAllFavorites,
     reorderFavorites,
     removeFavoriteByLocation,
     findFavorite,
@@ -908,6 +963,7 @@ export const WeatherProvider = ({ children }) => {
     favorites,
     addFavorite,
     removeFavorite,
+    clearAllFavorites,
     reorderFavorites,
     removeFavoriteByLocation,
     findFavorite,

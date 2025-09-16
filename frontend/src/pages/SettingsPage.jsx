@@ -252,7 +252,7 @@ const SettingsPage = () => {
                 <span className="checkbox"></span>
                 <span className="checkbox-label">
                   <strong>Auto-detect location</strong>
-                  <small>Use GPS to automatically get weather for your current location</small>
+                    <small>Use GPS to automatically get weather for your current location. <span style={{ marginTop: '10px', display: 'inline-block' }}>* Having this option selected, along with enabling your PC & Browser's location settings will keep your current weather location displayed upon the Home page & Weather badge (top right of app's header) after refreshing the app. *</span></small>
                 </span>
               </label>
             </div>

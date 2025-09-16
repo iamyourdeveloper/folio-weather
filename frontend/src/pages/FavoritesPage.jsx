@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
  * FavoritesPage component for managing favorite locations
  */
 const FavoritesPage = () => {
-  const { favorites, removeFavorite, reorderFavorites, selectLocation } = useWeatherContext();
+  const { favorites, removeFavorite, clearAllFavorites, reorderFavorites, selectLocation } = useWeatherContext();
   const navigate = useNavigate();
 
   // DnD state
@@ -93,70 +93,80 @@ const FavoritesPage = () => {
         {/* Favorites Grid */}
         <div className="favorites-content">
           {favorites.length > 0 ? (
-            <div className="favorites-grid" role="list">
-              {favorites.map((favorite) => (
-                <div
-                  key={favorite.id}
-                  className={
-                    `favorite-item` +
-                    (draggingId === favorite.id ? ' favorite-item--dragging' : '') +
-                    (dragOverId === favorite.id ? ' favorite-item--dragover' : '')
-                  }
-                  role="listitem"
-                  draggable
-                  onDragStart={(e) => onDragStart(e, favorite.id)}
-                  onDragOver={(e) => onDragOver(e, favorite.id)}
-                  onDragLeave={onDragLeave}
-                  onDrop={(e) => onDrop(e, favorite.id)}
-                  onDragEnd={onDragEnd}
-                  aria-grabbed={draggingId === favorite.id}
-                >
-                  <div className="favorite-item__header">
-                    <div className="favorite-item__draghandle" title="Drag to reorder" aria-label="Drag to reorder">
-                      <GripVertical size={16} />
+            <>
+              <div className="favorites-grid" role="list">
+                {favorites.map((favorite) => (
+                  <div
+                    key={favorite.id}
+                    className={
+                      `favorite-item` +
+                      (draggingId === favorite.id ? ' favorite-item--dragging' : '') +
+                      (dragOverId === favorite.id ? ' favorite-item--dragover' : '')
+                    }
+                    role="listitem"
+                    draggable
+                    onDragStart={(e) => onDragStart(e, favorite.id)}
+                    onDragOver={(e) => onDragOver(e, favorite.id)}
+                    onDragLeave={onDragLeave}
+                    onDrop={(e) => onDrop(e, favorite.id)}
+                    onDragEnd={onDragEnd}
+                    aria-grabbed={draggingId === favorite.id}
+                  >
+                    <div className="favorite-item__header">
+                      <div className="favorite-item__draghandle" title="Drag to reorder" aria-label="Drag to reorder">
+                        <GripVertical size={16} />
+                      </div>
+                      <div className="favorite-item__location">
+                        <MapPin size={16} />
+                        <span className="favorite-item__name">{resolveFullLocationName(favorite)}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFavorite(favorite.id)}
+                        className="favorite-item__remove"
+                        aria-label="Remove from favorites"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                    <div className="favorite-item__location">
-                      <MapPin size={16} />
-                      <span className="favorite-item__name">{resolveFullLocationName(favorite)}</span>
+                    
+                    <ForecastCard location={favorite} />
+                    
+                    <div className="favorite-item__actions">
+                      <Link 
+                        to={`/search?city=${encodeURIComponent(favorite.city || favorite.name)}`}
+                        className="btn btn--secondary btn--small"
+                        onClick={(e) => {
+                          // Promote this favorite to the active selection so the
+                          // header badge and Home reflect it immediately.
+                          try {
+                            const name = resolveFullLocationName(favorite);
+                            selectLocation({
+                              type: 'city',
+                              city: favorite.city || favorite.name,
+                              name,
+                              state: favorite.state,
+                              country: favorite.country,
+                              countryCode: favorite.countryCode,
+                              coordinates: favorite.coordinates,
+                            });
+                          } catch (_) {}
+                        }}
+                      >
+                        View Details
+                      </Link>
                     </div>
-                    <button
-                      onClick={() => handleRemoveFavorite(favorite.id)}
-                      className="favorite-item__remove"
-                      aria-label="Remove from favorites"
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
-                  
-                  <ForecastCard location={favorite} />
-                  
-                  <div className="favorite-item__actions">
-                    <Link 
-                      to={`/search?city=${encodeURIComponent(favorite.city || favorite.name)}`}
-                      className="btn btn--secondary btn--small"
-                      onClick={(e) => {
-                        // Promote this favorite to the active selection so the
-                        // header badge and Home reflect it immediately.
-                        try {
-                          const name = resolveFullLocationName(favorite);
-                          selectLocation({
-                            type: 'city',
-                            city: favorite.city || favorite.name,
-                            name,
-                            state: favorite.state,
-                            country: favorite.country,
-                            countryCode: favorite.countryCode,
-                            coordinates: favorite.coordinates,
-                          });
-                        } catch (_) {}
-                      }}
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              
+              {/* Clear All Favorites Button - centered beneath favorites */}
+              <div className="favorites-clear-all">
+                <button onClick={clearAllFavorites} className="btn btn--secondary">
+                  <Trash2 size={16} />
+                  Clear All Favorites
+                </button>
+              </div>
+            </>
           ) : (
             <div className="favorites-empty">
               <Heart size={64} />

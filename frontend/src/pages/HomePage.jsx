@@ -59,7 +59,13 @@ const HomePage = () => {
   );
   const preferCoords =
     preferences.autoLocation && !locationError && hasCoords;
-  const shouldFetchByCoords = preferCoords || effectiveLocation?.type === "coords";
+  
+  // When user explicitly selects a location (selectedLocation exists), respect their choice
+  // Otherwise, fall back to autoLocation preference
+  const userHasExplicitSelection = !!selectedLocation;
+  const shouldFetchByCoords = userHasExplicitSelection 
+    ? effectiveLocation?.type === "coords"
+    : (preferCoords || effectiveLocation?.type === "coords");
   // Only fetch by city when we're not preferring coords and a city is selected
   const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
 
