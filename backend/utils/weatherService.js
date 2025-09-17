@@ -12,6 +12,15 @@ import {
   ALL_US_CITIES_FLAT,
 } from "../data/allUSCitiesComplete.js";
 
+/**
+ * Convert GB country code to UK for display purposes
+ * @param {string} country - Country code
+ * @returns {string} Display country code (GB -> UK)
+ */
+const formatCountryForDisplay = (country) => {
+  return country === 'GB' ? 'UK' : country;
+};
+
 class WeatherService {
   constructor() {
     // Ensure environment is loaded
@@ -369,7 +378,106 @@ class WeatherService {
       return locationName;
     }
 
-    return locationName
+    // Special case for Washington D.C. - always format as "Washington, D.C."
+    if (/^washington,?\s*(dc|d\.?c\.?)$/i.test(locationName.trim())) {
+      return "Washington, D.C.";
+    }
+
+    // Normalize province/state names to abbreviations
+    const stateProvinceNormalizations = {
+      // Canadian provinces
+      'Ontario': 'ON',
+      'British Columbia': 'BC', 
+      'Alberta': 'AB',
+      'Quebec': 'QC',
+      'Québec': 'QC',
+      'Manitoba': 'MB',
+      'Saskatchewan': 'SK',
+      'Nova Scotia': 'NS',
+      'New Brunswick': 'NB',
+      'Newfoundland and Labrador': 'NL',
+      'Newfoundland': 'NL',
+      'Prince Edward Island': 'PE',
+      'Yukon': 'YT',
+      'Northwest Territories': 'NT',
+      'Nunavut': 'NU',
+      
+      // US states (common full names that might appear)
+      'Maryland': 'MD',
+      'California': 'CA',
+      'New York': 'NY',
+      'Florida': 'FL',
+      'Texas': 'TX',
+      'Pennsylvania': 'PA',
+      'Illinois': 'IL',
+      'Ohio': 'OH',
+      'Georgia': 'GA',
+      'North Carolina': 'NC',
+      'Michigan': 'MI',
+      'New Jersey': 'NJ',
+      'Virginia': 'VA',
+      'Washington': 'WA',
+      'Arizona': 'AZ',
+      'Massachusetts': 'MA',
+      'Indiana': 'IN',
+      'Tennessee': 'TN',
+      'Missouri': 'MO',
+      'Wisconsin': 'WI',
+      'Colorado': 'CO',
+      'Minnesota': 'MN',
+      'South Carolina': 'SC',
+      'Alabama': 'AL',
+      'Louisiana': 'LA',
+      'Kentucky': 'KY',
+      'Oregon': 'OR',
+      'Oklahoma': 'OK',
+      'Connecticut': 'CT',
+      'Utah': 'UT',
+      'Iowa': 'IA',
+      'Nevada': 'NV',
+      'Arkansas': 'AR',
+      'Mississippi': 'MS',
+      'Kansas': 'KS',
+      'New Mexico': 'NM',
+      'Nebraska': 'NE',
+      'West Virginia': 'WV',
+      'Idaho': 'ID',
+      'Hawaii': 'HI',
+      'New Hampshire': 'NH',
+      'Maine': 'ME',
+      'Montana': 'MT',
+      'Rhode Island': 'RI',
+      'Delaware': 'DE',
+      'South Dakota': 'SD',
+      'North Dakota': 'ND',
+      'Alaska': 'AK',
+      'Vermont': 'VT',
+      'Wyoming': 'WY'
+    };
+
+    // Apply state/province normalizations
+    let normalizedLocationName = locationName;
+    for (const [fullName, abbreviation] of Object.entries(stateProvinceNormalizations)) {
+      // Handle "City, Province/State" format
+      const cityCommaStatePattern = new RegExp(`^(.+),\\s*${fullName}$`, 'i');
+      const cityCommaStateMatch = normalizedLocationName.match(cityCommaStatePattern);
+      if (cityCommaStateMatch) {
+        const cityName = cityCommaStateMatch[1].trim();
+        normalizedLocationName = `${cityName}, ${abbreviation}`;
+        break;
+      }
+
+      // Handle "City Province/State" format (without comma)
+      const cityStatePattern = new RegExp(`^(.+?)\\s+${fullName}$`, 'i');
+      const cityStateMatch = normalizedLocationName.match(cityStatePattern);
+      if (cityStateMatch) {
+        const cityName = cityStateMatch[1].trim();
+        normalizedLocationName = `${cityName}, ${abbreviation}`;
+        break;
+      }
+    }
+
+    return normalizedLocationName
       .split(",")
       .map((part) => part.trim())
       .map((part) => {
@@ -422,6 +530,7 @@ class WeatherService {
               "CA",
               "CO",
               "CT",
+              "DC",
               "FL",
               "GA",
               "HI",
@@ -566,6 +675,52 @@ class WeatherService {
   }
 
   /**
+   * Normalize GB location display to consistently show as UK
+   * @param {string} cityName - The city name
+   * @param {string} enhancedLocationName - Current enhanced location name
+   * @param {string} originalName - Original search query
+   * @returns {string} Normalized location name showing UK
+   */
+  normalizeGBLocationDisplay(cityName, enhancedLocationName, originalName) {
+    // Always ensure GB locations show as UK, regardless of input format
+    
+    // Case 1: If the name already contains "GB", replace it with "UK"
+    if (enhancedLocationName.includes(", GB")) {
+      return enhancedLocationName.replace(", GB", ", UK");
+    }
+    
+    // Case 2: If the name contains "Great Britain", replace it with "UK"
+    if (enhancedLocationName.includes(", Great Britain")) {
+      return enhancedLocationName.replace(", Great Britain", ", UK");
+    }
+    
+    // Case 3: If the name contains "United Kingdom", replace it with "UK"
+    if (enhancedLocationName.includes(", United Kingdom")) {
+      return enhancedLocationName.replace(", United Kingdom", ", UK");
+    }
+    
+    // Case 4: If the name contains "England", replace it with "UK" (for international recognition)
+    if (enhancedLocationName.includes(", England")) {
+      return enhancedLocationName.replace(", England", ", UK");
+    }
+    
+    // Case 5: If no country is shown in the name, add "UK"
+    if (!enhancedLocationName.includes(",")) {
+      return `${cityName}, UK`;
+    }
+    
+    // Case 6: If the original name had UK variations but current name doesn't show it properly
+    if (originalName && this.isUKLocation(originalName) && !enhancedLocationName.includes(", UK")) {
+      // Extract just the city name and add UK
+      const cleanCityName = cityName || enhancedLocationName.split(',')[0].trim();
+      return `${cleanCityName}, UK`;
+    }
+    
+    // Default: ensure UK is shown
+    return enhancedLocationName.includes(", UK") ? enhancedLocationName : `${cityName}, UK`;
+  }
+
+  /**
    * Format current weather data
    * @param {Object} data - Raw API response
    * @param {string} originalName - Original location name with state/region (optional)
@@ -613,6 +768,16 @@ class WeatherService {
         if (!originalName || !originalName.includes(",")) {
           enhancedLocationName = formatUSCityWithState(cityName, detectedState);
         }
+      }
+    }
+    // For non-US cities, ensure proper country display formatting
+    else if (countryCode && countryCode !== "US") {
+      // Always ensure GB is displayed as UK, regardless of original formatting
+      if (countryCode === "GB") {
+        enhancedLocationName = this.normalizeGBLocationDisplay(cityName, enhancedLocationName, originalName);
+      } else if (!enhancedLocationName.includes(",") && !originalName) {
+        // For other non-US countries, add country if not already present
+        enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
       }
     }
 
@@ -738,6 +903,16 @@ class WeatherService {
         if (!originalName || !originalName.includes(",")) {
           enhancedLocationName = formatUSCityWithState(cityName, detectedState);
         }
+      }
+    }
+    // For non-US cities, ensure proper country display formatting
+    else if (countryCode && countryCode !== "US") {
+      // Always ensure GB is displayed as UK, regardless of original formatting
+      if (countryCode === "GB") {
+        enhancedLocationName = this.normalizeGBLocationDisplay(cityName, enhancedLocationName, originalName);
+      } else if (!enhancedLocationName.includes(",") && !originalName) {
+        // For other non-US countries, add country if not already present
+        enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
       }
     }
 
@@ -879,6 +1054,7 @@ class WeatherService {
 
   /**
    * Construct a location query string optimized for OpenWeatherMap API
+   * Enhanced to handle normalized search patterns and punctuation variations
    * @param {string} city - The base city name
    * @param {string} originalName - The full original search query
    * @returns {string} Optimized query string
@@ -888,8 +1064,8 @@ class WeatherService {
       return city;
     }
 
-    // Convert common location patterns to OpenWeatherMap format
-    const normalized = originalName.trim();
+    // Normalize the original name for better pattern matching
+    const normalized = this.normalizeLocationForAPI(originalName);
 
     // Handle patterns like "London, ON" -> "London,CA" (Canada)
     // Handle patterns like "London, Ontario" -> "London,CA"
@@ -914,9 +1090,57 @@ class WeatherService {
       return `${city},${countryCode}`;
     }
 
-    // If we can't determine a specific country, try the original name first
+    // If we can't determine a specific country, try the normalized name first
     // This handles cases like "Frederick, Maryland" or complex city names
-    return originalName;
+    return normalized;
+  }
+
+  /**
+   * Normalize location string for API queries
+   * @param {string} location - Location string
+   * @returns {string} Normalized location
+   */
+  normalizeLocationForAPI(location) {
+    if (!location || typeof location !== "string") {
+      return "";
+    }
+
+    // Basic cleanup - trim and normalize whitespace
+    let normalized = location.trim().replace(/\s+/g, ' ');
+
+    // Remove/normalize punctuation while preserving meaning
+    normalized = normalized.replace(/\.{2,}/g, '.'); // Multiple periods to single
+    normalized = normalized.replace(/,{2,}/g, ','); // Multiple commas to single
+    
+    // Normalize apostrophes and quotes to standard single quotes
+    normalized = normalized.replace(/[''""]/g, "'");
+    
+    // Clean up spacing around punctuation
+    normalized = normalized.replace(/\s*,\s*/g, ', '); // Normalize comma spacing
+    normalized = normalized.replace(/\s*\.\s*/g, '. '); // Normalize period spacing
+    
+    // Handle common abbreviations that OpenWeather might not recognize
+    const apiNormalizations = {
+      // Country variations
+      '\\bjp\\b': 'Japan',
+      '\\bjpn\\b': 'Japan',
+      '\\bfr\\b': 'France',
+      '\\bde\\b': 'Germany',
+      '\\bger\\b': 'Germany',
+    };
+
+    // Apply normalizations
+    for (const [pattern, replacement] of Object.entries(apiNormalizations)) {
+      const regex = new RegExp(pattern, 'gi');
+      normalized = normalized.replace(regex, replacement);
+    }
+
+    // Final cleanup
+    normalized = normalized.replace(/\s*,\s*$/, ''); // Remove trailing comma
+    normalized = normalized.replace(/^\s*,\s*/, ''); // Remove leading comma
+    normalized = normalized.trim();
+
+    return normalized;
   }
 
   /**

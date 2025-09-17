@@ -169,7 +169,36 @@ const SearchPage = () => {
         setLocalSearchQuery("");
         setSearchedCity(city);
         searchLocation(fullName); // Use full name for context
-        // Do not update global selectedLocation yet; wait for a successful fetch
+        
+        // Immediately update selectedLocation for instant header badge update
+        try {
+          const [first] = searchAllCities(fullName, 1);
+          if (first) {
+            const optimisticName = first.name || first.displayName || fullName;
+            selectLocation({
+              type: "city",
+              city: first.city || city,
+              name: optimisticName,
+              state: first.state,
+              country: first.country,
+              coordinates: first.coordinates,
+            });
+          } else {
+            // Fallback for locations not in our database
+            selectLocation({
+              type: "city",
+              city,
+              name: fullName,
+            });
+          }
+        } catch (_) {
+          // Fallback for any parsing errors
+          selectLocation({
+            type: "city",
+            city,
+            name: fullName,
+          });
+        }
 
         // Pre-fill attempted label so UI doesn't appear blank before error arrives
         setNoMatchQuery(rawQuery);
@@ -238,7 +267,36 @@ const SearchPage = () => {
       const { city, fullName } = parseLocationQuery(query);
       setSearchedCity(city);
       searchLocation(fullName);
-      // Do not update global selectedLocation until a successful fetch confirms it
+      
+      // Immediately update selectedLocation for instant header badge update
+      try {
+        const [first] = searchAllCities(fullName, 1);
+        if (first) {
+          const optimisticName = first.name || first.displayName || fullName;
+          selectLocation({
+            type: "city",
+            city: first.city || city,
+            name: optimisticName,
+            state: first.state,
+            country: first.country,
+            coordinates: first.coordinates,
+          });
+        } else {
+          // Fallback for locations not in our database
+          selectLocation({
+            type: "city",
+            city,
+            name: fullName,
+          });
+        }
+      } catch (_) {
+        // Fallback for any parsing errors
+        selectLocation({
+          type: "city",
+          city,
+          name: fullName,
+        });
+      }
 
       // Reset forecast toggle when searching for a new city
       setShowSearchForecast(false);
@@ -295,7 +353,8 @@ const SearchPage = () => {
 
       setSearchedCity(city);
       searchLocation(fullName); // Use full name for context
-      // Optimistically reflect selection when the query matches our city database
+      
+      // ALWAYS update selectedLocation immediately for header badge sync
       try {
         const [first] = searchAllCities(fullName, 1);
         if (first) {
@@ -308,8 +367,22 @@ const SearchPage = () => {
             country: first.country,
             coordinates: first.coordinates,
           });
+        } else {
+          // Fallback for locations not in our database - CRITICAL FIX
+          selectLocation({
+            type: "city",
+            city,
+            name: fullName,
+          });
         }
-      } catch (_) {}
+      } catch (_) {
+        // Fallback for any parsing errors - CRITICAL FIX
+        selectLocation({
+          type: "city",
+          city,
+          name: fullName,
+        });
+      }
 
       // Ensure the no-match placeholder is primed immediately so there is no blank state
       setNoMatchQuery(fullName);
@@ -604,6 +677,7 @@ const SearchPage = () => {
                     name: fullName,
                     state: location.state,
                     country: location.country,
+                    coordinates: location.coordinates,
                   });
                 } catch (_) {}
 

@@ -12,7 +12,7 @@ const FavoritesPage = () => {
   const { favorites, removeFavorite, clearAllFavorites, reorderFavorites, selectLocation } = useWeatherContext();
   const navigate = useNavigate();
 
-  // DnD state
+  // DnD (Drag and Drop) state
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 

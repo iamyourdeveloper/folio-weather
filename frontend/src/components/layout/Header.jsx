@@ -95,12 +95,12 @@ const Header = () => {
 
       // Optimistically reflect selection when the query matches our city database
       try {
-        const [first] = searchAllCities(fullQuery, 1);
+        const [first] = searchAllCities(fullName, 1);
         if (first) {
           const optimisticName = first.name || first.displayName || fullName;
           selectLocation({
             type: "city",
-            city: first.city || fullQuery,
+            city: first.city || city,
             name: optimisticName,
             state: first.state,
             country: first.country,
@@ -168,7 +168,14 @@ const Header = () => {
       await searchLocation(fullQuery);
       try {
         const { city, fullName } = parseLocationQuery(fullQuery);
-        selectLocation({ type: "city", city, name: fullName });
+        selectLocation({ 
+          type: "city", 
+          city, 
+          name: fullName,
+          state: location.state,
+          country: location.country,
+          coordinates: location.coordinates
+        });
       } catch (_) {}
 
       // Navigate to search page
@@ -226,7 +233,14 @@ const Header = () => {
       await searchLocation(fullQuery);
       try {
         const { city, fullName } = parseLocationQuery(fullQuery);
-        selectLocation({ type: "city", city, name: fullName });
+        selectLocation({ 
+          type: "city", 
+          city, 
+          name: fullName,
+          state: location.state,
+          country: location.country,
+          coordinates: location.coordinates
+        });
       } catch (_) {}
 
       // Navigate to search page

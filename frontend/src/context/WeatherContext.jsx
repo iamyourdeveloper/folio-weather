@@ -19,7 +19,7 @@ const getDefaultCities = () => {
         coordinates: { lat: 40.7128, lon: -74.006 },
       },
       {
-        name: "London, GB",
+        name: "London, UK",
         city: "London",
         country: "GB",
         coordinates: { lat: 51.5074, lon: -0.1278 },

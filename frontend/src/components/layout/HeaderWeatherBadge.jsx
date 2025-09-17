@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import { useEffect } from "react";
 import { Link, useLocation as useRouterLocation } from "react-router-dom";
 import { Thermometer, MapPin } from "lucide-react";
 import { useWeatherContext } from "@context/WeatherContext";
@@ -13,7 +13,7 @@ import { resolveFullLocationName } from "@utils/searchUtils";
  * Mirrors the active location used on Home (selected or auto).
  * Updates immediately after searches because Header sets selectedLocation.
  */
-const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
+const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
   const {
     getEffectiveLocation,
     currentLocation,
@@ -73,32 +73,6 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
 
   const active = shouldFetchByCity ? cityWeather : coordsWeather;
 
-  // Promote a successful city result to the global selection to keep badge/Home in sync
-  useEffect(() => {
-    if (!shouldFetchByCity) return; // only promote city-based lookups
-    const payload = active?.data?.data;
-    const loc = payload?.location;
-    if (!active?.isSuccess || !loc?.name || !loc?.city) return;
-
-    const different =
-      !selectedLocation ||
-      selectedLocation.name !== loc.name ||
-      (selectedLocation.city || "").toLowerCase() !== (loc.city || "").toLowerCase();
-
-    if (different) {
-      try {
-        selectLocation({
-          type: "city",
-          city: loc.city,
-          name: loc.name,
-          state: loc.state,
-          country: loc.country,
-          coordinates: loc.coordinates,
-        });
-      } catch (_) {}
-    }
-  }, [shouldFetchByCity, active?.isSuccess, active?.data, selectLocation, selectedLocation]);
-
   // Compact render helpers
   const Loading = (
     <div
@@ -110,47 +84,71 @@ const HeaderWeatherBadge = memo(({ onMouseDown, onTouchStart }) => {
     </div>
   );
 
-  if (active.isLoading) return Loading;
-  if (active.isError) return null; // stay subtle if there’s an error
+  // Always show location when we have an effectiveLocation, even if weather is loading or failed
+  if (effectiveLocation) {
+    const data = active?.data?.data;
+    
+    // If we have weather data, show temperature + location
+    if (data?.current && data?.location) {
+      const temp = formatTemperature(data.current.temperature);
+      const locName = resolveFullLocationName(data.location) || resolveFullLocationName(effectiveLocation) || "Unknown";
+      
+      const isHome = routerLocation.pathname === "/";
+      const content = (
+        <div
+          className="header-weather"
+          aria-live="polite"
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
+        >
+          <Thermometer size={14} className="header-weather__icon" />
+          <span className="header-weather__temp">{temp}</span>
+          <span className="header-weather__sep">•</span>
+          <MapPin size={12} className="header-weather__icon" />
+          <span className="header-weather__city" title={locName}>
+            {locName}
+          </span>
+        </div>
+      );
 
-  const data = active?.data?.data;
-  if (!data?.current || !data?.location) return null;
-
-  const temp = formatTemperature(data.current.temperature);
-  const locName =
-    data.location?.name ?? resolveFullLocationName(effectiveLocation) ?? "Unknown";
-
-  // We always link to Home's Current Weather section via hash.
-  // Even on Home, this updates the hash and triggers a smooth scroll.
-  const isHome = routerLocation.pathname === "/";
-  const content = (
-    <div
-      className="header-weather"
-      aria-live="polite"
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-    >
-      <Thermometer size={14} className="header-weather__icon" />
-      <span className="header-weather__temp">{temp}</span>
-      <span className="header-weather__sep">•</span>
-      <MapPin size={12} className="header-weather__icon" />
-      <span className="header-weather__city" title={locName}>
-        {locName}
-      </span>
-    </div>
-  );
-
-  return (
-    <Link
-      to="/#current-weather"
-      className="header-weather__link"
-      title={isHome ? "Jump to current weather" : "View on Home"}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-    >
-      {content}
-    </Link>
-  );
-});
+      return (
+        <Link
+          to="/#current-weather"
+          className="header-weather__link"
+          title={isHome ? "Jump to current weather" : "View on Home"}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
+        >
+          {content}
+        </Link>
+      );
+    }
+    
+    // If weather is loading or failed, show location with loading indicator
+    const loadingLocName = resolveFullLocationName(effectiveLocation) || "Loading...";
+    return (
+      <Link
+        to="/#current-weather"
+        className="header-weather__link"
+        title="Loading weather..."
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        <div className="header-weather header-weather--loading">
+          <Thermometer size={14} className="header-weather__icon" />
+          <span className="header-weather__temp">--°</span>
+          <span className="header-weather__sep">•</span>
+          <MapPin size={12} className="header-weather__icon" />
+          <span className="header-weather__city" title={loadingLocName}>
+            {loadingLocName}
+          </span>
+        </div>
+      </Link>
+    );
+  }
+  
+  // Fallback: no effective location
+  return null;
+};
 
 export default HeaderWeatherBadge;

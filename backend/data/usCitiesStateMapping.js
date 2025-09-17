@@ -597,6 +597,12 @@ export const getNearestUSStateByCoordinates = (lat, lon) => {
  */
 export const formatUSCityWithState = (cityName, state) => {
   if (!cityName || !state) return cityName || '';
+  
+  // Special case for Washington D.C.
+  if (cityName.toLowerCase() === 'washington' && state.toUpperCase() === 'DC') {
+    return 'Washington, D.C.';
+  }
+  
   return `${cityName}, ${state}`;
 };
 

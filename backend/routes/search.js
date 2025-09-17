@@ -13,6 +13,236 @@ import RANDOM_CITIES from "../data/randomCities.js";
 const router = express.Router();
 
 /**
+ * Convert GB country code to UK for display purposes
+ * @param {string} country - Country code
+ * @returns {string} Display country code (GB -> UK)
+ */
+const formatCountryForDisplay = (country) => {
+  return country === 'GB' ? 'UK' : country;
+};
+
+/**
+ * Normalize search queries to handle punctuation, casing, and formatting variations
+ * @param {string} query - The search query
+ * @returns {string} Normalized query
+ */
+const normalizeSearchQuery = (query) => {
+  if (!query || typeof query !== "string") {
+    return "";
+  }
+
+  // Basic cleanup - trim and normalize whitespace
+  let normalized = query.trim().replace(/\s+/g, ' ');
+
+  // Remove/normalize punctuation while preserving meaning
+  normalized = normalized.replace(/\.{2,}/g, '.'); // Multiple periods to single
+  normalized = normalized.replace(/,{2,}/g, ','); // Multiple commas to single
+  
+  // Normalize apostrophes and quotes to standard single quotes
+  normalized = normalized.replace(/[''""]/g, "'");
+  
+  // Clean up spacing around punctuation
+  normalized = normalized.replace(/\s*,\s*/g, ', '); // Normalize comma spacing
+  normalized = normalized.replace(/\s*\.\s*/g, '. '); // Normalize period spacing
+  
+  // Handle common country/state abbreviations
+  const commonReplacements = {
+    // Country variations (case insensitive)
+    '\\bjp\\b': 'japan',
+    '\\bjpn\\b': 'japan',
+    '\\bfr\\b': 'france',
+    '\\bde\\b': 'germany',
+    '\\bger\\b': 'germany',
+    '\\buk\\b': 'gb',
+    '\\bgb\\b': 'gb',
+    '\\bbritain\\b': 'gb',
+    '\\bengland\\b': 'gb',
+    '\\busa?\\b': 'us',
+    '\\bamerica\\b': 'us',
+    
+    // State variations
+    '\\bmd\\b': 'maryland',
+    '\\bca\\b': 'california',
+    '\\bny\\b': 'new york',
+    '\\bfl\\b': 'florida',
+    '\\btx\\b': 'texas',
+    '\\bpa\\b': 'pennsylvania',
+  };
+
+  // Apply replacements
+  for (const [pattern, replacement] of Object.entries(commonReplacements)) {
+    const regex = new RegExp(pattern, 'gi');
+    normalized = normalized.replace(regex, replacement);
+  }
+
+  // Final cleanup
+  normalized = normalized.replace(/\s*,\s*$/, ''); // Remove trailing comma
+  normalized = normalized.replace(/^\s*,\s*/, ''); // Remove leading comma
+  normalized = normalized.trim();
+
+  return normalized;
+};
+
+/**
+ * Extract city name from complex search queries
+ * Handles queries like "london great britain" -> "london"
+ * @param {string} query - Normalized search query
+ * @returns {string} Extracted city name
+ */
+const extractCityFromQuery = (query) => {
+  if (!query) return "";
+  
+  // Common country/region patterns to remove
+  const countryPatterns = [
+    /\s+(great\s+britain|united\s+kingdom|england|scotland|wales|britain|uk|gb)$/i,
+    /\s+(united\s+states|america|usa|us)$/i,
+    /\s+(canada|can|ca)$/i,
+    /\s+(france|fr)$/i,
+    /\s+(germany|deutschland|de|ger)$/i,
+    /\s+(japan|jp|jpn)$/i,
+    /\s+(australia|aus|au)$/i,
+  ];
+  
+  // State patterns to remove
+  const statePatterns = [
+    /\s+(california|ca|new\s+york|ny|florida|fl|texas|tx|maryland|md)$/i,
+    /\s+(pennsylvania|pa|illinois|il|ohio|oh|georgia|ga|michigan|mi)$/i,
+    /\s+(virginia|va|washington|wa|arizona|az|massachusetts|ma)$/i,
+    /\s+(ontario|on|british\s+columbia|bc|alberta|ab|quebec|qc)$/i,
+  ];
+  
+  let cityName = query;
+  
+  // Remove country patterns first (they tend to be longer)
+  for (const pattern of countryPatterns) {
+    cityName = cityName.replace(pattern, '');
+  }
+  
+  // Then remove state patterns
+  for (const pattern of statePatterns) {
+    cityName = cityName.replace(pattern, '');
+  }
+  
+  // Clean up any trailing commas or spaces
+  cityName = cityName.replace(/[,\s]+$/, '').trim();
+  
+  return cityName || query; // Fallback to original query if extraction results in empty string
+};
+
+/**
+ * Intelligent city search that prioritizes exact matches over partial matches
+ * and major international cities over smaller cities for common names like "London"
+ * @param {string} query - Search query
+ * @param {number} limit - Maximum results to return
+ * @returns {Array} Array of prioritized city results
+ */
+const searchAllCitiesWithPriority = (query, limit) => {
+  // Enhanced normalization to handle punctuation and casing variations
+  const normalizedQuery = normalizeSearchQuery(query).toLowerCase().trim();
+  
+  // Extract city name from complex queries like "london great britain"
+  const cityName = extractCityFromQuery(normalizedQuery);
+  
+  // Get US city results with extracted city name
+  const usResults = searchUSCities(cityName, limit);
+  
+  // Get international city results with flexible matching using extracted city name
+  const intlResults = RANDOM_CITIES.filter(cityData => 
+    cityData.city && 
+    (cityData.city.toLowerCase().includes(cityName) ||
+     cityData.name.toLowerCase().includes(cityName) ||
+     // Also match against normalized versions of the city data
+     normalizeSearchQuery(cityData.city).toLowerCase().includes(cityName) ||
+     normalizeSearchQuery(cityData.name).toLowerCase().includes(cityName))
+  );
+  
+  // Separate exact matches from partial matches using extracted city name
+  const exactUSMatches = usResults.filter(city => 
+    city.city.toLowerCase() === cityName
+  );
+  const partialUSMatches = usResults.filter(city => 
+    city.city.toLowerCase() !== cityName
+  );
+  
+  const exactIntlMatches = intlResults.filter(city => 
+    city.city.toLowerCase() === cityName
+  );
+  const partialIntlMatches = intlResults.filter(city => 
+    city.city.toLowerCase() !== cityName
+  );
+  
+  // For exact international matches, prioritize major cities
+  const prioritizedExactIntl = prioritizeInternationalCities(exactIntlMatches, cityName);
+  
+  // Build results with intelligent prioritization:
+  // 1. Exact international matches (with major cities first)
+  // 2. Exact US matches  
+  // 3. Partial US matches (maintaining original US priority for partial matches)
+  // 4. Partial international matches
+  const prioritizedResults = [
+    ...prioritizedExactIntl,
+    ...exactUSMatches,
+    ...partialUSMatches,
+    ...partialIntlMatches
+  ];
+  
+  // Remove duplicates and limit results
+  const uniqueResults = prioritizedResults.filter((city, index, self) => 
+    index === self.findIndex(c => c.name === city.name)
+  );
+  
+  return uniqueResults.slice(0, limit);
+};
+
+/**
+ * Prioritize international cities, putting major world cities first
+ * @param {Array} cities - Array of international cities
+ * @param {string} query - Original query for context
+ * @returns {Array} Prioritized array of cities
+ */
+const prioritizeInternationalCities = (cities, query) => {
+  if (cities.length <= 1) return cities;
+  
+  // Define major international cities that should be prioritized
+  const majorCityPriority = {
+    'london': ['GB', 'CA'], // London, UK first, then London, ON
+    'paris': ['FR'],
+    'berlin': ['DE'],
+    'madrid': ['ES'],
+    'rome': ['IT'],
+    'moscow': ['RU'],
+    'tokyo': ['JP'],
+    'beijing': ['CN'],
+    'sydney': ['AU'],
+    'mumbai': ['IN'],
+    'cairo': ['EG']
+  };
+  
+  const priority = majorCityPriority[query.toLowerCase()];
+  if (!priority) {
+    return cities; // No special prioritization needed
+  }
+  
+  // Sort cities according to the priority order
+  return cities.sort((a, b) => {
+    const aIndex = priority.indexOf(a.country);
+    const bIndex = priority.indexOf(b.country);
+    
+    // If both cities are in the priority list, sort by priority order
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    }
+    
+    // If only one city is in the priority list, it comes first
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    
+    // If neither is in the priority list, maintain original order
+    return 0;
+  });
+};
+
+/**
  * @route   GET /api/search/cities
  * @desc    Search for cities (US and international)
  * @access  Public
@@ -56,34 +286,22 @@ router.get(
 
     try {
       if (country === 'US' || country === 'us') {
-        // Search only US cities
-        results = searchUSCities(sanitizedQuery, parsedLimit);
+        // Search only US cities with normalized query
+        results = searchUSCities(normalizeSearchQuery(sanitizedQuery), parsedLimit);
       } else if (country && country !== 'US' && country !== 'us') {
         // Search only international cities for specific country
-        const normalizedQuery = sanitizedQuery.toLowerCase();
+        const normalizedQuery = normalizeSearchQuery(sanitizedQuery).toLowerCase();
         results = RANDOM_CITIES.filter(cityData => 
           cityData.country === country.toUpperCase() &&
           cityData.city &&
           (cityData.city.toLowerCase().includes(normalizedQuery) ||
-           cityData.name.toLowerCase().includes(normalizedQuery))
+           cityData.name.toLowerCase().includes(normalizedQuery) ||
+           normalizeSearchQuery(cityData.city).toLowerCase().includes(normalizedQuery) ||
+           normalizeSearchQuery(cityData.name).toLowerCase().includes(normalizedQuery))
         ).slice(0, parsedLimit);
       } else {
-        // Search all cities (US priority)
-        const usResults = searchUSCities(sanitizedQuery, Math.floor(parsedLimit * 0.7));
-        results.push(...usResults);
-        
-        // Fill remaining with international cities
-        const remainingLimit = parsedLimit - results.length;
-        if (remainingLimit > 0) {
-          const normalizedQuery = sanitizedQuery.toLowerCase();
-          const intlResults = RANDOM_CITIES.filter(cityData => 
-            cityData.city && 
-            (cityData.city.toLowerCase().includes(normalizedQuery) ||
-             cityData.name.toLowerCase().includes(normalizedQuery))
-          ).slice(0, remainingLimit);
-          
-          results.push(...intlResults);
-        }
+        // Search all cities with intelligent prioritization
+        results = searchAllCitiesWithPriority(sanitizedQuery, parsedLimit);
       }
 
       res.json({
@@ -145,9 +363,10 @@ router.get(
       if (query && typeof query === 'string') {
         const sanitizedQuery = query.trim().replace(/[<>]/g, '');
         if (sanitizedQuery.length > 0) {
-          const normalizedQuery = sanitizedQuery.toLowerCase();
+          const normalizedQuery = normalizeSearchQuery(sanitizedQuery).toLowerCase();
           cities = cities.filter(city => 
-            city.city.toLowerCase().includes(normalizedQuery)
+            city.city.toLowerCase().includes(normalizedQuery) ||
+            normalizeSearchQuery(city.city).toLowerCase().includes(normalizedQuery)
           );
         }
       }
@@ -206,20 +425,28 @@ router.get(
         
         // For real-time suggestions, prioritize US cities even more heavily
         const usResultsRatio = isRealtime ? 0.8 : 0.7;
-        const usResults = searchUSCities(sanitizedQuery, Math.floor(parsedLimit * usResultsRatio));
+        const normalizedSanitizedQuery = normalizeSearchQuery(sanitizedQuery);
+        const usResults = searchUSCities(normalizedSanitizedQuery, Math.floor(parsedLimit * usResultsRatio));
         suggestions.push(...usResults);
         
         // Fill remaining with international cities
         const remainingLimit = parsedLimit - suggestions.length;
         if (remainingLimit > 0) {
-          const normalizedQuery = sanitizedQuery.toLowerCase();
+          const normalizedQuery = normalizedSanitizedQuery.toLowerCase();
           const intlResults = RANDOM_CITIES.filter(cityData => {
             if (!cityData.city) return false;
             const cityName = cityData.city.toLowerCase();
+            const normalizedCityName = normalizeSearchQuery(cityData.city).toLowerCase();
+            const normalizedFullName = normalizeSearchQuery(cityData.name).toLowerCase();
+            
             // For real-time, use more flexible matching
             return isRealtime 
-              ? (cityName.includes(normalizedQuery) || cityData.name.toLowerCase().includes(normalizedQuery))
-              : cityName.startsWith(normalizedQuery);
+              ? (cityName.includes(normalizedQuery) || 
+                 cityData.name.toLowerCase().includes(normalizedQuery) ||
+                 normalizedCityName.includes(normalizedQuery) ||
+                 normalizedFullName.includes(normalizedQuery))
+              : (cityName.startsWith(normalizedQuery) || 
+                 normalizedCityName.startsWith(normalizedQuery));
           }).slice(0, remainingLimit);
           
           suggestions.push(...intlResults);
@@ -230,7 +457,7 @@ router.get(
       if (isRealtime) {
         suggestions = suggestions.map(city => ({
           ...city,
-          displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + city.country : ''}`,
+          displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + formatCountryForDisplay(city.country) : ''}`,
           searchValue: city.city,
           type: city.country === 'US' ? 'us' : 'international'
         }));
@@ -285,22 +512,8 @@ router.get(
     try {
       let suggestions = [];
       
-      // Prioritize US cities heavily for autocomplete (90%)
-      const usResults = searchUSCities(sanitizedQuery, Math.floor(parsedLimit * 0.9));
-      suggestions.push(...usResults);
-      
-      // Add a few international cities if there's room
-      const remainingLimit = parsedLimit - suggestions.length;
-      if (remainingLimit > 0) {
-        const normalizedQuery = sanitizedQuery.toLowerCase();
-        const intlResults = RANDOM_CITIES.filter(cityData => {
-          if (!cityData.city) return false;
-          const cityName = cityData.city.toLowerCase();
-          return cityName.startsWith(normalizedQuery) || cityName.includes(normalizedQuery);
-        }).slice(0, remainingLimit);
-        
-        suggestions.push(...intlResults);
-      }
+      // Use the same intelligent prioritization for autocomplete with normalization
+      suggestions = searchAllCitiesWithPriority(sanitizedQuery, parsedLimit);
 
       // Format for autocomplete dropdown
       const formattedSuggestions = suggestions.map(city => ({
@@ -309,7 +522,7 @@ router.get(
         state: city.state,
         country: city.country,
         name: city.name,
-        displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + city.country : ''}`,
+        displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + formatCountryForDisplay(city.country) : ''}`,
         searchValue: city.city,
         type: city.country === 'US' ? 'us' : 'international',
         priority: city.country === 'US' ? 1 : 2 // US cities get higher priority
