@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, MapPin, Star, Plus, X } from "lucide-react";
+import { Search, MapPin, Star, Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import "@/styles/search.css";
 import { useWeatherContext } from "@context/WeatherContext";
 import { queryClient } from "@context/QueryProvider";
@@ -444,7 +444,7 @@ const SearchPage = () => {
   // Do not slice here so regional tabs can access the full set.
   const ALL_POPULAR_CITIES = (RANDOM_CITIES || []).map((c) => ({
     label: c.name || c.city,
-    query: c.city || c.name,
+    query: c.name || c.city, // Use full name (e.g., "Norfolk, VA") instead of just city name
     country: c.country,
   }));
 
@@ -513,6 +513,11 @@ const SearchPage = () => {
   const [sortMode, setSortMode] = useState("random"); // 'curated' | 'az' | 'random'
   const [visibleCount, setVisibleCount] = useState(20); // Track number of visible cities per region
   const [randomizedCities, setRandomizedCities] = useState({}); // Cache randomized cities per region
+
+  // Region slider state for mobile navigation
+  const regionSliderRef = useRef(null);
+  const [canPrevRegion, setCanPrevRegion] = useState(false);
+  const [canNextRegion, setCanNextRegion] = useState(false);
 
   const filteredPopularCities =
     activeRegion === "All"
@@ -613,6 +618,37 @@ const SearchPage = () => {
       }));
     }
   };
+
+  // Region slider navigation functions
+  const updateRegionSliderNav = () => {
+    const el = regionSliderRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setCanPrevRegion(el.scrollLeft > 0);
+    setCanNextRegion(el.scrollLeft < maxScroll - 1);
+  };
+
+  const scrollRegions = (dir = 1) => {
+    const el = regionSliderRef.current;
+    if (!el) return;
+    const amount = el.clientWidth; // scroll by one viewport width
+    el.scrollBy({ left: dir * amount, behavior: "smooth" });
+  };
+
+  // Update region slider navigation on scroll and resize
+  useEffect(() => {
+    const el = regionSliderRef.current;
+    if (!el) return;
+    updateRegionSliderNav();
+    const onScroll = () => updateRegionSliderNav();
+    const onResize = () => updateRegionSliderNav();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [REGIONS.length]);
 
   const sortedPopularCities = (() => {
     switch (sortMode) {
@@ -971,27 +1007,51 @@ const SearchPage = () => {
 
               <div className="search-suggestions">
                 <h4>Popular cities:</h4>
-                <div
-                  className="search-suggestions__tabs"
-                  role="tablist"
-                  aria-label="Popular city regions"
-                >
-                  {REGIONS.map((region) => (
-                    <button
-                      key={region}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeRegion === region}
-                      className={`btn btn--small ${
-                        activeRegion === region
-                          ? "btn--primary"
-                          : "btn--secondary"
-                      }`}
-                      onClick={() => handleRegionChange(region)}
-                    >
-                      {region}
-                    </button>
-                  ))}
+                <div className="regions-slider">
+                  <div
+                    className="search-suggestions__tabs"
+                    role="tablist"
+                    aria-label="Popular city regions"
+                    ref={regionSliderRef}
+                  >
+                    {REGIONS.map((region) => (
+                      <button
+                        key={region}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeRegion === region}
+                        className={`btn btn--small ${
+                          activeRegion === region
+                            ? "btn--primary"
+                            : "btn--secondary"
+                        }`}
+                        onClick={() => handleRegionChange(region)}
+                      >
+                        {region}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Navigation arrows for mobile */}
+                  {REGIONS.length > 3 && (
+                    <div className="regions-slider__controls">
+                      <button
+                        className="regions-slider__nav regions-slider__nav--prev"
+                        onClick={() => scrollRegions(-1)}
+                        disabled={!canPrevRegion}
+                        aria-label="Previous regions"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        className="regions-slider__nav regions-slider__nav--next"
+                        onClick={() => scrollRegions(1)}
+                        disabled={!canNextRegion}
+                        aria-label="Next regions"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div
                   className="search-suggestions__controls"
@@ -1051,12 +1111,41 @@ const SearchPage = () => {
                         // Parse the location query to extract city and full name
                         const { city, fullName } = parseLocationQuery(query);
 
+                        // Special handling for San Diego to ensure it always goes to California
+                        let finalCity = city;
+                        let finalFullName = fullName;
+                        if (city.toLowerCase() === 'san diego') {
+                          finalCity = 'San Diego';
+                          finalFullName = 'San Diego, CA';
+                        }
+
                         // Trigger search immediately but keep the input clear
-                        setSearchedCity(city);
-                        searchLocation(fullName); // Use full name for context
-                        // Immediately reflect the user's intent globally so Home and the header badge update
+                        setSearchedCity(finalCity);
+                        searchLocation(finalFullName); // Use full name for context
+                        
+                        // Enhanced cache clearing for popular cities, especially San Diego
                         try {
-                          selectLocation({ type: "city", city, name: fullName });
+                          // Clear all weather-related cache entries
+                          queryClient.removeQueries({ queryKey: ["weather"] });
+                          queryClient.invalidateQueries({ queryKey: ["weather"] });
+                          
+                          // Clear all weather and location related storage items
+                          const weatherKeys = Object.keys(localStorage).filter(key => 
+                            key.includes('weather') || key.includes('location') || key.includes('san diego')
+                          );
+                          weatherKeys.forEach(key => localStorage.removeItem(key));
+                          
+                          // Special clearing for San Diego to prevent any cached incorrect data
+                          if (finalCity.toLowerCase() === 'san diego') {
+                            queryClient.removeQueries({ queryKey: ["weather", "current", "city", "San Diego"] });
+                            queryClient.removeQueries({ queryKey: ["weather", "forecast", "city", "San Diego"] });
+                          }
+                          
+                        } catch (_) {}
+
+                        // Set location state with the correct data
+                        try {
+                          selectLocation({ type: "city", city: finalCity, name: finalFullName });
                         } catch (_) {}
 
                         // Reset forecast toggle when searching for a new city

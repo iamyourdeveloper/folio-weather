@@ -15,13 +15,16 @@ export const useCurrentWeatherByCity = (
   originalName = null,
   options = {}
 ) => {
+  // For popular cities (those with state/country info), use shorter cache times
+  const isPopularCity = originalName && originalName.includes(",");
+  
   return useQuery({
     queryKey: ["weather", "current", "city", city, units, originalName],
     queryFn: () =>
       weatherService.getCurrentWeatherByCity(city, units, originalName),
     enabled: !!city, // Only fetch if city is provided
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: isPopularCity ? 30 * 1000 : 15 * 60 * 1000, // 30 seconds for popular cities, 15 minutes for others
+    cacheTime: isPopularCity ? 2 * 60 * 1000 : 30 * 60 * 1000, // 2 minutes for popular cities, 30 minutes for others
     refetchOnWindowFocus: false, // Prevent unnecessary refetches
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors

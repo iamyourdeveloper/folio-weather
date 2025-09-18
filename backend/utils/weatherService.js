@@ -34,9 +34,9 @@ class WeatherService {
 
     // Configure axios instance with better defaults
     this.axiosInstance = axios.create({
-      timeout: 15000, // Increased timeout for backend calls
-      retry: 2, // Reduced retries
-      retryDelay: 2000, // Increased delay between retries
+      timeout: 45000, // Increased timeout to 45 seconds for external API calls
+      retry: 3, // Increased retries for better reliability
+      retryDelay: 3000, // Increased delay between retries
     });
 
     // Add request interceptor for logging
@@ -80,8 +80,8 @@ class WeatherService {
         if (shouldRetry) {
           config.__retryCount += 1;
           const delay = Math.min(
-            config.retryDelay * Math.pow(1.5, config.__retryCount - 1), // More conservative backoff
-            5000 // Max delay of 5 seconds
+            config.retryDelay * Math.pow(2, config.__retryCount - 1), // Exponential backoff
+            10000 // Max delay of 10 seconds
           );
 
           console.log(
@@ -945,7 +945,31 @@ class WeatherService {
   getFallbackStrategies(city, originalName) {
     const fallbacks = [];
 
-    // Strategy 1: Try just the city name without country/state
+    // Strategy 1: For US cities, try alternative state-specific queries first
+    if (originalName && this.isUSLocation(originalName)) {
+      const stateInfo = this.extractUSStateInfo(originalName);
+      if (stateInfo) {
+        // Try with state and US: "San Diego,CA,US"
+        fallbacks.push({
+          query: `${city},${stateInfo},US`,
+          reason: "US city with state and country",
+        });
+        
+        // Try with just state: "San Diego,CA"  
+        fallbacks.push({
+          query: `${city},${stateInfo}`,
+          reason: "US city with state only",
+        });
+      }
+      
+      // Try with just US country code
+      fallbacks.push({
+        query: `${city},US`,
+        reason: "US city with country only",
+      });
+    }
+
+    // Strategy 2: Try just the city name without country/state
     if (originalName && originalName !== city) {
       fallbacks.push({
         query: city,
@@ -953,7 +977,15 @@ class WeatherService {
       });
     }
 
-    // Strategy 2: For Uruguayan cities, try nearby major cities
+    // Strategy 3: For Canadian cities, add specific fallbacks
+    if (originalName && this.isCanadianLocation(originalName)) {
+      fallbacks.push({
+        query: `${city},CA`,
+        reason: "Canadian city with country code",
+      });
+    }
+
+    // Strategy 4: For Uruguayan cities, try nearby major cities
     if (originalName && originalName.includes("UY")) {
       const uruguayanFallbacks = [
         "Montevideo,UY",
@@ -972,7 +1004,7 @@ class WeatherService {
       }
     }
 
-    // Strategy 3: Try the country/region only
+    // Strategy 5: Try the country/region only
     if (originalName) {
       const parts = originalName.split(",").map((p) => p.trim());
       if (parts.length > 1) {
@@ -998,7 +1030,7 @@ class WeatherService {
       }
     }
 
-    // Strategy 4: Common alternative spellings and variations
+    // Strategy 6: Common alternative spellings and variations
     const cityVariations = this.getCityVariations(city);
     for (const variation of cityVariations) {
       fallbacks.push({
@@ -1060,6 +1092,11 @@ class WeatherService {
    * @returns {string} Optimized query string
    */
   constructLocationQuery(city, originalName) {
+    // Special case for San Diego: Always ensure it resolves to California, US
+    if (city.toLowerCase() === 'san diego') {
+      return `${city},CA,US`;
+    }
+
     if (!originalName || originalName === city) {
       return city;
     }
@@ -1074,8 +1111,15 @@ class WeatherService {
       return `${city},CA`;
     }
 
-    // Handle US state abbreviations and full names
+    // Handle US state abbreviations and full names with enhanced specificity
     if (this.isUSLocation(normalized)) {
+      // Extract state information for more precise queries
+      const stateInfo = this.extractUSStateInfo(normalized);
+      if (stateInfo) {
+        // For US cities, include state for better disambiguation: "San Diego,CA,US"
+        return `${city},${stateInfo},US`;
+      }
+      // Fallback to just US if we can't extract state
       return `${city},US`;
     }
 
@@ -1182,6 +1226,83 @@ class WeatherService {
     ];
 
     return usPatterns.some((pattern) => pattern.test(location));
+  }
+
+  /**
+   * Extract US state information from a location string
+   * @param {string} location - Location string
+   * @returns {string|null} State abbreviation or null if not found
+   */
+  extractUSStateInfo(location) {
+    // Special case for Washington D.C. - check this first to avoid confusion with Washington state
+    if (/(DC|D\.C\.|D\.\s*C\.|District of Columbia)/i.test(location)) {
+      return 'DC';
+    }
+
+    // Map of full state names and abbreviations to their standard abbreviations
+    const stateMap = {
+      // State abbreviations (already correct)
+      'AL': 'AL', 'AK': 'AK', 'AZ': 'AZ', 'AR': 'AR', 'CA': 'CA', 'CO': 'CO',
+      'CT': 'CT', 'DE': 'DE', 'FL': 'FL', 'GA': 'GA', 'HI': 'HI', 'ID': 'ID',
+      'IL': 'IL', 'IN': 'IN', 'IA': 'IA', 'KS': 'KS', 'KY': 'KY', 'LA': 'LA',
+      'ME': 'ME', 'MD': 'MD', 'MA': 'MA', 'MI': 'MI', 'MN': 'MN', 'MS': 'MS',
+      'MO': 'MO', 'MT': 'MT', 'NE': 'NE', 'NV': 'NV', 'NH': 'NH', 'NJ': 'NJ',
+      'NM': 'NM', 'NY': 'NY', 'NC': 'NC', 'ND': 'ND', 'OH': 'OH', 'OK': 'OK',
+      'OR': 'OR', 'PA': 'PA', 'RI': 'RI', 'SC': 'SC', 'SD': 'SD', 'TN': 'TN',
+      'TX': 'TX', 'UT': 'UT', 'VT': 'VT', 'VA': 'VA', 'WA': 'WA', 'WV': 'WV',
+      'WI': 'WI', 'WY': 'WY',
+      
+      // Full state names to abbreviations
+      'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+      'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+      'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+      'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+      'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+      'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+      'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+      'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+      'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+      'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+      'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+      'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
+      'wisconsin': 'WI', 'wyoming': 'WY'
+    };
+
+    // Try to find state information in the location string
+    const locationLower = location.toLowerCase();
+    
+    // First, try to match full state names (longer matches first to avoid conflicts)
+    // But avoid matching "Washington" when it's "Washington, D.C."
+    const fullStateNames = Object.keys(stateMap).filter(key => key.length > 2).sort((a, b) => b.length - a.length);
+    for (const stateName of fullStateNames) {
+      // Skip Washington state if we're dealing with D.C.
+      if (stateName === 'washington' && /d\.?c\.?/i.test(location)) {
+        continue;
+      }
+      
+      const pattern = new RegExp(`\\b${stateName}\\b`, 'i');
+      if (pattern.test(location)) {
+        return stateMap[stateName];
+      }
+    }
+
+    // Then try to match state abbreviations - look for them after commas or at word boundaries
+    const stateAbbrevs = Object.keys(stateMap).filter(key => key.length === 2);
+    for (const abbrev of stateAbbrevs) {
+      // Look for state abbreviations after a comma (more specific)
+      const commaPattern = new RegExp(`,\\s*${abbrev}\\b`, 'i');
+      if (commaPattern.test(location)) {
+        return stateMap[abbrev.toUpperCase()];
+      }
+      
+      // Also try word boundaries as fallback
+      const wordBoundaryPattern = new RegExp(`\\b${abbrev}\\b`, 'i');
+      if (wordBoundaryPattern.test(location)) {
+        return stateMap[abbrev.toUpperCase()];
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -1310,6 +1431,58 @@ class WeatherService {
     );
     customError.status = 500;
     return customError;
+  }
+
+  /**
+   * Format current weather data from OpenWeatherMap API response
+   * @param {Object} data - Raw OpenWeatherMap API response
+   * @param {string} originalName - Original location name for display
+   * @returns {Object} Formatted weather data
+   */
+  formatCurrentWeatherData(data, originalName = null) {
+    // Extract location information
+    const locationName = originalName || `${data.name}, ${data.sys.country}`;
+    
+    // For US locations, try to include state information
+    let displayName = locationName;
+    if (data.sys.country === 'US' && originalName) {
+      const stateInfo = this.extractUSStateInfo(originalName);
+      if (stateInfo) {
+        displayName = `${data.name}, ${stateInfo}`;
+      }
+    }
+
+    return {
+      location: {
+        name: displayName,
+        city: data.name,
+        country: data.sys.country,
+        state: data.sys.country === 'US' && originalName ? this.extractUSStateInfo(originalName) : null,
+        coordinates: {
+          lat: data.coord.lat,
+          lon: data.coord.lon,
+        },
+      },
+      current: {
+        temperature: Math.round(data.main.temp),
+        feelsLike: Math.round(data.main.feels_like),
+        humidity: data.main.humidity,
+        pressure: data.main.pressure,
+        visibility: data.visibility ? Math.round(data.visibility / 1000) : null,
+        uvIndex: data.uvi || null,
+        windSpeed: data.wind?.speed || 0,
+        windDirection: data.wind?.deg || 0,
+        cloudiness: data.clouds?.all || 0,
+        description: data.weather[0]?.description || 'Unknown',
+        main: data.weather[0]?.main || 'Unknown',
+        icon: data.weather[0]?.icon || '01d',
+      },
+      sun: {
+        sunrise: new Date(data.sys.sunrise * 1000).toISOString(),
+        sunset: new Date(data.sys.sunset * 1000).toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**

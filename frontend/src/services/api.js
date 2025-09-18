@@ -77,13 +77,13 @@ const createRequestKey = (config) => {
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
-  timeout: 30000, // Increased timeout to 30 seconds for better reliability
+  timeout: 60000, // Increased timeout to 60 seconds for better reliability
   headers: {
     "Content-Type": "application/json",
   },
   // Add retry configuration
   retryDelayMs: 2000, // Increased delay between retries
-  maxRetries: 1, // Reduced retries to prevent overwhelming the API
+  maxRetries: 2, // Increased retries for better reliability
 });
 
 // Retry function for failed requests

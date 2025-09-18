@@ -17,6 +17,13 @@ class WeatherService {
       if (originalName) {
         params.originalName = originalName;
       }
+      
+      // Add cache-busting parameters for popular cities to ensure fresh data
+      if (originalName && originalName.includes(",")) {
+        params._t = Date.now();
+        params._r = Math.random().toString(36).substring(7);
+        params._cb = `${Date.now()}-${Math.random()}`;
+      }
 
       const response = await api.get(
         `/weather/current/city/${encodeURIComponent(city)}`,

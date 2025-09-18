@@ -265,51 +265,56 @@ const TestPage = () => {
       </TestSection>
 
       <TestSection title="🌍 Weather Data Tests">
-        <div style={{ marginBottom: "20px" }}>
-          <label>
-            Test City:
-            <input
-              type="text"
-              value={inputCity}
-              ref={inputRef}
-              autoFocus
-              onChange={(e) => setInputCity(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && onlyFetchOnEnter) {
-                  setTestCity(inputCity.trim());
-                }
-              }}
-              onInput={() => {
-                lastTypedRef.current = Date.now();
-              }}
-              onBlur={(e) => {
-                // If blur happens right after typing due to re-renders, keep focus
-                if (Date.now() - lastTypedRef.current < 600) {
-                  // Don't steal focus if user intentionally clicked another control
-                  if (!e.relatedTarget) {
-                    requestAnimationFrame(() => inputRef.current?.focus());
+        <div className="test-city-container" style={{ marginBottom: "20px" }}>
+          <div className="test-city-input-wrapper">
+            <label>
+              Test City:
+              <input
+                type="text"
+                value={inputCity}
+                ref={inputRef}
+                autoFocus
+                onChange={(e) => setInputCity(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && onlyFetchOnEnter) {
+                    setTestCity(inputCity.trim());
                   }
-                }
+                }}
+                onInput={() => {
+                  lastTypedRef.current = Date.now();
+                }}
+                onBlur={(e) => {
+                  // If blur happens right after typing due to re-renders, keep focus
+                  if (Date.now() - lastTypedRef.current < 600) {
+                    // Don't steal focus if user intentionally clicked another control
+                    if (!e.relatedTarget) {
+                      requestAnimationFrame(() => inputRef.current?.focus());
+                    }
+                  }
+                }}
+                className="test-city-input"
+                style={{ marginLeft: "10px", padding: "5px" }}
+              />
+            </label>
+          </div>
+          <div className="test-city-buttons">
+            <button
+              onClick={() => setTestCity(inputCity.trim())}
+              className="test-city-btn test-city-btn--apply"
+              style={{
+                padding: "6px 10px",
+                marginLeft: "10px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
               }}
-              style={{ marginLeft: "10px", padding: "5px" }}
-            />
-          </label>
-          <button
-            onClick={() => setTestCity(inputCity.trim())}
-            style={{
-              padding: "6px 10px",
-              marginLeft: "10px",
-              backgroundColor: "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Apply City
-          </button>
-          <button
-            onClick={async () => {
+            >
+              Apply City
+            </button>
+            <button
+              onClick={async () => {
               const city = inputCity.trim();
               if (!city) return;
               const token = ++runOnceTokenRef.current;
@@ -336,6 +341,7 @@ const TestPage = () => {
               }
             }}
             disabled={enableWeatherTest || enableForecastTest || runOnceLoading}
+            className="test-city-btn test-city-btn--run"
             style={{
               padding: "6px 10px",
               marginLeft: "10px",
@@ -359,6 +365,7 @@ const TestPage = () => {
               setRunOnceError(null);
               setRunOnceData(null);
             }}
+            className="test-city-btn test-city-btn--clear"
             style={{
               padding: "6px 10px",
               marginLeft: "10px",
@@ -372,9 +379,10 @@ const TestPage = () => {
           >
             Clear Run Once
           </button>
+          </div>
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
+        <div className="test-control-buttons">
           <button
             onClick={() => {
               const next = !enableWeatherTest;
@@ -386,6 +394,7 @@ const TestPage = () => {
                 setRunOnceData(null);
               }
             }}
+            className="test-control-btn test-control-btn--weather"
             style={{
               padding: "10px 15px",
               margin: "5px",
@@ -410,6 +419,7 @@ const TestPage = () => {
                 setRunOnceData(null);
               }
             }}
+            className="test-control-btn test-control-btn--forecast"
             style={{
               padding: "10px 15px",
               margin: "5px",
@@ -429,6 +439,7 @@ const TestPage = () => {
                 .getElementById("integration-summary")
                 ?.scrollIntoView({ behavior: "smooth", block: "start" })
             }
+            className="test-control-btn test-control-btn--summary"
             style={{
               padding: "10px 15px",
               margin: "5px",
@@ -442,12 +453,12 @@ const TestPage = () => {
           >
             View Summary
           </button>
-
-          <p style={{ fontSize: "14px", color: "#666", fontStyle: "italic" }}>
-            💡 Weather and Forecast tests do not run automatically. Use the
-            buttons above to start/stop tests.
-          </p>
         </div>
+
+        <p className="test-control-help" style={{ fontSize: "14px", color: "#666", fontStyle: "italic", marginBottom: "20px" }}>
+          💡 Weather and Forecast tests do not run automatically. Use the
+          buttons above to start/stop tests.
+        </p>
 
         {enableWeatherTest && (
           <ResultDisplay

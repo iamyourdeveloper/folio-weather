@@ -191,7 +191,7 @@ const HeaderSearchDropdown = ({
   };
 
   // Handle clear button click
-  const handleClear = () => {
+  const handleClear = (shouldClose = false) => {
     const syntheticEvent = {
       target: { value: "" },
       preventDefault: () => {},
@@ -207,8 +207,11 @@ const HeaderSearchDropdown = ({
       onClear();
     }
 
-    if (inputRef && inputRef.current) {
+    // Only refocus if we're not closing the search entirely
+    if (!shouldClose && inputRef && inputRef.current) {
       inputRef.current.focus();
+    } else if (shouldClose && inputRef && inputRef.current) {
+      inputRef.current.blur();
     }
   };
 
@@ -299,7 +302,7 @@ const HeaderSearchDropdown = ({
               e.preventDefault();
               e.stopPropagation();
               console.log("Clearing search and closing");
-              handleClear();
+              handleClear(true); // Pass true to indicate we want to close the search
               setIsSearchActive(false);
             }}
             onMouseDown={(e) => {

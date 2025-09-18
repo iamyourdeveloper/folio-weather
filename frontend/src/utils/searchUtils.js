@@ -478,6 +478,12 @@ const disambiguateCities = (cities, query) => {
     if (britishLondon) return britishLondon;
   }
 
+  // Special case for San Diego: Always prefer US location
+  if (queryLower === "san diego") {
+    const usCity = cities.find((city) => city.country === "US");
+    if (usCity) return usCity;
+  }
+
   // General priority: US > GB > CA > others (restored original GB preference)
   const priorityOrder = ["US", "GB", "CA"];
   for (const country of priorityOrder) {
@@ -571,6 +577,15 @@ export const resolveFullLocationName = (location) => {
       return "Washington, D.C.";
     }
     return `${cityName}, ${state}`;
+  }
+  
+  // Priority 1.5: For US cities without state but with US country, try to construct proper name
+  if ((country === "US" || countryCode === "US") && location.name && location.name.includes(",")) {
+    // If we have a properly formatted name like "San Diego, CA" and it's a US location, use it
+    const nameParts = location.name.split(",").map(p => p.trim());
+    if (nameParts.length >= 2) {
+      return location.name;
+    }
   }
   
   // Priority 2: Try to find an exact match in our database using city name and country

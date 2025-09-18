@@ -53,7 +53,7 @@ const REGION_COUNTRIES = {
 
 const ALL_POPULAR_CITIES = (RANDOM_CITIES || []).map((c) => ({
   label: c.name || c.city,
-  query: c.city || c.name,
+  query: c.name || c.city, // Use full name (e.g., "Norfolk, VA") instead of just city name
   country: c.country,
 }));
 
