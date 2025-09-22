@@ -15,6 +15,7 @@ import {
   isValidLocationQuery,
   searchAllCities,
 } from "@/utils/searchUtils.js";
+import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
 
 /**
  * SearchPage component for searching weather by city
@@ -919,23 +920,10 @@ const SearchPage = () => {
                           <div key={day.date} className="forecast-day">
                             <div className="forecast-day__header">
                               <h4 className="forecast-day__date">
-                                {index === 0
-                                  ? "Today"
-                                  : index === 1
-                                  ? "Tomorrow"
-                                  : new Date(day.date).toLocaleDateString(
-                                      "en-US",
-                                      { weekday: "short" }
-                                    )}
+                                {getForecastDateLabel(day.date, index)}
                               </h4>
                               <span className="forecast-day__date-full">
-                                {new Date(day.date).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  }
-                                )}
+                                {formatDateDisplay(day.date)}
                               </span>
                             </div>
 

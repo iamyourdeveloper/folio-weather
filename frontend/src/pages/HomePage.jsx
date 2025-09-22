@@ -22,6 +22,7 @@ import ForecastCard from "@components/weather/ForecastCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
 import { resolveFullLocationName } from "@utils/searchUtils";
+import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
 
 /**
  * HomePage component - Main landing page with current weather and quick actions
@@ -343,7 +344,6 @@ const HomePage = () => {
                     selectLocation({
                       type: "coords",
                       coordinates: currentLocation,
-                      name: "Current Location",
                     });
                     setTimeout(() => scrollToWeatherSection(), 50);
                     return;
@@ -366,7 +366,6 @@ const HomePage = () => {
                           selectLocation({
                             type: "coords",
                             coordinates: coords,
-                            name: "Current Location",
                           });
                           setTimeout(() => scrollToWeatherSection(), 50);
                         },
@@ -458,7 +457,7 @@ const HomePage = () => {
                         // Prefer the resolved name from the latest weather payload if available
                         const payloadLoc = (shouldFetchByCity ? cityWeather : coordsWeather)?.data?.data?.location;
                         const name = payloadLoc?.name || (payloadLoc ? resolveFullLocationName(payloadLoc) : null);
-                        const fallback = resolveFullLocationName(autoSelectedLocation);
+                        const fallback = autoSelectedLocation?.name || "your current location";
                         return `Showing weather for ${name || fallback}`;
                       })()}
                     </span>
@@ -528,28 +527,13 @@ const HomePage = () => {
                           .map((day, index) => (
                             <div key={day.date} className="forecast-item">
                               <div className="forecast-item__date">
-                                {index === 0
-                                  ? "Today"
-                                  : index === 1
-                                  ? "Tomorrow"
-                                  : new Date(day.date).toLocaleDateString(
-                                      "en-US",
-                                      {
-                                        weekday: "short",
-                                      }
-                                    )}{" "}
+                                {getForecastDateLabel(day.date, index)}{" "}
                                 <span
                                   style={{
                                     color: "var(--color-text-secondary)",
                                   }}
                                 >
-                                  {new Date(day.date).toLocaleDateString(
-                                    "en-US",
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                    }
-                                  )}
+                                  {formatDateDisplay(day.date)}
                                 </span>
                               </div>
                               <img

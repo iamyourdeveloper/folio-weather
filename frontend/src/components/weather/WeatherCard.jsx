@@ -12,7 +12,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useWeatherContext } from "@context/WeatherContext";
-import { resolveFullLocationName } from "@utils/searchUtils";
+import { resolveLocationNameForWeatherCard } from "@utils/searchUtils";
 
 /**
  * WeatherCard component for displaying current weather information
@@ -42,6 +42,7 @@ const WeatherCard = ({
   }
 
   const { location, current, sun } = weather;
+  const locationDisplayName = resolveLocationNameForWeatherCard(location);
 
   // Format time for sunrise/sunset
   const formatTime = (isoString) => {
@@ -66,9 +67,7 @@ const WeatherCard = ({
       <div className="weather-card__header">
         <div className="weather-card__location">
           <MapPin size={16} />
-          <h3 className="weather-card__location-name">
-            {resolveFullLocationName(location)}
-          </h3>
+          <h3 className="weather-card__location-name">{locationDisplayName}</h3>
         </div>
 
         {onAddToFavorites && !isLocationFavorited && (

@@ -160,7 +160,7 @@ const RANDOM_CITIES = [
   { name: "Cancún, MX", city: "Cancún", country: "MX" },
 
   // South America
-  { name: "São Paulo, BR", city: "Sao Paulo", country: "BR" },
+  { name: "São Paulo, BR", city: "Sao Paulo", country: "BR", coordinates: { lat: -23.5505, lon: -46.6333 } },
   { name: "Rio de Janeiro, BR", city: "Rio de Janeiro", country: "BR" },
   { name: "Salvador, BR", city: "Salvador", country: "BR" },
   { name: "Brasília, BR", city: "Brasilia", country: "BR" },
@@ -254,7 +254,7 @@ const RANDOM_CITIES = [
   { name: "Edinburgh, UK", city: "Edinburgh", country: "GB" },
   { name: "Leeds, UK", city: "Leeds", country: "GB" },
   { name: "Cardiff, UK", city: "Cardiff", country: "GB" },
-  { name: "Manchester, UK", city: "Manchester", country: "GB" },
+  { name: "Manchester, UK", city: "Manchester", country: "GB", coordinates: { lat: 53.4808, lon: -2.2426 } },
   { name: "Stoke-on-Trent, UK", city: "Stoke-on-Trent", country: "GB" },
   { name: "Coventry, UK", city: "Coventry", country: "GB" },
   { name: "Sunderland, UK", city: "Sunderland", country: "GB" },
@@ -325,7 +325,7 @@ const RANDOM_CITIES = [
   { name: "Nancy, FR", city: "Nancy", country: "FR" },
 
   // Germany
-  { name: "Berlin, DE", city: "Berlin", country: "DE" },
+  { name: "Berlin, DE", city: "Berlin", country: "DE", coordinates: { lat: 52.52, lon: 13.405 } },
   { name: "Hamburg, DE", city: "Hamburg", country: "DE" },
   { name: "Munich, DE", city: "Munich", country: "DE" },
   { name: "Cologne, DE", city: "Cologne", country: "DE" },
@@ -409,7 +409,7 @@ const RANDOM_CITIES = [
   { name: "Leganés, ES", city: "Leganes", country: "ES" },
 
   // Italy
-  { name: "Rome, IT", city: "Rome", country: "IT" },
+  { name: "Rome, IT", city: "Rome", country: "IT", coordinates: { lat: 41.9028, lon: 12.4964 } },
   { name: "Milan, IT", city: "Milan", country: "IT" },
   { name: "Naples, IT", city: "Naples", country: "IT" },
   { name: "Turin, IT", city: "Turin", country: "IT" },
@@ -442,7 +442,7 @@ const RANDOM_CITIES = [
   { name: "Sassari, IT", city: "Sassari", country: "IT" },
 
   // Netherlands
-  { name: "Amsterdam, NL", city: "Amsterdam", country: "NL" },
+  { name: "Amsterdam, NL", city: "Amsterdam", country: "NL", coordinates: { lat: 52.3676, lon: 4.9041 } },
   { name: "Rotterdam, NL", city: "Rotterdam", country: "NL" },
   { name: "The Hague, NL", city: "The Hague", country: "NL" },
   { name: "Utrecht, NL", city: "Utrecht", country: "NL" },
@@ -500,7 +500,10 @@ const RANDOM_CITIES = [
   { name: "Białystok, PL", city: "Bialystok", country: "PL" },
   { name: "Katowice, PL", city: "Katowice", country: "PL" },
 
-  { name: "Budapest, HU", city: "Budapest", country: "HU" },
+  // Russia
+  { name: "Moscow, RU", city: "Moscow", country: "RU", coordinates: { lat: 55.7558, lon: 37.6173 } },
+
+  { name: "Budapest, HU", city: "Budapest", country: "HU", coordinates: { lat: 47.4979, lon: 19.0402 } },
   { name: "Debrecen, HU", city: "Debrecen", country: "HU" },
   { name: "Szeged, HU", city: "Szeged", country: "HU" },
   { name: "Miskolc, HU", city: "Miskolc", country: "HU" },
@@ -587,7 +590,7 @@ const RANDOM_CITIES = [
   // Japan
   { name: "Tokyo, JP", city: "Tokyo", country: "JP" },
   { name: "Yokohama, JP", city: "Yokohama", country: "JP" },
-  { name: "Osaka, JP", city: "Osaka", country: "JP" },
+  { name: "Osaka, JP", city: "Osaka", country: "JP", coordinates: { lat: 34.6937, lon: 135.5023 } },
   { name: "Nagoya, JP", city: "Nagoya", country: "JP" },
   { name: "Sapporo, JP", city: "Sapporo", country: "JP" },
   { name: "Fukuoka, JP", city: "Fukuoka", country: "JP" },

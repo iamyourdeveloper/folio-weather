@@ -60,6 +60,7 @@
   );
   border-radius: var(--radius-xl);
   margin-bottom: 3rem;
+  box-shadow: 7px 3px 16px -8px rgba(0, 0, 0, 0.2);
 }
 
 .home-hero__content {
@@ -313,6 +314,8 @@
   margin-bottom: 4rem;
   background: var(--color-background-secondary);
   border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  box-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 640px) {
@@ -711,7 +714,7 @@
     white-space: nowrap;
     scroll-snap-align: start;
   }
-  
+
   /* Show navigation arrows on mobile */
   .regions-slider__controls {
     display: flex;
@@ -724,7 +727,7 @@
     width: 40px;
     height: 40px;
   }
-  
+
   .regions-slider__controls {
     margin: 1rem 0 1.75rem 0; /* More spacing below on mobile too */
   }
@@ -1343,12 +1346,12 @@
     align-items: stretch;
     gap: 1rem;
   }
-  
+
   .test-city-input-wrapper {
     width: 100%;
     justify-content: center;
   }
-  
+
   .test-city-input-wrapper label {
     display: flex;
     flex-direction: column;
@@ -1356,7 +1359,7 @@
     text-align: center;
     width: 100%;
   }
-  
+
   .test-city-input {
     margin-left: 0 !important;
     margin-top: 0.5rem !important;
@@ -1367,13 +1370,13 @@
     border: 2px solid #ddd;
     border-radius: 8px;
   }
-  
+
   .test-city-buttons {
     justify-content: center;
     flex-wrap: wrap;
     gap: 0.75rem;
   }
-  
+
   .test-city-btn {
     margin-left: 0 !important;
     padding: 10px 16px !important;
@@ -1381,7 +1384,7 @@
     min-width: 120px;
     border-radius: 6px !important;
   }
-  
+
   /* Center test control buttons on mobile with extra spacing */
   .test-control-buttons {
     justify-content: center;
@@ -1390,7 +1393,7 @@
     gap: 1rem;
     margin-top: 2.5rem; /* Add significant spacing above test control buttons */
   }
-  
+
   .test-control-btn {
     margin: 0 !important;
     padding: 12px 20px !important;
@@ -1399,7 +1402,7 @@
     border-radius: 8px !important;
     text-align: center;
   }
-  
+
   /* Ensure help text stays centered on mobile */
   .test-control-help {
     text-align: center !important;

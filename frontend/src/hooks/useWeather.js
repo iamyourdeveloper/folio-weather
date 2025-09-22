@@ -15,7 +15,7 @@ export const useCurrentWeatherByCity = (
   originalName = null,
   options = {}
 ) => {
-  // For popular cities (those with state/country info), use shorter cache times
+  // Optimized caching strategy for faster loading
   const isPopularCity = originalName && originalName.includes(",");
   
   return useQuery({
@@ -23,18 +23,23 @@ export const useCurrentWeatherByCity = (
     queryFn: () =>
       weatherService.getCurrentWeatherByCity(city, units, originalName),
     enabled: !!city, // Only fetch if city is provided
-    staleTime: isPopularCity ? 30 * 1000 : 15 * 60 * 1000, // 30 seconds for popular cities, 15 minutes for others
-    cacheTime: isPopularCity ? 2 * 60 * 1000 : 30 * 60 * 1000, // 2 minutes for popular cities, 30 minutes for others
+    // Faster initial load with shorter stale times
+    staleTime: isPopularCity ? 1 * 60 * 1000 : 5 * 60 * 1000, // 1 min for popular, 5 min for others
+    cacheTime: isPopularCity ? 10 * 60 * 1000 : 20 * 60 * 1000, // 10 min for popular, 20 min for others
     refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnMount: true, // Only if stale
+    // Faster error handling
     retry: (failureCount, error) => {
-      // Don't retry on 4xx errors
+      // Don't retry on 4xx errors for faster failure
       if (error?.status >= 400 && error?.status < 500) {
         return false;
       }
-      // Retry up to 3 times for other errors
-      return failureCount < 3;
+      // Reduced retries for faster loading
+      return failureCount < 2;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(800 * 1.5 ** attemptIndex, 10000),
+    // Network optimizations
+    networkMode: 'online',
     ...options,
   });
 };
@@ -60,15 +65,19 @@ export const useCurrentWeatherByCoords = (
     queryFn: () =>
       weatherService.getCurrentWeatherByCoords(lat, lon, units, originalName),
     enabled: !!(lat && lon), // Only fetch if coordinates are provided
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    // Faster loading for coordinate-based weather
+    staleTime: 3 * 60 * 1000, // 3 minutes (was 5)
+    cacheTime: 15 * 60 * 1000, // 15 minutes (was 10)
+    refetchOnMount: true, // Only if stale
+    // Faster error handling
     retry: (failureCount, error) => {
       if (error?.status >= 400 && error?.status < 500) {
         return false;
       }
-      return failureCount < 3;
+      return failureCount < 2; // Reduced from 3
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(800 * 1.5 ** attemptIndex, 10000),
+    networkMode: 'online',
     ...options,
   });
 };

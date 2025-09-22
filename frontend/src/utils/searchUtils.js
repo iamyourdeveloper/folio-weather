@@ -19,6 +19,134 @@ const formatCountryForDisplay = (country) => {
   return country === 'GB' ? 'UK' : country;
 };
 
+// Helper to normalize strings for comparison (remove diacritics, lowercase)
+const toInternationalKey = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
+// Cities that should default to their international locations when queried without qualifiers
+const MAJOR_INTERNATIONAL_CITY_DEFAULTS = {
+  'amsterdam': { city: 'Amsterdam', fullName: 'Amsterdam, NL', country: 'NL' },
+  'berlin': { city: 'Berlin', fullName: 'Berlin, DE', country: 'DE' },
+  'budapest': { city: 'Budapest', fullName: 'Budapest, HU', country: 'HU' },
+  'moscow': { city: 'Moscow', fullName: 'Moscow, RU', country: 'RU' },
+  'rome': { city: 'Rome', fullName: 'Rome, IT', country: 'IT' },
+  'manchester': { city: 'Manchester', fullName: 'Manchester, UK', country: 'GB' },
+  'sao paulo': { city: 'Sao Paulo', fullName: 'São Paulo, BR', country: 'BR' },
+  'osaka': { city: 'Osaka', fullName: 'Osaka, JP', country: 'JP' },
+};
+
+const getInternationalDefaultForCity = (value) => {
+  const key = toInternationalKey(value);
+  return key ? MAJOR_INTERNATIONAL_CITY_DEFAULTS[key] : null;
+};
+
+// Map of common alias codes to their canonical ISO representation
+const COUNTRY_CODE_ALIASES = {
+  UK: 'GB',
+};
+
+// Fallback names when Intl.DisplayNames is unavailable or for non-standard codes
+const COUNTRY_NAME_OVERRIDES = {
+  GB: 'United Kingdom',
+  UK: 'United Kingdom',
+  US: 'United States',
+};
+
+const COUNTRY_NAME_FALLBACKS = {
+  CA: 'Canada',
+  DE: 'Germany',
+  FR: 'France',
+  ES: 'Spain',
+  IT: 'Italy',
+  MX: 'Mexico',
+  BR: 'Brazil',
+  CN: 'China',
+  JP: 'Japan',
+  IN: 'India',
+  AU: 'Australia',
+  NZ: 'New Zealand',
+  RU: 'Russia',
+};
+
+let cachedRegionDisplayNames;
+
+const getRegionDisplayNames = () => {
+  if (cachedRegionDisplayNames !== undefined) {
+    return cachedRegionDisplayNames;
+  }
+
+  try {
+    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+      cachedRegionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+    } else {
+      cachedRegionDisplayNames = null;
+    }
+  } catch (error) {
+    cachedRegionDisplayNames = null;
+  }
+
+  return cachedRegionDisplayNames;
+};
+
+const getCountryFullName = (countryOrCode) => {
+  if (!countryOrCode || typeof countryOrCode !== 'string') return null;
+
+  const trimmed = countryOrCode.trim();
+  if (!trimmed) return null;
+
+  const upper = trimmed.toUpperCase();
+  const canonicalCode = COUNTRY_CODE_ALIASES[upper] || upper;
+
+  if (COUNTRY_NAME_OVERRIDES[canonicalCode]) {
+    return COUNTRY_NAME_OVERRIDES[canonicalCode];
+  }
+
+  const displayNames = getRegionDisplayNames();
+  if (displayNames && /^[A-Z]{2}$/i.test(canonicalCode)) {
+    const resolved = displayNames.of(canonicalCode);
+    if (resolved && resolved !== canonicalCode) {
+      return resolved;
+    }
+  }
+
+  if (COUNTRY_NAME_FALLBACKS[canonicalCode]) {
+    return COUNTRY_NAME_FALLBACKS[canonicalCode];
+  }
+
+  if (trimmed.length > 3 || trimmed.includes(' ')) {
+    return trimmed;
+  }
+
+  return trimmed;
+};
+
+const extractPrimaryLocationName = (location) => {
+  if (!location || typeof location !== 'object') return '';
+
+  const candidates = [location.city, location.name, location.displayName];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      const trimmed = candidate.trim();
+      if (trimmed.includes(',')) {
+        const [firstPart] = trimmed.split(',');
+        if (firstPart && firstPart.trim()) {
+          return firstPart.trim();
+        }
+      }
+      return trimmed;
+    }
+  }
+
+  return '';
+};
+
 /**
  * Extracts city name from a query that might include state/region/country
  * Enhanced to automatically map single city names to their full names from our database
@@ -369,6 +497,12 @@ const handleSingleNameQuery = (normalizedQuery, originalQuery) => {
     return { city: cityPart, fullName: normalizedQuery };
   }
 
+  // Prefer known international defaults for globally recognized cities (e.g., Amsterdam, Rome)
+  const internationalDefault = getInternationalDefaultForCity(normalizedQuery);
+  if (internationalDefault) {
+    return { city: internationalDefault.city, fullName: internationalDefault.fullName };
+  }
+
   // Try to find an EXACT matching city in our comprehensive US database first
   // Only prefer US cities if there's an exact name match, not partial matches
   const usMatches = searchUSCities(normalizedQuery, 5);
@@ -529,6 +663,11 @@ const normalizeUKLocationDisplay = (locationName) => {
 export const resolveFullLocationName = (location) => {
   if (!location || (typeof location !== 'object')) return "Unknown Location";
   
+  // Special case: if this is a coordinate-only location (no city/name), return a generic message
+  if (location.type === "coords" && !location.city && !location.name && location.coordinates) {
+    return "Current Location";
+  }
+  
   const cityName = location.city || location.name;
   const country = location.country;
   const state = location.state;
@@ -660,6 +799,64 @@ export const resolveFullLocationName = (location) => {
 };
 
 /**
+ * Resolves a location label for WeatherCard with full country names for non-US locations.
+ * Falls back to resolveFullLocationName for US and edge cases.
+ * @param {Object} location - Location object from weather data
+ * @returns {string} Display name suitable for WeatherCard headers
+ */
+export const resolveLocationNameForWeatherCard = (location) => {
+  if (!location || typeof location !== 'object') return 'Unknown Location';
+
+  if (location.type === 'coords' && !location.city && !location.name) {
+    return 'Current Location';
+  }
+
+  const primaryName = extractPrimaryLocationName(location);
+  const trimmedPrimary = primaryName?.trim();
+
+  if (!trimmedPrimary) {
+    return resolveFullLocationName(location);
+  }
+
+  let countrySource = typeof location.country === 'string' && location.country.trim()
+    ? location.country
+    : typeof location.countryCode === 'string' && location.countryCode.trim()
+      ? location.countryCode
+      : '';
+
+  if (!countrySource && typeof location.name === 'string' && location.name.trim().includes(',')) {
+    const parts = location.name
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      countrySource = parts[parts.length - 1];
+    }
+  }
+
+  const normalizedCountryCode = countrySource ? countrySource.trim().toUpperCase() : '';
+  const countryFullName = getCountryFullName(countrySource);
+
+  const isUSLocation =
+    normalizedCountryCode === 'US' ||
+    (countryFullName && countryFullName.toLowerCase().includes('united states'));
+
+  if (isUSLocation) {
+    return resolveFullLocationName(location);
+  }
+
+  if (!countryFullName) {
+    return resolveFullLocationName(location) || trimmedPrimary;
+  }
+
+  if (trimmedPrimary.toLowerCase() === countryFullName.toLowerCase()) {
+    return countryFullName;
+  }
+
+  return `${trimmedPrimary}, ${countryFullName}`;
+};
+
+/**
  * Comprehensive search function that searches both US and international cities
  * Uses intelligent prioritization: exact international matches first, then exact US, then partial matches
  * @param {string} query - Search query
@@ -736,17 +933,22 @@ const prioritizeInternationalCitiesLocal = (cities, query) => {
     'london': ['GB', 'CA'], // London, UK first, then London, ON
     'paris': ['FR'],
     'berlin': ['DE'],
+    'amsterdam': ['NL'],
     'madrid': ['ES'],
     'rome': ['IT'],
+    'budapest': ['HU'],
     'moscow': ['RU'],
+    'manchester': ['GB'],
+    'sao paulo': ['BR'],
     'tokyo': ['JP'],
+    'osaka': ['JP'],
     'beijing': ['CN'],
     'sydney': ['AU'],
     'mumbai': ['IN'],
     'cairo': ['EG']
   };
   
-  const priority = majorCityPriority[query.toLowerCase()];
+  const priority = majorCityPriority[toInternationalKey(query)];
   if (!priority) {
     return cities; // No special prioritization needed
   }

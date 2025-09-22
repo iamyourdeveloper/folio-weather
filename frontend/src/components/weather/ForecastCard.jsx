@@ -3,7 +3,7 @@ import { useCurrentWeatherByCity } from "@hooks/useWeather";
 import { useWeatherContext } from "@context/WeatherContext";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
-import { resolveFullLocationName } from "@utils/searchUtils";
+import { resolveLocationNameForWeatherCard } from "@utils/searchUtils";
 
 /**
  * ForecastCard component for displaying weather forecast for a location
@@ -53,15 +53,14 @@ const ForecastCard = ({ location, compact = false }) => {
   }
 
   const weather = data.data;
+  const locationDisplayName = resolveLocationNameForWeatherCard(location);
 
   return (
     <div className={`forecast-card ${compact ? "forecast-card--compact" : ""}`}>
       <div className="forecast-card__header">
         <div className="forecast-card__location">
           <MapPin size={14} />
-          <span className="forecast-card__location-name">
-            {resolveFullLocationName(location)}
-          </span>
+          <span className="forecast-card__location-name">{locationDisplayName}</span>
         </div>
       </div>
 

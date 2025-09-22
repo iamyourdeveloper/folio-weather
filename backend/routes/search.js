@@ -21,6 +21,16 @@ const formatCountryForDisplay = (country) => {
   return country === 'GB' ? 'UK' : country;
 };
 
+// Normalize strings for consistent international comparisons (remove diacritics and lowercase)
+const toInternationalKey = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
 /**
  * Normalize search queries to handle punctuation, casing, and formatting variations
  * @param {string} query - The search query
@@ -208,17 +218,22 @@ const prioritizeInternationalCities = (cities, query) => {
     'london': ['GB', 'CA'], // London, UK first, then London, ON
     'paris': ['FR'],
     'berlin': ['DE'],
+    'amsterdam': ['NL'],
     'madrid': ['ES'],
     'rome': ['IT'],
+    'budapest': ['HU'],
     'moscow': ['RU'],
+    'manchester': ['GB'],
+    'sao paulo': ['BR'],
     'tokyo': ['JP'],
+    'osaka': ['JP'],
     'beijing': ['CN'],
     'sydney': ['AU'],
     'mumbai': ['IN'],
     'cairo': ['EG']
   };
   
-  const priority = majorCityPriority[query.toLowerCase()];
+  const priority = majorCityPriority[toInternationalKey(query)];
   if (!priority) {
     return cities; // No special prioritization needed
   }

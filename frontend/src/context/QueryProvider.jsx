@@ -1,26 +1,31 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-// Create a client with custom default options
+// Create a client with optimized default options for faster loading
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time: 10 minutes for weather data (increased for better performance)
-      staleTime: 10 * 60 * 1000,
-      // Cache time: 20 minutes
-      cacheTime: 20 * 60 * 1000,
-      // Retry failed requests 2 times (reduced to prevent overwhelming the API)
-      retry: 2,
-      // Retry delay: more conservative exponential backoff
-      retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 30000),
-      // Don't refetch on window focus to reduce API calls
+      // Reduced stale time for faster initial loads, but still cached
+      staleTime: 2 * 60 * 1000, // 2 minutes (was 10)
+      // Longer cache time to avoid refetches
+      cacheTime: 30 * 60 * 1000, // 30 minutes (was 20)
+      // Reduce retries for faster error handling
+      retry: 1, // Reduced from 2
+      // Faster retry delay for quicker recovery
+      retryDelay: (attemptIndex) => Math.min(1000 * 1.5 ** attemptIndex, 15000),
+      // Performance optimizations
       refetchOnWindowFocus: false,
-      // Don't refetch on reconnect immediately
       refetchOnReconnect: false,
+      refetchOnMount: true, // Only refetch if data is stale
+      // Enable background refetch for better UX
+      refetchInterval: false, // Disable automatic background refetch
+      // Network mode optimizations
+      networkMode: 'online',
     },
     mutations: {
-      // Retry failed mutations once
+      // Faster mutation retry
       retry: 1,
+      networkMode: 'online',
     },
   },
 });

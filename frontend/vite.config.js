@@ -13,28 +13,46 @@ export default defineConfig(({ mode }) => {
       react({
         // Enable Fast Refresh for better development experience
         fastRefresh: true,
+        // Optimize JSX runtime for better performance
+        jsxRuntime: 'automatic',
       }),
     ],
+    // Performance optimizations
+    esbuild: {
+      // Optimize build performance
+      target: 'es2020',
+      logOverride: { 'this-is-undefined-in-esm': 'silent' },
+    },
     server: {
       port: 3000,
       host: true,
       // Enable HTTP/2 for better performance
       https: false,
+      // Optimize development server
+      hmr: {
+        overlay: false, // Disable error overlay for better performance
+      },
       // Optimize proxy configuration
       proxy: {
         "/api": {
           target: backendUrl,
           changeOrigin: true,
           secure: false,
-          // Add timeout to prevent hanging requests
-          timeout: 30000,
+          // Reduced timeout for faster error detection
+          timeout: 15000,
+          // Connection pooling
+          agent: false,
         },
       },
       // Improve development server performance
       fs: {
         // Allow serving files from one level up to the project root
         allow: [".."],
+        // Optimize file watching
+        strict: false,
       },
+      // Optimize middleware
+      middlewareMode: false,
     },
     resolve: {
       alias: {

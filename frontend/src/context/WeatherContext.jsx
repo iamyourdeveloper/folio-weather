@@ -423,7 +423,6 @@ export const WeatherProvider = ({ children }) => {
       return {
         type: "coords",
         coordinates: currentLocation,
-        name: "Current Location",
       };
     });
   }, [hasInitialized, preferences.autoLocation, selectedLocation, currentLocation, locationError]);
@@ -546,7 +545,6 @@ export const WeatherProvider = ({ children }) => {
         setSelectedLocation({
           type: "coords",
           coordinates: currentLocation,
-          name: "Current Location",
         });
       } catch (_) {}
     }

@@ -8,7 +8,10 @@ const appName = import.meta.env.VITE_APP_NAME || 'Weather App';
 document.title = appName;
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  // Remove StrictMode in production to prevent double renders and API calls
+  import.meta.env.PROD ? <App /> : (
+    <StrictMode>
+      <App />
+    </StrictMode>
+  ),
 )

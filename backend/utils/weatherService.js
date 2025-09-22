@@ -21,6 +21,33 @@ const formatCountryForDisplay = (country) => {
   return country === 'GB' ? 'UK' : country;
 };
 
+// Helper to normalize strings for consistent lookup (remove diacritics and lowercase)
+const toInternationalKey = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
+// Known international cities that should default to their global coordinates when queried alone
+const INTERNATIONAL_CITY_OVERRIDES = {
+  'amsterdam': { city: 'Amsterdam', country: 'NL' },
+  'berlin': { city: 'Berlin', country: 'DE' },
+  'budapest': { city: 'Budapest', country: 'HU' },
+  'moscow': { city: 'Moscow', country: 'RU' },
+  'rome': { city: 'Rome', country: 'IT' },
+  'manchester': { city: 'Manchester', country: 'GB' },
+  'sao paulo': { city: 'Sao Paulo', country: 'BR' },
+  'osaka': { city: 'Osaka', country: 'JP' },
+};
+
+const getInternationalCityOverride = (value) => {
+  const key = toInternationalKey(value);
+  return key ? INTERNATIONAL_CITY_OVERRIDES[key] : null;
+};
+
 class WeatherService {
   constructor() {
     // Ensure environment is loaded
@@ -32,11 +59,17 @@ class WeatherService {
       process.env.OPENWEATHER_BASE_URL ||
       "https://api.openweathermap.org/data/2.5";
 
-    // Configure axios instance with better defaults
+    // Configure axios instance with optimized settings for faster responses
     this.axiosInstance = axios.create({
-      timeout: 45000, // Increased timeout to 45 seconds for external API calls
-      retry: 3, // Increased retries for better reliability
-      retryDelay: 3000, // Increased delay between retries
+      timeout: 20000, // Reduced timeout to 20 seconds for faster failure detection
+      retry: 2, // Reduced retries for faster error handling
+      retryDelay: 1500, // Reduced delay for quicker recovery
+      // Connection pooling for better performance
+      httpAgent: new http.Agent({ keepAlive: true, maxSockets: 10 }),
+      httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 10 }),
+      // Compression support
+      decompress: true,
+      maxRedirects: 3,
     });
 
     // Add request interceptor for logging
@@ -764,10 +797,14 @@ class WeatherService {
 
       if (detectedState) {
         state = detectedState;
-        // Only update the name if the original doesn't already contain state info
-        if (!originalName || !originalName.includes(",")) {
+        // Always include state information for US cities unless already properly formatted
+        if (!originalName || !originalName.includes(",") || !originalName.includes(detectedState)) {
           enhancedLocationName = formatUSCityWithState(cityName, detectedState);
         }
+      } else {
+        // If we can't detect state for US cities, just use the city name alone
+        // Don't add "US" as per user requirement (US cities should only show state, not country)
+        enhancedLocationName = cityName;
       }
     }
     // For non-US cities, ensure proper country display formatting
@@ -775,9 +812,11 @@ class WeatherService {
       // Always ensure GB is displayed as UK, regardless of original formatting
       if (countryCode === "GB") {
         enhancedLocationName = this.normalizeGBLocationDisplay(cityName, enhancedLocationName, originalName);
-      } else if (!enhancedLocationName.includes(",") && !originalName) {
-        // For other non-US countries, add country if not already present
-        enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
+      } else {
+        // For other non-US countries, always add country if not already present
+        if (!enhancedLocationName.includes(",") || !enhancedLocationName.includes(formatCountryForDisplay(countryCode))) {
+          enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
+        }
       }
     }
 
@@ -835,7 +874,13 @@ class WeatherService {
 
     // Group forecasts by day
     data.list.forEach((item) => {
-      const date = new Date(item.dt * 1000).toISOString().split("T")[0];
+      // Use the forecast timestamp to create a date string
+      // The dt field from OpenWeatherMap is in UTC seconds
+      const forecastDate = new Date(item.dt * 1000);
+      
+      // Get the date in the local timezone where the weather is being requested
+      // This ensures that "Today" matches the user's current day
+      const date = forecastDate.toISOString().split("T")[0];
 
       if (!dailyForecasts[date]) {
         dailyForecasts[date] = {
@@ -899,10 +944,14 @@ class WeatherService {
 
       if (detectedState) {
         state = detectedState;
-        // Only update the name if the original doesn't already contain state info
-        if (!originalName || !originalName.includes(",")) {
+        // Always include state information for US cities unless already properly formatted
+        if (!originalName || !originalName.includes(",") || !originalName.includes(detectedState)) {
           enhancedLocationName = formatUSCityWithState(cityName, detectedState);
         }
+      } else {
+        // If we can't detect state for US cities, just use the city name alone
+        // Don't add "US" as per user requirement (US cities should only show state, not country)
+        enhancedLocationName = cityName;
       }
     }
     // For non-US cities, ensure proper country display formatting
@@ -910,9 +959,11 @@ class WeatherService {
       // Always ensure GB is displayed as UK, regardless of original formatting
       if (countryCode === "GB") {
         enhancedLocationName = this.normalizeGBLocationDisplay(cityName, enhancedLocationName, originalName);
-      } else if (!enhancedLocationName.includes(",") && !originalName) {
-        // For other non-US countries, add country if not already present
-        enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
+      } else {
+        // For other non-US countries, always add country if not already present
+        if (!enhancedLocationName.includes(",") || !enhancedLocationName.includes(formatCountryForDisplay(countryCode))) {
+          enhancedLocationName = `${cityName}, ${formatCountryForDisplay(countryCode)}`;
+        }
       }
     }
 
@@ -1097,7 +1148,12 @@ class WeatherService {
       return `${city},CA,US`;
     }
 
+    const internationalOverride = getInternationalCityOverride(city);
+
     if (!originalName || originalName === city) {
+      if (internationalOverride) {
+        return `${internationalOverride.city},${internationalOverride.country}`;
+      }
       return city;
     }
 
@@ -1433,57 +1489,6 @@ class WeatherService {
     return customError;
   }
 
-  /**
-   * Format current weather data from OpenWeatherMap API response
-   * @param {Object} data - Raw OpenWeatherMap API response
-   * @param {string} originalName - Original location name for display
-   * @returns {Object} Formatted weather data
-   */
-  formatCurrentWeatherData(data, originalName = null) {
-    // Extract location information
-    const locationName = originalName || `${data.name}, ${data.sys.country}`;
-    
-    // For US locations, try to include state information
-    let displayName = locationName;
-    if (data.sys.country === 'US' && originalName) {
-      const stateInfo = this.extractUSStateInfo(originalName);
-      if (stateInfo) {
-        displayName = `${data.name}, ${stateInfo}`;
-      }
-    }
-
-    return {
-      location: {
-        name: displayName,
-        city: data.name,
-        country: data.sys.country,
-        state: data.sys.country === 'US' && originalName ? this.extractUSStateInfo(originalName) : null,
-        coordinates: {
-          lat: data.coord.lat,
-          lon: data.coord.lon,
-        },
-      },
-      current: {
-        temperature: Math.round(data.main.temp),
-        feelsLike: Math.round(data.main.feels_like),
-        humidity: data.main.humidity,
-        pressure: data.main.pressure,
-        visibility: data.visibility ? Math.round(data.visibility / 1000) : null,
-        uvIndex: data.uvi || null,
-        windSpeed: data.wind?.speed || 0,
-        windDirection: data.wind?.deg || 0,
-        cloudiness: data.clouds?.all || 0,
-        description: data.weather[0]?.description || 'Unknown',
-        main: data.weather[0]?.main || 'Unknown',
-        icon: data.weather[0]?.icon || '01d',
-      },
-      sun: {
-        sunrise: new Date(data.sys.sunrise * 1000).toISOString(),
-        sunset: new Date(data.sys.sunset * 1000).toISOString(),
-      },
-      timestamp: new Date().toISOString(),
-    };
-  }
 
   /**
    * Test API connection with comprehensive checks
