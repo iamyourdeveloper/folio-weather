@@ -48,6 +48,32 @@ const getInternationalCityOverride = (value) => {
   return key ? INTERNATIONAL_CITY_OVERRIDES[key] : null;
 };
 
+// Keywords and synonyms we use to detect explicit country intent inside location queries
+const COUNTRY_KEYWORDS = {
+  NL: ['netherlands', 'nederland', 'holland'],
+  GB: ['united kingdom', 'great britain', 'england', 'uk'],
+  DE: ['germany', 'deutschland'],
+  IT: ['italy', 'italia'],
+  HU: ['hungary', 'magyarorszag'],
+  RU: ['russia', 'russian federation'],
+  BR: ['brazil', 'brasil'],
+  JP: ['japan', 'nihon', 'nippon'],
+  ES: ['spain', 'espana'],
+  FR: ['france'],
+  CA: ['canada'],
+  US: ['united states', 'usa', 'u.s.', 'america'],
+  AU: ['australia'],
+  MX: ['mexico'],
+  IN: ['india'],
+  CN: ['china'],
+  PT: ['portugal'],
+  SE: ['sweden'],
+  NO: ['norway'],
+  DK: ['denmark'],
+};
+
+const COUNTRY_CODES_SET = new Set(Object.keys(COUNTRY_KEYWORDS));
+
 class WeatherService {
   constructor() {
     // Ensure environment is loaded
@@ -1160,6 +1186,23 @@ class WeatherService {
     // Normalize the original name for better pattern matching
     const normalized = this.normalizeLocationForAPI(originalName);
 
+    if (internationalOverride) {
+      const mentionsOverride = this.locationMentionsCountry(
+        normalized,
+        internationalOverride.country
+      );
+
+      const hasConflictingIntent = this.locationMentionsOtherCountry(
+        normalized,
+        internationalOverride.country,
+        mentionsOverride
+      );
+
+      if (!hasConflictingIntent) {
+        return `${internationalOverride.city},${internationalOverride.country}`;
+      }
+    }
+
     // Handle patterns like "London, ON" -> "London,CA" (Canada)
     // Handle patterns like "London, Ontario" -> "London,CA"
     // Handle patterns like "London Ontario" -> "London,CA"
@@ -1375,6 +1418,117 @@ class WeatherService {
   }
 
   /**
+   * Detect which country codes or keywords are present in a location string
+   * @param {string} location - Location string
+   * @returns {Set<string>} Set of detected country ISO codes
+   */
+  detectCountriesInLocation(location) {
+    const detected = new Set();
+
+    if (!location || typeof location !== 'string') {
+      return detected;
+    }
+
+    const lowered = location.toLowerCase();
+
+    for (const [code, keywords] of Object.entries(COUNTRY_KEYWORDS)) {
+      if (keywords.some((keyword) => lowered.includes(keyword))) {
+        detected.add(code);
+      }
+    }
+
+    const isoPattern = /(?:^|[,\s])([a-z]{2})(?:\b|$)/g;
+    let match;
+    while ((match = isoPattern.exec(lowered)) !== null) {
+      const iso = match[1].toUpperCase();
+      if (COUNTRY_CODES_SET.has(iso)) {
+        detected.add(iso);
+      }
+    }
+
+    return detected;
+  }
+
+  /**
+   * Check if a location string explicitly mentions a specific country
+   * @param {string} location - Location string
+   * @param {string} countryCode - ISO country code to check for
+   * @returns {boolean} True if country intent is detected
+   */
+  locationMentionsCountry(location, countryCode) {
+    if (!location || typeof location !== 'string' || !countryCode) {
+      return false;
+    }
+
+    const lowered = location.toLowerCase();
+    const codeLower = countryCode.toLowerCase();
+
+    const codePattern = new RegExp(`(?:^|[,\\s])${codeLower}(?:\\b|$)`);
+    if (codePattern.test(lowered)) {
+      return true;
+    }
+
+    const keywords = COUNTRY_KEYWORDS[countryCode] || [];
+    return keywords.some((keyword) => lowered.includes(keyword));
+  }
+
+  /**
+   * Determine if a location string references a country other than the desired override
+   * @param {string} location - Location string
+   * @param {string} targetCountry - Desired override ISO code
+   * @param {boolean} alreadyMatchedTarget - Whether the target country was already detected
+   * @returns {boolean} True if conflicting country intent is detected
+   */
+  locationMentionsOtherCountry(location, targetCountry, alreadyMatchedTarget = false) {
+    if (!location || typeof location !== 'string') {
+      return false;
+    }
+
+    const lowered = location.toLowerCase();
+
+    const mentionedCountries = this.detectCountriesInLocation(location);
+
+    if (mentionedCountries.size > 0) {
+      if (mentionedCountries.has(targetCountry)) {
+        mentionedCountries.delete(targetCountry);
+      }
+
+      if (mentionedCountries.size > 0) {
+        return true;
+      }
+    }
+
+    const canadianMention = this.isCanadianLocation(location);
+    const usMention = this.isUSLocation(location);
+    const ukMention = this.isUKLocation(location);
+
+    if (targetCountry === 'NL' && canadianMention && alreadyMatchedTarget && mentionedCountries.size === 0) {
+      const explicitProvincePattern = /(ontario|british columbia|alberta|quebec|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland|labrador|prince edward island|pei|yukon|northwest territories|nunavut|\bON\b|\bBC\b|\bAB\b|\bQC\b|\bMB\b|\bSK\b|\bNS\b|\bNB\b|\bPE\b|\bYT\b|\bNT\b|\bNU\b)/i;
+      const usesProvinceCodeOnly = /(?:^|[,\s])nl(?:\b|$)/i.test(lowered);
+
+      if (usesProvinceCodeOnly && !explicitProvincePattern.test(lowered)) {
+        // Handle the "NL" province ambiguity: if NL is the only detected country code and
+        // the text does not reference another Canadian province explicitly, treat NL as Netherlands.
+        return false;
+      }
+    }
+
+    if (canadianMention && targetCountry !== 'CA') {
+      return true;
+    }
+
+    if (usMention && targetCountry !== 'US') {
+      return true;
+    }
+
+    if (ukMention && targetCountry !== 'GB') {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Extract country code from location string
    * @param {string} location - Location string
    * @returns {string|null} Country code or null
@@ -1392,6 +1546,7 @@ class WeatherService {
       IN: ["India", "IN"],
       CN: ["China", "中国", "CN"],
       MX: ["Mexico", "México", "MX"],
+      NL: ["Netherlands", "Nederland", "Holland", "NL"],
       ZA: ["South Africa", "ZA"],
       UY: ["Uruguay", "UY"],
       AR: ["Argentina", "AR"],
