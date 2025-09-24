@@ -375,6 +375,98 @@ export const ALL_US_CITIES_COMPLETE = {
   ]
 };
 
+const STATE_CAPITALS = {
+  AL: 'Montgomery',
+  AK: 'Juneau',
+  AZ: 'Phoenix',
+  AR: 'Little Rock',
+  CA: 'Sacramento',
+  CO: 'Denver',
+  CT: 'Hartford',
+  DE: 'Dover',
+  FL: 'Tallahassee',
+  GA: 'Atlanta',
+  HI: 'Honolulu',
+  ID: 'Boise',
+  IL: 'Springfield',
+  IN: 'Indianapolis',
+  IA: 'Des Moines',
+  KS: 'Topeka',
+  KY: 'Frankfort',
+  LA: 'Baton Rouge',
+  ME: 'Augusta',
+  MD: 'Annapolis',
+  MA: 'Boston',
+  MI: 'Lansing',
+  MN: 'St. Paul',
+  MS: 'Jackson',
+  MO: 'Jefferson City',
+  MT: 'Helena',
+  NE: 'Lincoln',
+  NV: 'Carson City',
+  NH: 'Concord',
+  NJ: 'Trenton',
+  NM: 'Santa Fe',
+  NY: 'Albany',
+  NC: 'Raleigh',
+  ND: 'Bismarck',
+  OH: 'Columbus',
+  OK: 'Oklahoma City',
+  OR: 'Salem',
+  PA: 'Harrisburg',
+  RI: 'Providence',
+  SC: 'Columbia',
+  SD: 'Pierre',
+  TN: 'Nashville',
+  TX: 'Austin',
+  UT: 'Salt Lake City',
+  VT: 'Montpelier',
+  VA: 'Richmond',
+  WA: 'Olympia',
+  WV: 'Charleston',
+  WI: 'Madison',
+  WY: 'Cheyenne',
+  DC: 'Washington'
+};
+
+const getStateCitiesWithCapitalFirst = (stateCode) => {
+  const cities = ALL_US_CITIES_COMPLETE[stateCode];
+  if (!Array.isArray(cities)) {
+    return [];
+  }
+
+  const capital = STATE_CAPITALS[stateCode];
+  if (!capital) {
+    return [...cities];
+  }
+
+  const prioritized = [];
+  const seen = new Set();
+
+  const addCity = (cityName) => {
+    if (!cityName || typeof cityName !== 'string') {
+      return;
+    }
+
+    const key = cityName.toLowerCase();
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    prioritized.push(cityName);
+  };
+
+  const matchingCapital = cities.find(
+    (city) => city.toLowerCase() === capital.toLowerCase()
+  );
+
+  addCity(matchingCapital || capital);
+  cities.forEach(addCity);
+
+  return prioritized;
+};
+
 /**
  * Flattened array of all US cities for efficient searching
  */
@@ -493,8 +585,9 @@ export const searchByState = (stateQuery) => {
   }
   
   if (stateCode && ALL_US_CITIES_COMPLETE[stateCode]) {
-    // Return cities from this state, prioritizing larger/more well-known cities
-    return ALL_US_CITIES_COMPLETE[stateCode].slice(0, 20).map(city => ({
+    const prioritizedCities = getStateCitiesWithCapitalFirst(stateCode).slice(0, 20);
+
+    return prioritizedCities.map(city => ({
       city: city,
       state: stateCode,
       name: `${city}, ${stateCode}`,
@@ -514,7 +607,7 @@ export const getCitiesByState = (stateCode) => {
   const state = stateCode?.toUpperCase();
   if (!state || !ALL_US_CITIES_COMPLETE[state]) return [];
   
-  return ALL_US_CITIES_COMPLETE[state].map(city => ({
+  return getStateCitiesWithCapitalFirst(state).map(city => ({
     city: city,
     state: state,
     name: `${city}, ${state}`,

@@ -12,13 +12,67 @@ import {
   ALL_US_CITIES_FLAT,
 } from "../data/allUSCitiesComplete.js";
 
+let cachedRegionDisplayNames;
+
+const getRegionDisplayNames = () => {
+  if (cachedRegionDisplayNames !== undefined) {
+    return cachedRegionDisplayNames;
+  }
+
+  try {
+    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+      cachedRegionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+    } else {
+      cachedRegionDisplayNames = null;
+    }
+  } catch (error) {
+    cachedRegionDisplayNames = null;
+  }
+
+  return cachedRegionDisplayNames;
+};
+
+const COUNTRY_DISPLAY_OVERRIDES = {
+  GB: 'UK',
+  UK: 'UK',
+  US: 'United States',
+  BR: 'Brazil',
+  GR: 'Greece',
+};
+
 /**
- * Convert GB country code to UK for display purposes
- * @param {string} country - Country code
- * @returns {string} Display country code (GB -> UK)
+ * Convert country codes into friendly display names for UI
+ * @param {string} country - Country code or name
+ * @returns {string} Display-ready country label
  */
 const formatCountryForDisplay = (country) => {
-  return country === 'GB' ? 'UK' : country;
+  if (!country || typeof country !== 'string') {
+    return '';
+  }
+
+  const trimmed = country.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const upper = trimmed.toUpperCase();
+  if (COUNTRY_DISPLAY_OVERRIDES[upper]) {
+    return COUNTRY_DISPLAY_OVERRIDES[upper];
+  }
+
+  const displayNames = getRegionDisplayNames();
+  if (displayNames && /^[A-Z]{2}$/i.test(upper)) {
+    try {
+      const resolved = displayNames.of(upper);
+      if (resolved && resolved !== upper) {
+        return resolved;
+      }
+    } catch (_) {
+      // Ignore fallbacks for unsupported codes
+    }
+  }
+
+  return upper.length === 2 ? upper : trimmed;
 };
 
 // Helper to normalize strings for consistent lookup (remove diacritics and lowercase)
@@ -39,6 +93,8 @@ const INTERNATIONAL_CITY_OVERRIDES = {
   'moscow': { city: 'Moscow', country: 'RU' },
   'rome': { city: 'Rome', country: 'IT' },
   'manchester': { city: 'Manchester', country: 'GB' },
+  'rio': { city: 'Rio de Janeiro', country: 'BR' },
+  'rio de janeiro': { city: 'Rio de Janeiro', country: 'BR' },
   'sao paulo': { city: 'Sao Paulo', country: 'BR' },
   'osaka': { city: 'Osaka', country: 'JP' },
 };
@@ -57,6 +113,7 @@ const COUNTRY_KEYWORDS = {
   HU: ['hungary', 'magyarorszag'],
   RU: ['russia', 'russian federation'],
   BR: ['brazil', 'brasil'],
+  GR: ['greece', 'hellas', 'gr'],
   JP: ['japan', 'nihon', 'nippon'],
   ES: ['spain', 'espana'],
   FR: ['france'],
@@ -536,18 +593,22 @@ class WeatherService {
       }
     }
 
-    return normalizedLocationName
-      .split(",")
-      .map((part) => part.trim())
-      .map((part) => {
-        // Handle special cases for state/country codes that should remain uppercase
-        // Only match parts that are ONLY 2-3 letters and standalone (not part of a longer name)
-        if (/^[A-Z]{2,3}$/i.test(part.trim()) && part.trim().length <= 3) {
-          return part.toUpperCase();
-        }
+    const commonStateCodes = [
+      "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DC", "FL", "GA",
+      "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+      "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+      "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+      "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+      "ON", "BC", "AB", "MB", "SK", "NS", "NB", "NL", "PE", "NT",
+      "NU", "YT",
+    ];
 
-        // Handle words that should remain lowercase (prepositions, articles, etc.)
-        const lowercaseWords = [
+    const commonCountryCodes = [
+      "US", "GB", "CA", "AU", "FR", "DE", "IT", "ES", "MX", "JP",
+      "CN", "IN", "BR", "RU",
+    ];
+
+    const lowercaseWords = [
           "of",
           "the",
           "and",
@@ -571,97 +632,29 @@ class WeatherService {
           "zur",
         ];
 
+    return normalizedLocationName
+      .split(",")
+      .map((part) => part.trim())
+      .map((part) => {
+        const trimmedPart = part.trim();
+
+        // Handle special cases for state/country codes that should remain uppercase
+        // Only match parts that are ONLY 2-3 letters and standalone (not part of a longer name)
+        if (/^[A-Z]{2,3}$/i.test(trimmedPart) && trimmedPart.length <= 3) {
+          const upperPart = trimmedPart.toUpperCase();
+          if (
+            commonStateCodes.includes(upperPart) ||
+            commonCountryCodes.includes(upperPart)
+          ) {
+            return upperPart;
+          }
+        }
+
         return part
           .split(" ")
           .map((word, index) => {
             const cleanWord = word.trim();
             if (!cleanWord) return cleanWord;
-
-            // Handle state/country codes within words - be more selective
-            // Only treat as state/country code if it's exactly 2 letters, common codes,
-            // AND appears at the end of a location name (after comma) to avoid affecting
-            // prepositions like "de" in "Rio de Janeiro"
-            const commonStateCodes = [
-              "AL",
-              "AK",
-              "AZ",
-              "AR",
-              "CA",
-              "CO",
-              "CT",
-              "DC",
-              "FL",
-              "GA",
-              "HI",
-              "ID",
-              "IL",
-              "IN",
-              "IA",
-              "KS",
-              "KY",
-              "LA",
-              "ME",
-              "MD",
-              "MA",
-              "MI",
-              "MN",
-              "MS",
-              "MO",
-              "MT",
-              "NE",
-              "NV",
-              "NH",
-              "NJ",
-              "NM",
-              "NY",
-              "NC",
-              "ND",
-              "OH",
-              "OK",
-              "OR",
-              "PA",
-              "RI",
-              "SC",
-              "SD",
-              "TN",
-              "TX",
-              "UT",
-              "VT",
-              "VA",
-              "WA",
-              "WV",
-              "WI",
-              "WY",
-              "ON",
-              "BC",
-              "AB",
-              "MB",
-              "SK",
-              "NS",
-              "NB",
-              "NL",
-              "PE",
-              "NT",
-              "NU",
-              "YT", // Canadian provinces
-            ];
-
-            const commonCountryCodes = [
-              "US",
-              "GB",
-              "CA",
-              "AU",
-              "FR",
-              "DE",
-              "IT",
-              "ES",
-              "MX",
-              "JP",
-              "CN",
-              "IN",
-              "BR",
-              "RU", // Countries
-            ];
 
             // Check if this word is a standalone state/country code
             // Only uppercase if it's a standalone 2-3 letter code at the end of a part
@@ -1543,6 +1536,7 @@ class WeatherService {
       ES: ["Spain", "España", "ES"],
       JP: ["Japan", "日本", "JP"],
       BR: ["Brazil", "Brasil", "BR"],
+      GR: ["Greece", "Ελλάδα", "Hellas", "GR"],
       IN: ["India", "IN"],
       CN: ["China", "中国", "CN"],
       MX: ["Mexico", "México", "MX"],

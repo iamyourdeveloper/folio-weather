@@ -20,6 +20,7 @@ import {
   isValidLocationQuery,
   searchAllCities,
 } from "@/utils/searchUtils.js";
+import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 
 /**
  * Header component with navigation and search functionality
@@ -54,6 +55,48 @@ const Header = () => {
     { path: "/test", label: "API Test", icon: TestTube },
   ];
 
+  const applyOptimisticSelection = (cityName, fullName, fallback = {}) => {
+    if (!cityName || !fullName) {
+      return;
+    }
+
+    try {
+      const [first] = searchAllCities(fullName, 1);
+      if (first) {
+        const optimisticSelection = {
+          type: "city",
+          city: first.city || cityName,
+          name: first.name || first.displayName || fullName,
+        };
+
+        if (first.state) optimisticSelection.state = first.state;
+        if (first.country) optimisticSelection.country = first.country;
+        if (first.coordinates) {
+          optimisticSelection.coordinates = first.coordinates;
+        }
+
+        selectLocation(optimisticSelection);
+        return;
+      }
+    } catch (_) {
+      // Ignore lookup errors and fall back to provided metadata
+    }
+
+    const fallbackSelection = {
+      type: "city",
+      city: cityName,
+      name: fallback.name || fullName,
+    };
+
+    if (fallback.state) fallbackSelection.state = fallback.state;
+    if (fallback.country) fallbackSelection.country = fallback.country;
+    if (fallback.coordinates) {
+      fallbackSelection.coordinates = fallback.coordinates;
+    }
+
+    selectLocation(fallbackSelection);
+  };
+
   // Handle search submission - improved state management and error handling
   const handleSearch = async (e, rawQuery) => {
     e.preventDefault();
@@ -86,31 +129,36 @@ const Header = () => {
     setIsSearching(true);
 
     try {
-      // Parse the location query to extract city and full name
-      const { city, fullName } = parseLocationQuery(fullQuery);
-      console.log("Parsed location:", { city, fullName });
+      const regionResult = getRandomRegionCapital(fullQuery);
+      if (regionResult) {
+        console.log("Resolved region query to capital:", regionResult);
+      }
+
+      const locationInfo = regionResult
+        ? {
+            city: regionResult.city,
+            fullName: regionResult.fullName,
+            countryCode: regionResult.countryCode,
+          }
+        : parseLocationQuery(fullQuery);
+
+      const resolvedCity = locationInfo.city || fullQuery;
+      const resolvedFullName = locationInfo.fullName || fullQuery;
+      console.log("Parsed location:", {
+        city: resolvedCity,
+        fullName: resolvedFullName,
+      });
 
       // Update query context first
-      await searchLocation(fullName);
+      await searchLocation(resolvedFullName);
 
-      // Optimistically reflect selection when the query matches our city database
-      try {
-        const [first] = searchAllCities(fullName, 1);
-        if (first) {
-          const optimisticName = first.name || first.displayName || fullName;
-          selectLocation({
-            type: "city",
-            city: first.city || city,
-            name: optimisticName,
-            state: first.state,
-            country: first.country,
-            coordinates: first.coordinates,
-          });
-        }
-      } catch (_) {}
+      applyOptimisticSelection(resolvedCity, resolvedFullName, {
+        name: resolvedFullName,
+        country: regionResult?.countryCode,
+      });
 
       // Navigate to search page
-      navigate(`/search?city=${encodeURIComponent(fullName)}`);
+      navigate(`/search?city=${encodeURIComponent(resolvedFullName)}`);
 
       // Reset state with proper timing to prevent race conditions
       const resetState = () => {
@@ -663,30 +711,36 @@ const Header = () => {
                 setIsSearching(true);
 
                 try {
-                  // Parse the location query to extract city and full name
-                  const { city, fullName } = parseLocationQuery(fullQuery);
-                  console.log("Parsed mobile location:", { city, fullName });
+                  const regionResult = getRandomRegionCapital(fullQuery);
+                  if (regionResult) {
+                    console.log("Resolved mobile region query to capital:", regionResult);
+                  }
+
+                  const locationInfo = regionResult
+                    ? {
+                        city: regionResult.city,
+                        fullName: regionResult.fullName,
+                        countryCode: regionResult.countryCode,
+                      }
+                    : parseLocationQuery(fullQuery);
+
+                  const resolvedCity = locationInfo.city || fullQuery;
+                  const resolvedFullName = locationInfo.fullName || fullQuery;
+                  console.log("Parsed mobile location:", {
+                    city: resolvedCity,
+                    fullName: resolvedFullName,
+                  });
 
                   // Update query context first
-                  await searchLocation(fullName);
-                  // Optimistically reflect selection when the query matches our city database
-                  try {
-                    const [first] = searchAllCities(fullName, 1);
-                    if (first) {
-                      const optimisticName = first.name || first.displayName || fullName;
-                      selectLocation({
-                        type: "city",
-                        city: first.city || fullName,
-                        name: optimisticName,
-                        state: first.state,
-                        country: first.country,
-                        coordinates: first.coordinates,
-                      });
-                    }
-                  } catch (_) {}
+                  await searchLocation(resolvedFullName);
+
+                  applyOptimisticSelection(resolvedCity, resolvedFullName, {
+                    name: resolvedFullName,
+                    country: regionResult?.countryCode,
+                  });
 
                   // Navigate to search page
-                  navigate(`/search?city=${encodeURIComponent(fullName)}`);
+                  navigate(`/search?city=${encodeURIComponent(resolvedFullName)}`);
 
                   // Reset mobile state with proper timing
                   const resetMobileState = () => {

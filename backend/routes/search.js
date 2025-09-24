@@ -12,13 +12,67 @@ import RANDOM_CITIES from "../data/randomCities.js";
 
 const router = express.Router();
 
+let cachedRegionDisplayNames;
+
+const getRegionDisplayNames = () => {
+  if (cachedRegionDisplayNames !== undefined) {
+    return cachedRegionDisplayNames;
+  }
+
+  try {
+    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+      cachedRegionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+    } else {
+      cachedRegionDisplayNames = null;
+    }
+  } catch (error) {
+    cachedRegionDisplayNames = null;
+  }
+
+  return cachedRegionDisplayNames;
+};
+
+const COUNTRY_DISPLAY_OVERRIDES = {
+  GB: 'UK',
+  UK: 'UK',
+  US: 'United States',
+  BR: 'Brazil',
+  GR: 'Greece',
+};
+
 /**
- * Convert GB country code to UK for display purposes
- * @param {string} country - Country code
- * @returns {string} Display country code (GB -> UK)
+ * Convert ISO country codes to reader-friendly names when possible
+ * @param {string} country - Country code or name
+ * @returns {string} Display-ready country label
  */
 const formatCountryForDisplay = (country) => {
-  return country === 'GB' ? 'UK' : country;
+  if (!country || typeof country !== 'string') {
+    return '';
+  }
+
+  const trimmed = country.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const upper = trimmed.toUpperCase();
+  if (COUNTRY_DISPLAY_OVERRIDES[upper]) {
+    return COUNTRY_DISPLAY_OVERRIDES[upper];
+  }
+
+  const displayNames = getRegionDisplayNames();
+  if (displayNames && /^[A-Z]{2}$/i.test(upper)) {
+    try {
+      const resolved = displayNames.of(upper);
+      if (resolved && resolved !== upper) {
+        return resolved;
+      }
+    } catch (_) {
+      // Ignore and fall back to defaults
+    }
+  }
+
+  return upper.length === 2 ? upper : trimmed;
 };
 
 // Normalize strings for consistent international comparisons (remove diacritics and lowercase)
@@ -61,7 +115,6 @@ const normalizeSearchQuery = (query) => {
     '\\bjp\\b': 'japan',
     '\\bjpn\\b': 'japan',
     '\\bfr\\b': 'france',
-    '\\bde\\b': 'germany',
     '\\bger\\b': 'germany',
     '\\buk\\b': 'gb',
     '\\bgb\\b': 'gb',
@@ -93,22 +146,118 @@ const normalizeSearchQuery = (query) => {
   return normalized;
 };
 
-const getRegionDisplayNames = () => {
-  try {
-    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
-      return new Intl.DisplayNames(['en'], { type: 'region' });
-    }
-  } catch (error) {
-    // Ignore and fall back to manual aliases
-  }
-  return null;
-};
-
 const addAliasToSet = (aliasSet, value) => {
   const key = toInternationalKey(value);
   if (key) {
     aliasSet.add(key);
   }
+};
+
+const COUNTRY_ALIAS_DEFINITIONS = {
+  US: ['usa', 'u.s.', 'u.s', 'america', 'united states', 'united states of america'],
+  GB: ['uk', 'u.k.', 'great britain', 'england', 'scotland', 'wales', 'britain'],
+  CA: ['canada', 'ca'],
+  MX: ['mexico', 'mx'],
+  BR: ['brazil', 'brasil'],
+  AR: ['argentina'],
+  CL: ['chile'],
+  CO: ['colombia'],
+  PE: ['peru'],
+  VE: ['venezuela'],
+  RU: ['russia', 'russian federation', 'ru'],
+  CN: ['china', 'prc', 'p.r.c'],
+  JP: ['japan', 'nippon'],
+  KR: ['south korea', 'republic of korea', 'korea republic', 'rok'],
+  KP: ['north korea', 'dprk', "democratic people's republic of korea"],
+  IN: ['india', 'bharat'],
+  AU: ['australia'],
+  NZ: ['new zealand'],
+  ZA: ['south africa'],
+  EG: ['egypt'],
+  SA: ['saudi arabia', 'kingdom of saudi arabia', 'ksa'],
+  AE: ['united arab emirates', 'uae', 'u.a.e'],
+  DE: ['germany', 'deutschland', 'ger', 'de'],
+  FR: ['france', 'fr'],
+  IT: ['italy', 'italia', 'it'],
+  ES: ['spain', 'españa', 'espana', 'es'],
+  PT: ['portugal', 'pt'],
+  GR: ['greece', 'gr'],
+  NL: ['netherlands', 'holland'],
+  BE: ['belgium'],
+  AT: ['austria'],
+  CH: ['switzerland'],
+  SE: ['sweden'],
+  NO: ['norway'],
+  FI: ['finland'],
+  DK: ['denmark'],
+  IE: ['ireland'],
+  SG: ['singapore'],
+  TH: ['thailand'],
+  VN: ['vietnam'],
+  ID: ['indonesia'],
+  MY: ['malaysia'],
+  PH: ['philippines'],
+  PK: ['pakistan'],
+  BD: ['bangladesh'],
+  LK: ['sri lanka'],
+  NP: ['nepal'],
+  KH: ['cambodia'],
+  LA: ['laos'],
+  MM: ['myanmar', 'burma'],
+  TR: ['turkey', 'türkiye', 'turkiye'],
+  IL: ['israel'],
+  IR: ['iran', 'islamic republic of iran'],
+  IQ: ['iraq'],
+  QA: ['qatar'],
+  KW: ['kuwait'],
+  BH: ['bahrain'],
+  OM: ['oman'],
+  JO: ['jordan'],
+  LB: ['lebanon'],
+  SY: ['syria'],
+  UA: ['ukraine'],
+  PL: ['poland'],
+  CZ: ['czech republic', 'czechia'],
+  SK: ['slovakia'],
+  HU: ['hungary', 'magyarorszag'],
+  RO: ['romania'],
+  BG: ['bulgaria'],
+  HR: ['croatia'],
+  SI: ['slovenia'],
+  RS: ['serbia'],
+  BA: ['bosnia and herzegovina', 'bosnia'],
+  MK: ['north macedonia', 'macedonia'],
+  AL: ['albania'],
+  GE: ['georgia'],
+  AM: ['armenia'],
+  AZ: ['azerbaijan'],
+  KZ: ['kazakhstan'],
+  UZ: ['uzbekistan'],
+  KG: ['kyrgyzstan'],
+  TJ: ['tajikistan'],
+  TM: ['turkmenistan'],
+  MN: ['mongolia'],
+};
+
+const MAJOR_INTERNATIONAL_CITY_PRIORITY = {
+  'london': ['GB', 'CA'],
+  'paris': ['FR'],
+  'berlin': ['DE'],
+  'amsterdam': ['NL'],
+  'madrid': ['ES'],
+  'rome': ['IT'],
+  'budapest': ['HU'],
+  'moscow': ['RU'],
+  'manchester': ['GB'],
+  'rio': ['BR'],
+  'rio de janeiro': ['BR'],
+  'sao paulo': ['BR'],
+  'tokyo': ['JP'],
+  'osaka': ['JP'],
+  'beijing': ['CN'],
+  'sydney': ['AU'],
+  'mumbai': ['IN'],
+  'cairo': ['EG'],
 };
 
 const buildCountryAliasSet = () => {
@@ -136,100 +285,56 @@ const buildCountryAliasSet = () => {
     }
   }
 
-  const manualCountryAliases = {
-    US: ['usa', 'u.s.', 'u.s', 'america', 'united states', 'united states of america'],
-    GB: ['uk', 'u.k.', 'great britain', 'england', 'scotland', 'wales', 'britain'],
-    CA: ['canada', 'ca'],
-    MX: ['mexico', 'mx'],
-    BR: ['brazil', 'brasil'],
-    AR: ['argentina'],
-    CL: ['chile'],
-    CO: ['colombia'],
-    PE: ['peru'],
-    VE: ['venezuela'],
-    RU: ['russia', 'russian federation', 'ru'],
-    CN: ['china', 'prc', 'p.r.c'],
-    JP: ['japan', 'nippon'],
-    KR: ['south korea', 'republic of korea', 'korea republic', 'rok'],
-    KP: ['north korea', 'dprk', "democratic people's republic of korea"],
-    IN: ['india', 'bharat'],
-    AU: ['australia'],
-    NZ: ['new zealand'],
-    ZA: ['south africa'],
-    EG: ['egypt'],
-    SA: ['saudi arabia', 'kingdom of saudi arabia', 'ksa'],
-    AE: ['united arab emirates', 'uae', 'u.a.e'],
-    DE: ['germany', 'deutschland', 'ger'],
-    FR: ['france'],
-    IT: ['italy'],
-    ES: ['spain'],
-    PT: ['portugal'],
-    GR: ['greece'],
-    NL: ['netherlands', 'holland'],
-    BE: ['belgium'],
-    AT: ['austria'],
-    CH: ['switzerland'],
-    SE: ['sweden'],
-    NO: ['norway'],
-    FI: ['finland'],
-    DK: ['denmark'],
-    IE: ['ireland'],
-    SG: ['singapore'],
-    TH: ['thailand'],
-    VN: ['vietnam'],
-    ID: ['indonesia'],
-    MY: ['malaysia'],
-    PH: ['philippines'],
-    PK: ['pakistan'],
-    BD: ['bangladesh'],
-    LK: ['sri lanka'],
-    NP: ['nepal'],
-    KH: ['cambodia'],
-    LA: ['laos'],
-    MM: ['myanmar', 'burma'],
-    TR: ['turkey', 'türkiye', 'turkiye'],
-    IL: ['israel'],
-    IR: ['iran', 'islamic republic of iran'],
-    IQ: ['iraq'],
-    QA: ['qatar'],
-    KW: ['kuwait'],
-    BH: ['bahrain'],
-    OM: ['oman'],
-    JO: ['jordan'],
-    LB: ['lebanon'],
-    SY: ['syria'],
-    UA: ['ukraine'],
-    PL: ['poland'],
-    CZ: ['czech republic', 'czechia'],
-    SK: ['slovakia'],
-    HU: ['hungary'],
-    RO: ['romania'],
-    BG: ['bulgaria'],
-    HR: ['croatia'],
-    SI: ['slovenia'],
-    RS: ['serbia'],
-    BA: ['bosnia and herzegovina', 'bosnia'],
-    MK: ['north macedonia', 'macedonia'],
-    AL: ['albania'],
-    GE: ['georgia'],
-    AM: ['armenia'],
-    AZ: ['azerbaijan'],
-    KZ: ['kazakhstan'],
-    UZ: ['uzbekistan'],
-    KG: ['kyrgyzstan'],
-    TJ: ['tajikistan'],
-    TM: ['turkmenistan'],
-    MN: ['mongolia'],
-  };
-
-  Object.values(manualCountryAliases).forEach(aliasList => {
+  Object.values(COUNTRY_ALIAS_DEFINITIONS).forEach(aliasList => {
     aliasList.forEach(alias => addAliasToSet(aliases, alias));
   });
 
   return aliases;
 };
 
+const buildCountryAliasMap = () => {
+  const aliasMap = new Map();
+  const regionDisplayNames = getRegionDisplayNames();
+  const codes = new Set([
+    ...RANDOM_CITIES.map((city) => city.country).filter(Boolean),
+    ...Object.keys(COUNTRY_ALIAS_DEFINITIONS),
+    'US',
+    'GB',
+  ]);
+
+  const addAliasToMap = (alias, code) => {
+    const key = toInternationalKey(alias);
+    if (key && !aliasMap.has(key)) {
+      aliasMap.set(key, code);
+    }
+  };
+
+  codes.forEach((code) => {
+    if (!code) return;
+    addAliasToMap(code, code);
+    addAliasToMap(code.toLowerCase(), code);
+
+    if (regionDisplayNames) {
+      try {
+        const displayName = regionDisplayNames.of(code);
+        if (displayName && displayName !== code) {
+          addAliasToMap(displayName, code);
+        }
+      } catch (_) {
+        // Ignore errors thrown for uncommon codes
+      }
+    }
+  });
+
+  Object.entries(COUNTRY_ALIAS_DEFINITIONS).forEach(([code, aliases]) => {
+    aliases.forEach((alias) => addAliasToMap(alias, code));
+  });
+
+  return aliasMap;
+};
+
 const COUNTRY_ALIAS_SET = buildCountryAliasSet();
+const COUNTRY_ALIAS_MAP = buildCountryAliasMap();
 
 const buildStateAliasSet = () => {
   const aliases = new Set();
@@ -273,8 +378,65 @@ const removeTrailingAliases = (tokens, aliasSet, maxAliasTokens) => {
         didUpdate = true;
         break;
       }
-    }
+  }
   } while (didUpdate && tokens.length > 0);
+};
+
+const detectCountryCodeFromQuery = (query) => {
+  if (!query || typeof query !== 'string') {
+    return null;
+  }
+
+  const cleaned = query
+    .replace(/[\u2019\u2018\u201c\u201d]/g, "'")
+    .replace(/[-.,\/#!$%\^&*;:{}=+_`~()?<>\[\]\\|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const tokens = cleaned.split(' ').filter(Boolean);
+  const limit = Math.min(tokens.length, 4);
+
+  for (let len = limit; len > 0; len--) {
+    const candidate = tokens.slice(tokens.length - len).join(' ');
+    const normalizedCandidate = toInternationalKey(candidate);
+    if (normalizedCandidate && COUNTRY_ALIAS_MAP.has(normalizedCandidate)) {
+      return COUNTRY_ALIAS_MAP.get(normalizedCandidate);
+    }
+  }
+
+  return null;
+};
+
+const applyExplicitCountryPriority = (cities, countryCode) => {
+  if (!Array.isArray(cities) || !countryCode) {
+    return cities;
+  }
+
+  const normalizedCountry = countryCode.toUpperCase();
+  if (!normalizedCountry) {
+    return cities;
+  }
+
+  const matches = [];
+  const others = [];
+
+  cities.forEach((city) => {
+    if (city?.country === normalizedCountry) {
+      matches.push(city);
+    } else {
+      others.push(city);
+    }
+  });
+
+  if (matches.length === 0) {
+    return cities;
+  }
+
+  return [...matches, ...others];
 };
 
 /**
@@ -320,6 +482,8 @@ const searchAllCitiesWithPriority = (query, limit) => {
   
   // Extract city name from complex queries like "london great britain"
   const cityName = extractCityFromQuery(normalizedQuery);
+  const explicitCountry =
+    detectCountryCodeFromQuery(query) || detectCountryCodeFromQuery(normalizedQuery);
   
   // Get US city results with extracted city name
   const usResults = searchUSCities(cityName, limit);
@@ -348,9 +512,40 @@ const searchAllCitiesWithPriority = (query, limit) => {
   const partialIntlMatches = intlResults.filter(city => 
     city.city.toLowerCase() !== cityName
   );
+
+  if (!explicitCountry) {
+    const priorityCountries =
+      MAJOR_INTERNATIONAL_CITY_PRIORITY[toInternationalKey(cityName)] || [];
+
+    priorityCountries.forEach((countryCode) => {
+      const alreadyExact = exactIntlMatches.some(
+        (city) => city.country === countryCode
+      );
+
+      if (!alreadyExact) {
+        const candidateIndex = partialIntlMatches.findIndex(
+          (city) => city.country === countryCode
+        );
+
+        if (candidateIndex !== -1) {
+          const [promoted] = partialIntlMatches.splice(candidateIndex, 1);
+          exactIntlMatches.unshift(promoted);
+        }
+      }
+    });
+  }
   
   // For exact international matches, prioritize major cities
-  const prioritizedExactIntl = prioritizeInternationalCities(exactIntlMatches, cityName);
+  const prioritizedExactIntl = prioritizeInternationalCities(
+    exactIntlMatches,
+    cityName,
+    explicitCountry
+  );
+  const prioritizedPartialIntl = prioritizeInternationalCities(
+    partialIntlMatches,
+    cityName,
+    explicitCountry
+  );
   
   // Build results with intelligent prioritization:
   // 1. Exact international matches (with major cities first)
@@ -361,15 +556,17 @@ const searchAllCitiesWithPriority = (query, limit) => {
     ...prioritizedExactIntl,
     ...exactUSMatches,
     ...partialUSMatches,
-    ...partialIntlMatches
+    ...prioritizedPartialIntl
   ];
   
   // Remove duplicates and limit results
   const uniqueResults = prioritizedResults.filter((city, index, self) => 
     index === self.findIndex(c => c.name === city.name)
   );
-  
-  return uniqueResults.slice(0, limit);
+
+  const orderedResults = applyExplicitCountryPriority(uniqueResults, explicitCountry);
+
+  return orderedResults.slice(0, limit);
 };
 
 /**
@@ -378,38 +575,31 @@ const searchAllCitiesWithPriority = (query, limit) => {
  * @param {string} query - Original query for context
  * @returns {Array} Prioritized array of cities
  */
-const prioritizeInternationalCities = (cities, query) => {
+const prioritizeInternationalCities = (cities, query, preferredCountry = null) => {
   if (cities.length <= 1) return cities;
+
+  const priorityOrder = [];
+  if (preferredCountry) {
+    priorityOrder.push(preferredCountry);
+  }
   
-  // Define major international cities that should be prioritized
-  const majorCityPriority = {
-    'london': ['GB', 'CA'], // London, UK first, then London, ON
-    'paris': ['FR'],
-    'berlin': ['DE'],
-    'amsterdam': ['NL'],
-    'madrid': ['ES'],
-    'rome': ['IT'],
-    'budapest': ['HU'],
-    'moscow': ['RU'],
-    'manchester': ['GB'],
-    'sao paulo': ['BR'],
-    'tokyo': ['JP'],
-    'osaka': ['JP'],
-    'beijing': ['CN'],
-    'sydney': ['AU'],
-    'mumbai': ['IN'],
-    'cairo': ['EG']
-  };
-  
-  const priority = majorCityPriority[toInternationalKey(query)];
-  if (!priority) {
+  const priority = MAJOR_INTERNATIONAL_CITY_PRIORITY[toInternationalKey(query)];
+  if (priority) {
+    priority.forEach((code) => {
+      if (!priorityOrder.includes(code)) {
+        priorityOrder.push(code);
+      }
+    });
+  }
+
+  if (priorityOrder.length === 0) {
     return cities; // No special prioritization needed
   }
   
   // Sort cities according to the priority order
-  return cities.sort((a, b) => {
-    const aIndex = priority.indexOf(a.country);
-    const bIndex = priority.indexOf(b.country);
+  return [...cities].sort((a, b) => {
+    const aIndex = priorityOrder.indexOf(a.country);
+    const bIndex = priorityOrder.indexOf(b.country);
     
     // If both cities are in the priority list, sort by priority order
     if (aIndex !== -1 && bIndex !== -1) {

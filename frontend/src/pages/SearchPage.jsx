@@ -15,6 +15,7 @@ import {
   isValidLocationQuery,
   searchAllCities,
 } from "@/utils/searchUtils.js";
+import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
 
 /**
@@ -156,83 +157,136 @@ const SearchPage = () => {
     setTimeout(() => attemptScroll(), 300);
   }, []);
 
+  const applyOptimisticSelection = useCallback(
+    (cityName, fullName, fallback = {}) => {
+      if (!cityName || !fullName) {
+        return;
+      }
+
+      try {
+        const [first] = searchAllCities(fullName, 1);
+        if (first) {
+          const optimisticName = first.name || first.displayName || fullName;
+          const optimisticSelection = {
+            type: "city",
+            city: first.city || cityName,
+            name: optimisticName,
+          };
+
+          if (first.state) optimisticSelection.state = first.state;
+          if (first.country) optimisticSelection.country = first.country;
+          if (first.coordinates) optimisticSelection.coordinates = first.coordinates;
+
+          selectLocation(optimisticSelection);
+          return;
+        }
+      } catch (_) {
+        // Ignore lookup failures and fall back to provided metadata
+      }
+
+      const fallbackSelection = {
+        type: "city",
+        city: cityName,
+        name: fallback.name || fullName,
+      };
+
+      if (fallback.state) fallbackSelection.state = fallback.state;
+      if (fallback.country) fallbackSelection.country = fallback.country;
+      if (fallback.coordinates) {
+        fallbackSelection.coordinates = fallback.coordinates;
+      }
+
+      selectLocation(fallbackSelection);
+    },
+    [selectLocation]
+  );
+
   // Memoize the navigation handler to prevent infinite re-renders
   const handleCityParamNavigation = useCallback(
     (cityParam) => {
-      if (cityParam && cityParam.trim()) {
-        const rawQuery = cityParam.trim();
-        const invalidArrival = !isValidLocationQuery(rawQuery);
+      if (!cityParam || !cityParam.trim()) {
+        return;
+      }
 
-        // Parse the location query to extract city and full name
-        const { city, fullName } = parseLocationQuery(rawQuery);
+      const rawQuery = cityParam.trim();
+      const regionResult = getRandomRegionCapital(rawQuery);
 
-        // Always set the intent so repeated same-city searches still trigger UI updates
-        setLocalSearchQuery("");
-        setSearchedCity(city);
-        searchLocation(fullName); // Use full name for context
-        
-        // Immediately update selectedLocation for instant header badge update
-        try {
-          const [first] = searchAllCities(fullName, 1);
-          if (first) {
-            const optimisticName = first.name || first.displayName || fullName;
-            selectLocation({
-              type: "city",
-              city: first.city || city,
-              name: optimisticName,
-              state: first.state,
-              country: first.country,
-              coordinates: first.coordinates,
-            });
-          } else {
-            // Fallback for locations not in our database
-            selectLocation({
-              type: "city",
-              city,
-              name: fullName,
-            });
-          }
-        } catch (_) {
-          // Fallback for any parsing errors
-          selectLocation({
-            type: "city",
-            city,
-            name: fullName,
-          });
+      const runNavigationSearch = ({
+        city,
+        fullName,
+        noMatchLabel,
+        showNoMatch = true,
+        countryCode,
+        scrollToTopFirst = false,
+      }) => {
+        if (!city || !fullName) {
+          return;
         }
 
-        // Pre-fill attempted label so UI doesn't appear blank before error arrives
-        setNoMatchQuery(rawQuery);
-        setShowNoMatch(true);
-        setShowNoMatch(true);
+        setLocalSearchQuery("");
+        setSearchedCity(city);
+        searchLocation(fullName);
 
-        // Force a refetch even if the city hasn't changed (repeat bad input)
+        applyOptimisticSelection(city, fullName, {
+          name: fullName,
+          country: countryCode,
+        });
+
+        setNoMatchQuery(noMatchLabel ?? fullName);
+        setShowNoMatch(showNoMatch);
+
         try {
-          queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
-          queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+          queryClient.invalidateQueries({
+            queryKey: ["weather", "current", "city"],
+          });
+          queryClient.refetchQueries({
+            queryKey: ["weather", "current", "city"],
+            type: "active",
+          });
         } catch (_) {
           // Non-fatal in environments without a provider
         }
 
-        // Reset forecast toggle when navigating to a (possibly same) city
         setShowSearchForecast(false);
-
-        // Clear the Search page input field (remount the dropdown) when arriving from header/mobile search
         setSearchInputKey((k) => k + 1);
 
-        // Clear the query string so a browser refresh on the Search page
         navigate("/search", { replace: true });
-        
-        // If the incoming query is invalid, show error at top instead of focusing weather
-        if (invalidArrival) {
+
+        if (scrollToTopFirst) {
           scrollToTop();
         } else {
-          // Bring the Current Weather card into view
           focusOnWeatherCard();
         }
+      };
+
+      if (regionResult) {
+        runNavigationSearch({
+          city: regionResult.city,
+          fullName: regionResult.fullName,
+          countryCode: regionResult.countryCode,
+          noMatchLabel: regionResult.fullName,
+          showNoMatch: false,
+        });
+        return;
       }
+
+      const invalidArrival = !isValidLocationQuery(rawQuery);
+      const { city, fullName } = parseLocationQuery(rawQuery);
+
+      runNavigationSearch({
+        city,
+        fullName,
+        noMatchLabel: rawQuery,
+        scrollToTopFirst: invalidArrival,
+      });
     },
-    [searchLocation, selectLocation, navigate, focusOnWeatherCard]
+    [
+      applyOptimisticSelection,
+      focusOnWeatherCard,
+      navigate,
+      scrollToTop,
+      searchLocation,
+    ]
   );
 
   // If a ?city= parameter is present, hydrate the page and fetch immediately
@@ -264,56 +318,64 @@ const SearchPage = () => {
 
   // Debounced search handler for input changes
   const debouncedSearch = debounce((query) => {
-    if (query && isValidLocationQuery(query)) {
-      const { city, fullName } = parseLocationQuery(query);
+    if (!query) {
+      return;
+    }
+
+    const regionResult = getRandomRegionCapital(query);
+    if (regionResult) {
+      const { city, fullName, countryCode } = regionResult;
+
       setSearchedCity(city);
       searchLocation(fullName);
-      
-      // Immediately update selectedLocation for instant header badge update
-      try {
-        const [first] = searchAllCities(fullName, 1);
-        if (first) {
-          const optimisticName = first.name || first.displayName || fullName;
-          selectLocation({
-            type: "city",
-            city: first.city || city,
-            name: optimisticName,
-            state: first.state,
-            country: first.country,
-            coordinates: first.coordinates,
-          });
-        } else {
-          // Fallback for locations not in our database
-          selectLocation({
-            type: "city",
-            city,
-            name: fullName,
-          });
-        }
-      } catch (_) {
-        // Fallback for any parsing errors
-        selectLocation({
-          type: "city",
-          city,
-          name: fullName,
-        });
-      }
 
-      // Reset forecast toggle when searching for a new city
+      applyOptimisticSelection(city, fullName, {
+        name: fullName,
+        country: countryCode,
+      });
+
       setShowSearchForecast(false);
-
-      // Pre-fill attempted label (only shown if request ultimately 404s)
       setNoMatchQuery(fullName);
+      setShowNoMatch(false);
 
-      // Force a refetch even if the same city is searched repeatedly
       try {
-        queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
-        queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+        queryClient.invalidateQueries({
+          queryKey: ["weather", "current", "city"],
+        });
+        queryClient.refetchQueries({
+          queryKey: ["weather", "current", "city"],
+          type: "active",
+        });
       } catch (_) {}
 
-      // Focus on current weather card with highlight effect
       focusOnWeatherCard();
+      return;
     }
+
+    if (!isValidLocationQuery(query)) {
+      return;
+    }
+
+    const { city, fullName } = parseLocationQuery(query);
+    setSearchedCity(city);
+    searchLocation(fullName);
+
+    applyOptimisticSelection(city, fullName);
+
+    setShowSearchForecast(false);
+    setNoMatchQuery(fullName);
+
+    try {
+      queryClient.invalidateQueries({
+        queryKey: ["weather", "current", "city"],
+      });
+      queryClient.refetchQueries({
+        queryKey: ["weather", "current", "city"],
+        type: "active",
+      });
+    } catch (_) {}
+
+    focusOnWeatherCard();
   }, 500); // 500ms delay
 
   // Handle input change with debouncing
@@ -349,50 +411,35 @@ const SearchPage = () => {
         return;
       }
 
-      // Parse the location query to extract city and full name
-      const { city, fullName } = parseLocationQuery(rawQuery);
+      const regionResult = getRandomRegionCapital(rawQuery);
+      const locationInfo = regionResult
+        ? { city: regionResult.city, fullName: regionResult.fullName }
+        : parseLocationQuery(rawQuery);
 
-      setSearchedCity(city);
-      searchLocation(fullName); // Use full name for context
-      
-      // ALWAYS update selectedLocation immediately for header badge sync
-      try {
-        const [first] = searchAllCities(fullName, 1);
-        if (first) {
-          const optimisticName = first.name || first.displayName || fullName;
-          selectLocation({
-            type: "city",
-            city: first.city || city,
-            name: optimisticName,
-            state: first.state,
-            country: first.country,
-            coordinates: first.coordinates,
-          });
-        } else {
-          // Fallback for locations not in our database - CRITICAL FIX
-          selectLocation({
-            type: "city",
-            city,
-            name: fullName,
-          });
-        }
-      } catch (_) {
-        // Fallback for any parsing errors - CRITICAL FIX
-        selectLocation({
-          type: "city",
-          city,
-          name: fullName,
-        });
-      }
+      const resolvedCity = locationInfo.city;
+      const resolvedFullName = locationInfo.fullName;
+
+      setSearchedCity(resolvedCity);
+      searchLocation(resolvedFullName); // Use full name for context
+
+      applyOptimisticSelection(resolvedCity, resolvedFullName, {
+        name: resolvedFullName,
+        country: regionResult?.countryCode,
+      });
 
       // Ensure the no-match placeholder is primed immediately so there is no blank state
-      setNoMatchQuery(fullName);
+      setNoMatchQuery(resolvedFullName);
       setShowNoMatch(true);
 
       // Force re-fetch in case the same query is submitted again
       try {
-        queryClient.invalidateQueries({ queryKey: ["weather", "current", "city"] });
-        queryClient.refetchQueries({ queryKey: ["weather", "current", "city"], type: "active" });
+        queryClient.invalidateQueries({
+          queryKey: ["weather", "current", "city"],
+        });
+        queryClient.refetchQueries({
+          queryKey: ["weather", "current", "city"],
+          type: "active",
+        });
       } catch (_) {}
 
       // Reset forecast toggle when searching for a new city

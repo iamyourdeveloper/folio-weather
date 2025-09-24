@@ -522,6 +522,12 @@ const RANDOM_CITIES = [
   { name: "Athens, GR", city: "Athens", country: "GR" },
   { name: "Thessaloniki, GR", city: "Thessaloniki", country: "GR" },
   { name: "Patras, GR", city: "Patras", country: "GR" },
+  {
+    name: "Rio, Greece",
+    city: "Rio",
+    country: "GR",
+    coordinates: { lat: 38.293, lon: 21.7857 },
+  },
   { name: "Piraeus, GR", city: "Piraeus", country: "GR" },
   { name: "Larissa, GR", city: "Larissa", country: "GR" },
   { name: "Heraklion, GR", city: "Heraklion", country: "GR" },
