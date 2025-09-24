@@ -1362,7 +1362,29 @@ class WeatherService {
 
     // Try to find state information in the location string
     const locationLower = location.toLowerCase();
-    
+
+    // Prefer explicit trailing segments like "MD" in "California, MD"
+    const commaSeparatedParts = location
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (commaSeparatedParts.length > 1) {
+      for (let i = commaSeparatedParts.length - 1; i >= 1; i -= 1) {
+        const part = commaSeparatedParts[i];
+        const upperPart = part.toUpperCase();
+        const lowerPart = part.toLowerCase();
+
+        if (stateMap[upperPart]) {
+          return stateMap[upperPart];
+        }
+
+        if (stateMap[lowerPart]) {
+          return stateMap[lowerPart];
+        }
+      }
+    }
+
     // First, try to match full state names (longer matches first to avoid conflicts)
     // But avoid matching "Washington" when it's "Washington, D.C."
     const fullStateNames = Object.keys(stateMap).filter(key => key.length > 2).sort((a, b) => b.length - a.length);

@@ -48,6 +48,90 @@ const toInternationalKey = (value) => {
     .trim();
 };
 
+const WASHINGTON_DC_REMAINDERS = new Set([
+  'd',
+  'dc',
+  'd c',
+  'district of columbia',
+  'the district of columbia',
+]);
+
+const WASHINGTON_DC_TRAILING_ALIASES = [
+  'united states of america',
+  'united states',
+  'usa',
+  'u s a',
+  'u s',
+  'us',
+  'america',
+];
+
+const stripWashingtonDcTrailingAliases = (value) => {
+  if (!value) {
+    return value;
+  }
+
+  let current = value;
+  let changed;
+
+  do {
+    changed = false;
+
+    for (const alias of WASHINGTON_DC_TRAILING_ALIASES) {
+      if (!current) {
+        break;
+      }
+
+      if (current === alias) {
+        current = '';
+        changed = true;
+        break;
+      }
+
+      const aliasSuffix = ` ${alias}`;
+      if (current.endsWith(aliasSuffix)) {
+        current = current.slice(0, -aliasSuffix.length).trim();
+        changed = true;
+        break;
+      }
+    }
+  } while (changed && current);
+
+  return current;
+};
+
+const isWashingtonDcQuery = (value) => {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  const cleaned = normalized
+    .replace(/[.,/#!$%\^&*;:{}=+_`~()?<>\[\]\\|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned.startsWith('washington')) {
+    return false;
+  }
+
+  const remainderRaw = cleaned.slice('washington'.length).trim();
+  if (!remainderRaw) {
+    return false;
+  }
+
+  const remainder = stripWashingtonDcTrailingAliases(remainderRaw);
+  if (!remainder) {
+    return false;
+  }
+
+  return WASHINGTON_DC_REMAINDERS.has(remainder);
+};
+
 const TOP_INTERNATIONAL_CITY_LIMIT = 5;
 
 const findInternationalCityData = (cityName, countryCode) => {
@@ -661,7 +745,7 @@ const removeAliasFromTokens = (tokens, aliasMap, maxAliasTokens) => {
   return null;
 };
 
-const extractLocationComponents = (value) => {
+export const extractLocationComponents = (value) => {
   if (!value || typeof value !== 'string') {
     return { city: '', stateCode: null, countryCode: null };
   }
@@ -795,13 +879,20 @@ export const parseLocationQuery = (query) => {
   const normalizedOriginalKey = toInternationalKey(trimmedQuery);
   const normalizedQueryKey = toInternationalKey(normalizedQuery);
 
+  if (isWashingtonDcQuery(trimmedQuery) || isWashingtonDcQuery(normalizedQuery)) {
+    return {
+      city: 'Washington',
+      fullName: 'Washington, D.C., USA',
+    };
+  }
+
   if (
     matchesUSCountryAliasKey(normalizedOriginalKey) ||
     matchesUSCountryAliasKey(normalizedQueryKey)
   ) {
     return {
       city: 'Washington',
-      fullName: 'Washington, D.C., United States',
+      fullName: 'Washington, D.C., USA',
     };
   }
 
@@ -827,7 +918,7 @@ export const parseLocationQuery = (query) => {
   ) {
     return {
       city: 'Washington',
-      fullName: 'Washington, D.C., United States',
+      fullName: 'Washington, D.C., USA',
     };
   }
 
@@ -1205,7 +1296,7 @@ const handleSingleNameQuery = (
   if (isUSCountryAliasOnlyQuery) {
     return {
       city: 'Washington',
-      fullName: 'Washington, D.C., United States',
+      fullName: 'Washington, D.C., USA',
     };
   }
 
@@ -1350,7 +1441,7 @@ const disambiguateUSCities = (cities, query) => {
   // For US cities, prefer more populous states/cities
   // Priority order: major metropolitan areas first
   const statePopulationPriority = [
-    'CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI',
+    'CA', 'TX', 'FL', 'NY', 'DC', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI',
     'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI',
     'CO', 'MN', 'SC', 'AL', 'LA', 'KY', 'OR', 'OK', 'CT', 'UT'
   ];
@@ -1670,7 +1761,7 @@ export const resolveLocationNameForWeatherCard = (location) => {
       looksLikeWashingtonDC
     )
   ) {
-    return 'Washington, D.C., United States';
+    return 'Washington, D.C., USA';
   }
 
   const isUSLocation =

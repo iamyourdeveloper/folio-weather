@@ -19,6 +19,7 @@ import {
   parseLocationQuery,
   isValidLocationQuery,
   searchAllCities,
+  extractLocationComponents,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 
@@ -60,6 +61,9 @@ const Header = () => {
       return;
     }
 
+    const { stateCode: parsedState, countryCode: parsedCountry } =
+      extractLocationComponents(fullName) || {};
+
     try {
       const [first] = searchAllCities(fullName, 1);
       if (first) {
@@ -88,8 +92,12 @@ const Header = () => {
       name: fallback.name || fullName,
     };
 
-    if (fallback.state) fallbackSelection.state = fallback.state;
-    if (fallback.country) fallbackSelection.country = fallback.country;
+    if (fallback.state || parsedState) {
+      fallbackSelection.state = fallback.state || parsedState;
+    }
+    if (fallback.country || parsedCountry) {
+      fallbackSelection.country = fallback.country || parsedCountry;
+    }
     if (fallback.coordinates) {
       fallbackSelection.coordinates = fallback.coordinates;
     }

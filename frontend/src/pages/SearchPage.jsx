@@ -14,6 +14,8 @@ import {
   parseLocationQuery,
   isValidLocationQuery,
   searchAllCities,
+  extractLocationComponents,
+  resolveFullLocationName,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
@@ -63,6 +65,8 @@ const SearchPage = () => {
   const [highlightCurrent, setHighlightCurrent] = useState(false);
   // Force-remount key for SearchDropdown to reset its internal input value on demand
   const [searchInputKey, setSearchInputKey] = useState(0);
+  // Track the most recent full query submitted so requests stay specific even during context updates
+  const [pendingOriginalName, setPendingOriginalName] = useState(null);
 
   // Debounce search to prevent excessive API calls
   const debounce = (func, wait) => {
@@ -76,7 +80,8 @@ const SearchPage = () => {
 
   // Fetch weather data for searched city
   // Prefer the current attempted full name for backend disambiguation
-  const originalAttemptName = searchQuery || selectedLocation?.name || null;
+  const originalAttemptName =
+    pendingOriginalName || searchQuery || selectedLocation?.name || null;
 
   const currentWeather = useCurrentWeatherByCity(
     searchedCity,
@@ -103,16 +108,50 @@ const SearchPage = () => {
         setShowNoMatch(false);
         try {
           const loc = data?.data?.location;
-          if (loc && loc.city && loc.name) {
-            selectLocation({
-              type: "city",
-              city: loc.city,
-              name: loc.name,
-              state: loc.state,
-              country: loc.country,
-              coordinates: loc.coordinates,
-            });
+          if (!loc) {
+            return;
           }
+
+          const resolvedName =
+            resolveFullLocationName(loc) ||
+            pendingOriginalName ||
+            loc.name ||
+            searchQuery ||
+            searchedCity ||
+            "Unknown Location";
+
+          const inferredCity =
+            loc.city ||
+            (typeof loc.name === "string"
+              ? loc.name.split(",")[0]?.trim()
+              : null) ||
+            (typeof resolvedName === "string"
+              ? resolvedName.split(",")[0]?.trim()
+              : null) ||
+            pendingOriginalName ||
+            searchedCity;
+
+          if (!inferredCity) {
+            return;
+          }
+
+          const normalizedLocation = {
+            type: "city",
+            city: inferredCity,
+            name: resolvedName,
+          };
+
+          if (loc.state) {
+            normalizedLocation.state = loc.state;
+          }
+          if (loc.country || loc.countryCode) {
+            normalizedLocation.country = loc.country || loc.countryCode;
+          }
+          if (loc.coordinates) {
+            normalizedLocation.coordinates = loc.coordinates;
+          }
+
+          selectLocation(normalizedLocation);
         } catch (_) {}
       },
     }
@@ -163,6 +202,9 @@ const SearchPage = () => {
         return;
       }
 
+      const { stateCode: parsedState, countryCode: parsedCountry } =
+        extractLocationComponents(fullName) || {};
+
       try {
         const [first] = searchAllCities(fullName, 1);
         if (first) {
@@ -190,8 +232,12 @@ const SearchPage = () => {
         name: fallback.name || fullName,
       };
 
-      if (fallback.state) fallbackSelection.state = fallback.state;
-      if (fallback.country) fallbackSelection.country = fallback.country;
+      if (fallback.state || parsedState) {
+        fallbackSelection.state = fallback.state || parsedState;
+      }
+      if (fallback.country || parsedCountry) {
+        fallbackSelection.country = fallback.country || parsedCountry;
+      }
       if (fallback.coordinates) {
         fallbackSelection.coordinates = fallback.coordinates;
       }
@@ -226,6 +272,7 @@ const SearchPage = () => {
         setLocalSearchQuery("");
         setSearchedCity(city);
         searchLocation(fullName);
+        setPendingOriginalName(fullName);
 
         applyOptimisticSelection(city, fullName, {
           name: fullName,
@@ -286,6 +333,7 @@ const SearchPage = () => {
       navigate,
       scrollToTop,
       searchLocation,
+      setPendingOriginalName,
     ]
   );
 
@@ -303,6 +351,7 @@ const SearchPage = () => {
       // Clear any previous error/placeholder state
       setShowNoMatch(false);
       setNoMatchQuery("");
+      setPendingOriginalName(null);
       // Reset the dropdown's internal input by remounting it
       setSearchInputKey((k) => k + 1);
       // Do not modify selectedLocation here; header badge remains on current selection.
@@ -319,6 +368,7 @@ const SearchPage = () => {
   // Debounced search handler for input changes
   const debouncedSearch = debounce((query) => {
     if (!query) {
+      setPendingOriginalName(null);
       return;
     }
 
@@ -328,6 +378,7 @@ const SearchPage = () => {
 
       setSearchedCity(city);
       searchLocation(fullName);
+      setPendingOriginalName(fullName);
 
       applyOptimisticSelection(city, fullName, {
         name: fullName,
@@ -353,12 +404,14 @@ const SearchPage = () => {
     }
 
     if (!isValidLocationQuery(query)) {
+      setPendingOriginalName(null);
       return;
     }
 
     const { city, fullName } = parseLocationQuery(query);
     setSearchedCity(city);
     searchLocation(fullName);
+    setPendingOriginalName(fullName);
 
     applyOptimisticSelection(city, fullName);
 
@@ -384,6 +437,8 @@ const SearchPage = () => {
     setLocalSearchQuery(value);
     if (value.trim()) {
       debouncedSearch(value);
+    } else {
+      setPendingOriginalName(null);
     }
   };
 
@@ -406,6 +461,7 @@ const SearchPage = () => {
         setSearchedCity("");
         setShowSearchForecast(false);
         setShowNoMatch(true);
+        setPendingOriginalName(null);
         // Bring the error into view at the top
         scrollToTop();
         return;
@@ -421,6 +477,7 @@ const SearchPage = () => {
 
       setSearchedCity(resolvedCity);
       searchLocation(resolvedFullName); // Use full name for context
+      setPendingOriginalName(resolvedFullName);
 
       applyOptimisticSelection(resolvedCity, resolvedFullName, {
         name: resolvedFullName,
@@ -753,6 +810,7 @@ const SearchPage = () => {
 
                 setSearchedCity(city);
                 searchLocation(fullName);
+                setPendingOriginalName(fullName);
                 // Immediately reflect the user's intent globally so Home and the header badge update
                 try {
                   selectLocation({
@@ -783,6 +841,7 @@ const SearchPage = () => {
                   // Revert to empty-state suggestions when input is cleared by backspace/delete
                   setSearchedCity("");
                   setShowSearchForecast(false);
+                  setPendingOriginalName(null);
                 }
               }}
               onClear={() => {
@@ -792,6 +851,7 @@ const SearchPage = () => {
                 setShowSearchForecast(false);
                 setNoMatchQuery("");
                 setShowNoMatch(false);
+                setPendingOriginalName(null);
               }}
               placeholder="Enter city name (e.g., London, New York, Tokyo)"
               className="search-page__dropdown"
@@ -1157,6 +1217,7 @@ const SearchPage = () => {
                         // Trigger search immediately but keep the input clear
                         setSearchedCity(finalCity);
                         searchLocation(finalFullName); // Use full name for context
+                        setPendingOriginalName(finalFullName);
                         
                         // Enhanced cache clearing for popular cities, especially San Diego
                         try {

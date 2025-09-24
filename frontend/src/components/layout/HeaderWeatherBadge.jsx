@@ -87,11 +87,26 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
   // Always show location when we have an effectiveLocation, even if weather is loading or failed
   if (effectiveLocation) {
     const data = active?.data?.data;
+    const manualSelectionName =
+      selectedLocation?.type === "city"
+        ? resolveFullLocationName(selectedLocation)
+        : null;
     
     // If we have weather data, show temperature + location
     if (data?.current && data?.location) {
       const temp = formatTemperature(data.current.temperature);
-      const locName = data.location.name || resolveFullLocationName(data.location) || resolveFullLocationName(effectiveLocation) || "Unknown";
+      const resolvedEffectiveName =
+        effectiveLocation?.type === "city"
+          ? resolveFullLocationName(effectiveLocation)
+          : effectiveLocation?.name;
+      const resolvedDataName = resolveFullLocationName(data.location);
+      const locName =
+        manualSelectionName ||
+        resolvedDataName ||
+        data.location.name ||
+        resolvedEffectiveName ||
+        resolveFullLocationName(effectiveLocation) ||
+        "Unknown";
       
       const isHome = routerLocation.pathname === "/";
       const content = (
@@ -125,7 +140,13 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
     }
     
     // If weather is loading or failed, show location with loading indicator
-    const loadingLocName = effectiveLocation?.name || resolveFullLocationName(effectiveLocation) || "Loading...";
+    const loadingLocName =
+      manualSelectionName ||
+      (effectiveLocation?.type === "city"
+        ? resolveFullLocationName(effectiveLocation)
+        : effectiveLocation?.name) ||
+      resolveFullLocationName(effectiveLocation) ||
+      "Loading...";
     return (
       <Link
         to="/#current-weather"

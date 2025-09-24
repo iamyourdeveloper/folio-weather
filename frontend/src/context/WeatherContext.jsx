@@ -1,9 +1,21 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useLocation as useRouterLocation } from "react-router-dom";
 import { queryClient } from "@context/QueryProvider";
 import { useCurrentLocation } from "@hooks/useGeolocation";
 import RANDOM_CITIES from "../data/randomCities.js";
-import { resolveFullLocationName } from "../utils/searchUtils.js";
+import {
+  resolveFullLocationName,
+  parseLocationQuery,
+  extractLocationComponents,
+} from "../utils/searchUtils.js";
 
 // Function to get a curated set of diverse fallback cities from the full RANDOM_CITIES list
 // This creates a smaller, regionally diverse subset as a fallback when the full list isn't available
@@ -516,13 +528,18 @@ export const WeatherProvider = ({ children }) => {
     if (locationError) { pendingAutoEnableRef.current = false; return; }
     if (!currentLocation || currentLocation.lat == null || currentLocation.lon == null) return;
 
+    if (selectedLocation?.type === "city") {
+      pendingAutoEnableRef.current = false;
+      return;
+    }
+
     setSelectedLocation({
       type: "coords",
       coordinates: currentLocation,
       name: "Current Location",
     });
     pendingAutoEnableRef.current = false;
-  }, [currentLocation, preferences.autoLocation, locationError]);
+  }, [currentLocation, preferences.autoLocation, locationError, selectedLocation]);
 
   // Globally promote current coordinates the first time they become available
   // during a session (e.g., the user enables location services or grants
@@ -539,6 +556,15 @@ export const WeatherProvider = ({ children }) => {
       currentLocation.lon != null
     );
 
+    // Respect any explicit manual city selection. This prevents
+    // geolocation updates from clobbering a recently searched city,
+    // which would otherwise make the header badge snap back to the
+    // auto-detected location.
+    if (selectedLocation?.type === "city") {
+      hadCoordsRef.current = hasCoords;
+      return;
+    }
+
     // Detect a transition from no coords -> coords available
     if (!hadCoordsRef.current && hasCoords) {
       try {
@@ -551,7 +577,12 @@ export const WeatherProvider = ({ children }) => {
 
     // Keep the ref in sync for future transitions
     hadCoordsRef.current = hasCoords;
-  }, [hasInitialized, preferences.autoLocation, currentLocation]);
+  }, [
+    hasInitialized,
+    preferences.autoLocation,
+    currentLocation,
+    selectedLocation,
+  ]);
 
   // If geolocation becomes blocked/denied after startup, ensure we do not keep
   // showing an auto-selected "current location" that was chosen earlier.
@@ -799,11 +830,54 @@ export const WeatherProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  // Derive a manual selection from the most recent search query when a selection isn't already set
+  const derivedManualSelection = useMemo(() => {
+    if (selectedLocation) {
+      return selectedLocation;
+    }
+
+    if (!searchQuery || typeof searchQuery !== "string") {
+      return null;
+    }
+
+    const parsed = parseLocationQuery(searchQuery);
+    const city = parsed.city || searchQuery.trim();
+    if (!city) {
+      return null;
+    }
+
+    const fullName = parsed.fullName || searchQuery.trim();
+    const { stateCode, countryCode } = extractLocationComponents(fullName) || {};
+
+    const manualSelection = {
+      type: "city",
+      city,
+      name: fullName,
+    };
+
+    if (stateCode) {
+      manualSelection.state = stateCode;
+    }
+    if (countryCode) {
+      manualSelection.country = countryCode;
+    }
+
+    return manualSelection;
+  }, [selectedLocation, searchQuery]);
+
+  // When we only have an inferred manual selection (e.g. immediately after a search)
+  // promote it to the selectedLocation state so other consumers treat it as explicit.
+  useEffect(() => {
+    if (!selectedLocation && derivedManualSelection) {
+      setSelectedLocation(derivedManualSelection);
+    }
+  }, [selectedLocation, derivedManualSelection]);
+
   // Function to get the effective location to use for weather fetching - memoized to prevent unnecessary re-renders
   const getEffectiveLocation = useCallback(() => {
     // Priority: selectedLocation > autoSelectedLocation > null
-    return selectedLocation || autoSelectedLocation;
-  }, [selectedLocation, autoSelectedLocation]);
+    return derivedManualSelection || autoSelectedLocation;
+  }, [derivedManualSelection, autoSelectedLocation]);
 
   // Pick a random default city (optionally excluding a given city)
   const getRandomDefaultCity = (excludeLocation = null) => {
