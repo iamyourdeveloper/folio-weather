@@ -22,7 +22,11 @@ import ForecastCard from "@components/weather/ForecastCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
 import { resolveFullLocationName } from "@utils/searchUtils";
-import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
+import {
+  getForecastDateLabel,
+  formatDateDisplay,
+  getForecastDaysStartingTomorrow,
+} from "@utils/dateUtils";
 
 /**
  * HomePage component - Main landing page with current weather and quick actions
@@ -522,9 +526,10 @@ const HomePage = () => {
                         5-Day Forecast
                       </h3>
                       <div className="forecast-grid">
-                        {activeForecast.data.data.forecast
-                          .slice(0, 5)
-                          .map((day, index) => (
+                        {getForecastDaysStartingTomorrow(
+                          activeForecast.data.data.forecast,
+                          5
+                        ).map((day, index) => (
                             <div key={day.date} className="forecast-item">
                               <div className="forecast-item__date">
                                 {getForecastDateLabel(day.date, index)}{" "}

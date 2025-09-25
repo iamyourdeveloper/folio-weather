@@ -18,7 +18,11 @@ import {
   resolveFullLocationName,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
-import { getForecastDateLabel, formatDateDisplay } from "@utils/dateUtils";
+import {
+  getForecastDateLabel,
+  formatDateDisplay,
+  getForecastDaysStartingTomorrow,
+} from "@utils/dateUtils";
 
 /**
  * SearchPage component for searching weather by city
@@ -1021,9 +1025,10 @@ const SearchPage = () => {
                     <h2 className="section__title">5-Day Forecast</h2>
 
                     <div className="forecast-grid">
-                      {forecast.data.data.forecast
-                        .slice(0, 5)
-                        .map((day, index) => (
+                      {getForecastDaysStartingTomorrow(
+                        forecast.data.data.forecast,
+                        5
+                      ).map((day, index) => (
                           <div key={day.date} className="forecast-day">
                             <div className="forecast-day__header">
                               <h4 className="forecast-day__date">

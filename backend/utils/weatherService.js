@@ -632,9 +632,27 @@ class WeatherService {
           "zur",
         ];
 
-    return normalizedLocationName
+    const placeholderSegmentPattern = /^(?:n\/?a|n\.a\.?|none|null|undefined|unknown|not available|not applicable|na|nada)$/i;
+
+    const sanitizedParts = normalizedLocationName
       .split(",")
       .map((part) => part.trim())
+      .filter(Boolean)
+      .filter((part, index) => {
+        if (index === 0) {
+          return true;
+        }
+
+        // Strip punctuation so variations like "N.A." match the placeholder pattern
+        const normalizedPart = part
+          .replace(/[\.\-\s]+/g, " ")
+          .trim()
+          .toLowerCase();
+
+        return !placeholderSegmentPattern.test(normalizedPart);
+      });
+
+    return sanitizedParts
       .map((part) => {
         const trimmedPart = part.trim();
 
@@ -650,7 +668,7 @@ class WeatherService {
           }
         }
 
-        return part
+        return trimmedPart
           .split(" ")
           .map((word, index) => {
             const cleanWord = word.trim();
@@ -890,16 +908,22 @@ class WeatherService {
     }
 
     const dailyForecasts = {};
+    const timezoneOffsetSeconds = Number(data.city?.timezone) || 0;
+
+    const getLocalizedDateString = (utcSeconds) => {
+      const localTimestamp = (Number(utcSeconds) + timezoneOffsetSeconds) * 1000;
+      const localDate = new Date(localTimestamp);
+      const year = localDate.getUTCFullYear();
+      const month = String(localDate.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(localDate.getUTCDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
     // Group forecasts by day
     data.list.forEach((item) => {
       // Use the forecast timestamp to create a date string
       // The dt field from OpenWeatherMap is in UTC seconds
-      const forecastDate = new Date(item.dt * 1000);
-      
-      // Get the date in the local timezone where the weather is being requested
-      // This ensures that "Today" matches the user's current day
-      const date = forecastDate.toISOString().split("T")[0];
+      const date = getLocalizedDateString(item.dt);
 
       if (!dailyForecasts[date]) {
         dailyForecasts[date] = {

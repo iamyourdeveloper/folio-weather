@@ -6,9 +6,16 @@
  * Get today's date in YYYY-MM-DD format
  * @returns {string} Today's date string
  */
+const formatAsLocalISODate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const getTodayDateString = () => {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  return formatAsLocalISODate(today);
 };
 
 /**
@@ -18,7 +25,30 @@ export const getTodayDateString = () => {
 export const getTomorrowDateString = () => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  return formatAsLocalISODate(tomorrow);
+};
+
+/**
+ * Get forecast days that start from tomorrow in viewer's local time
+ * @param {Array} forecastDays - Array of daily forecast objects
+ * @param {number|null} limit - Optional limit for number of days returned
+ * @returns {Array} Filtered and ordered forecast days
+ */
+export const getForecastDaysStartingTomorrow = (forecastDays = [], limit = null) => {
+  const todayString = getTodayDateString();
+
+  const normalizedDays = (Array.isArray(forecastDays) ? forecastDays : [])
+    .filter((day) => day && typeof day.date === "string" && day.date > todayString)
+    .sort((a, b) => {
+      if (a.date === b.date) return 0;
+      return a.date < b.date ? -1 : 1;
+    });
+
+  if (typeof limit === "number") {
+    return normalizedDays.slice(0, limit);
+  }
+
+  return normalizedDays;
 };
 
 /**

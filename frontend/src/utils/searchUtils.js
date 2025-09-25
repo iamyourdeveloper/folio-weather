@@ -100,6 +100,40 @@ const stripWashingtonDcTrailingAliases = (value) => {
   return current;
 };
 
+function resolveUSStateCapitalQuery(stateCode) {
+  if (!stateCode || typeof stateCode !== 'string') {
+    return null;
+  }
+
+  const normalizedState = stateCode.replace(/\./g, '').trim().toUpperCase();
+  if (!normalizedState) {
+    return null;
+  }
+
+  const stateCities = getCitiesByState(normalizedState);
+  if (!Array.isArray(stateCities) || stateCities.length === 0) {
+    return null;
+  }
+
+  const capitalEntry = stateCities[0];
+  const cityNameRaw = typeof capitalEntry?.city === 'string'
+    ? capitalEntry.city.trim()
+    : typeof capitalEntry?.name === 'string'
+      ? capitalEntry.name.split(',')[0].trim()
+      : '';
+
+  const cityName = cityNameRaw;
+
+  if (!cityName) {
+    return null;
+  }
+
+  return {
+    city: cityName,
+    fullName: `${cityName}, ${normalizedState}, USA`,
+  };
+}
+
 const isWashingtonDcQuery = (value) => {
   if (!value || typeof value !== 'string') {
     return false;
@@ -879,6 +913,76 @@ export const parseLocationQuery = (query) => {
   const normalizedOriginalKey = toInternationalKey(trimmedQuery);
   const normalizedQueryKey = toInternationalKey(normalizedQuery);
 
+  const componentsFromOriginal = extractLocationComponents(trimmedQuery);
+  const componentsFromNormalized =
+    normalizedQuery && normalizedQuery !== trimmedQuery
+      ? extractLocationComponents(normalizedQuery)
+      : null;
+
+  const hasExplicitUSLocationContext = (() => {
+    const isMeaningfulLocation = (components) => {
+      if (!components) {
+        return false;
+      }
+
+      if (components.stateCode) {
+        return true;
+      }
+
+      const cityKey = toInternationalKey(components.city);
+
+      if (!cityKey) {
+        return false;
+      }
+
+      if (matchesUSCountryAliasKey(cityKey)) {
+        return false;
+      }
+
+      return true;
+    };
+
+    if (isMeaningfulLocation(componentsFromOriginal)) {
+      return true;
+    }
+
+    if (isMeaningfulLocation(componentsFromNormalized)) {
+      return true;
+    }
+
+    return false;
+  })();
+
+  const shouldFallbackToUSCapital = (key) =>
+    key && matchesUSCountryAliasKey(key) && !hasExplicitUSLocationContext;
+
+  const detectStateOnlyIntent = (components) => {
+    if (!components || !components.stateCode) {
+      return null;
+    }
+
+    const normalizedState = components.stateCode
+      .toString()
+      .replace(/\./g, '')
+      .trim()
+      .toUpperCase();
+
+    if (!normalizedState) {
+      return null;
+    }
+
+    const cityKey = toInternationalKey(components.city);
+    if (cityKey) {
+      return null;
+    }
+
+    return normalizedState;
+  };
+
+  const stateOnlyIntent =
+    detectStateOnlyIntent(componentsFromOriginal) ||
+    detectStateOnlyIntent(componentsFromNormalized);
+
   if (isWashingtonDcQuery(trimmedQuery) || isWashingtonDcQuery(normalizedQuery)) {
     return {
       city: 'Washington',
@@ -886,9 +990,16 @@ export const parseLocationQuery = (query) => {
     };
   }
 
+  if (stateOnlyIntent) {
+    const capitalResult = resolveUSStateCapitalQuery(stateOnlyIntent);
+    if (capitalResult) {
+      return capitalResult;
+    }
+  }
+
   if (
-    matchesUSCountryAliasKey(normalizedOriginalKey) ||
-    matchesUSCountryAliasKey(normalizedQueryKey)
+    shouldFallbackToUSCapital(normalizedOriginalKey) ||
+    shouldFallbackToUSCapital(normalizedQueryKey)
   ) {
     return {
       city: 'Washington',
@@ -913,8 +1024,8 @@ export const parseLocationQuery = (query) => {
   const remainingKey = toInternationalKey(parts.slice(1).join(',').trim());
 
   if (
-    matchesUSCountryAliasKey(cityPartKey) ||
-    matchesUSCountryAliasKey(remainingKey)
+    shouldFallbackToUSCapital(cityPartKey) ||
+    shouldFallbackToUSCapital(remainingKey)
   ) {
     return {
       city: 'Washington',
@@ -1026,6 +1137,8 @@ const normalizeLocationQuery = (query) => {
     "australia": "Australia",
     
     // United States variations
+    "united states of america": "US",
+    "united states of": "US",
     "us": "US",
     "usa": "US",
     "united states": "US",
@@ -1177,6 +1290,8 @@ const normalizeLocationQuery = (query) => {
   const sortedCountryEntries = Object.entries(countryNormalizations)
     .sort(([a], [b]) => b.length - a.length);
   
+  let countryMatched = false;
+
   for (const [variation, standard] of sortedCountryEntries) {
     const patterns = [
       // "city, country" format
@@ -1201,18 +1316,25 @@ const normalizeLocationQuery = (query) => {
         }
 
         normalized = `${cityName}, ${standard}`;
-        return normalized; // Return early for country matches
+        countryMatched = true;
+        break;
       }
+    }
+
+    if (countryMatched) {
+      break;
     }
   }
 
   // Then handle state/province normalizations
+  let stateMatched = false;
+
   for (const [variation, standard] of Object.entries(stateNormalizations)) {
     const patterns = [
       // "city, state" format (more specific)
-      new RegExp(`^(.+?),\\s*(${escapeRegex(variation)})\\s*$`, "i"),
-      // "city state" format (no comma)
-      new RegExp(`^(.+?)\\s+(${escapeRegex(variation)})\\s*$`, "i"),
+      new RegExp(`^(.+?),\\s*(${escapeRegex(variation)})(\\s*,\\s*.+)?$`, "i"),
+      // "city state" format (no comma) with optional trailing content
+      new RegExp(`^(.+?)\\s+(${escapeRegex(variation)})(\\s*,?\\s*.+)?$`, "i"),
     ];
 
     for (const pattern of patterns) {
@@ -1220,6 +1342,7 @@ const normalizeLocationQuery = (query) => {
       if (match) {
         const cityName = match[1].trim();
         const matchedAlias = (match[2] || variation).trim();
+        const trailing = match[3] ? match[3].trim() : '';
 
         // Avoid treating mid-word connectors like "de" as the Delaware state unless explicitly capitalized
         if (
@@ -1229,9 +1352,22 @@ const normalizeLocationQuery = (query) => {
           continue;
         }
 
-        normalized = `${cityName}, ${standard}`;
-        return normalized; // Return early for state matches
+        let suffix = '';
+        if (trailing) {
+          const cleanedSuffix = trailing.replace(/^,/, '').trim();
+          if (cleanedSuffix && (countryMatched || /[a-z]/i.test(cleanedSuffix))) {
+            suffix = `, ${cleanedSuffix}`;
+          }
+        }
+
+        normalized = `${cityName}, ${standard}${suffix}`;
+        stateMatched = true;
+        break;
       }
+    }
+
+    if (stateMatched) {
+      break;
     }
   }
 
@@ -1549,6 +1685,69 @@ const normalizeUKLocationDisplay = (locationName) => {
   return normalized;
 };
 
+const PLACEHOLDER_LOCATION_SEGMENT_PATTERN = /^(?:n\/?a|n\.a\.?|none|null|undefined|unknown|not available|not applicable|na|nada)$/i;
+
+const sanitizeLocationNameSegments = (value) => {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+
+  const parts = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 1) {
+    return value.trim();
+  }
+
+  const filtered = parts.filter((part, index) => {
+    if (index === 0) {
+      return true;
+    }
+
+    const normalizedPart = part
+      .replace(/[.\-\s]+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    return !PLACEHOLDER_LOCATION_SEGMENT_PATTERN.test(normalizedPart);
+  });
+
+  return filtered.join(', ');
+};
+
+const ensureUsDisplaySuffix = (name) => {
+  if (!name || typeof name !== 'string') {
+    return name;
+  }
+
+  const sanitizedName = sanitizeLocationNameSegments(name);
+  const trimmed = sanitizedName.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  if (lower === 'unknown location' || lower === 'current location') {
+    return trimmed;
+  }
+
+  const stripUsSuffixPattern = /(?:,?\s*(?:united states(?: of america| of)?|u\.s\.a\.?|u\.s\.?(?:a\.?)*|usa|us|america))+$/i;
+
+  const base = trimmed
+    .replace(stripUsSuffixPattern, '')
+    .replace(/,\s*$/, '')
+    .trim();
+
+  if (!base) {
+    return 'USA';
+  }
+
+  return `${base}, USA`;
+};
+
 /**
  * Resolves a location to its full display name using our database
  * @param {Object} location - Location object with city, name, country, state, countryCode
@@ -1562,12 +1761,13 @@ export const resolveFullLocationName = (location) => {
     return "Current Location";
   }
   
-  const cityName = location.city || location.name;
+  const sanitizedLocationName = sanitizeLocationNameSegments(location.name);
+  const cityName = location.city || sanitizedLocationName || location.name;
   const country = location.country;
   const state = location.state;
   const countryCode = location.countryCode;
   
-  if (!cityName || typeof cityName !== 'string') return normalizeUKLocationDisplay(location.name) || "Unknown Location";
+  if (!cityName || typeof cityName !== 'string') return normalizeUKLocationDisplay(sanitizedLocationName || location.name) || "Unknown Location";
   
   // Special handling for Washington D.C. - always display as "Washington, D.C."
   if (cityName.toLowerCase() === 'washington' && 
@@ -1579,8 +1779,8 @@ export const resolveFullLocationName = (location) => {
   // Special handling for UK/GB locations - always normalize to UK
   if (country === "GB" || countryCode === "GB") {
     // If the location has a name, normalize it
-    if (location.name && location.name.includes(",")) {
-      return normalizeUKLocationDisplay(location.name);
+    if (sanitizedLocationName && sanitizedLocationName.includes(",")) {
+      return normalizeUKLocationDisplay(sanitizedLocationName);
     }
     // Otherwise, construct it as "City, UK"
     return `${cityName}, UK`;
@@ -1588,19 +1788,19 @@ export const resolveFullLocationName = (location) => {
   
   // Always apply UK normalization to any location name that might contain GB variants
   // This catches cases where the backend hasn't normalized properly
-  const potentialName = location.name || `${cityName}${state ? ', ' + state : ''}${country ? ', ' + country : ''}`;
+  const potentialName = sanitizedLocationName || location.name || `${cityName}${state ? ', ' + state : ''}${country ? ', ' + country : ''}`;
   if (potentialName && (potentialName.includes('GB') || potentialName.includes('Great Britain') || potentialName.includes('United Kingdom') || potentialName.includes('England'))) {
     return normalizeUKLocationDisplay(potentialName);
   }
   
   // If the location already has a properly formatted name that includes state/country, use it
-  if (location.name && location.name.includes(",") && location.name !== cityName) {
+  if (sanitizedLocationName && sanitizedLocationName.includes(",") && sanitizedLocationName !== cityName) {
     // Special case: if it's Washington, DC in the name, convert to D.C.
-    if (location.name.toLowerCase().includes('washington, dc')) {
-      return location.name.replace(/washington,\s*dc/i, 'Washington, D.C.');
+    if (sanitizedLocationName.toLowerCase().includes('washington, dc')) {
+      return sanitizedLocationName.replace(/washington,\s*dc/i, 'Washington, D.C.');
     }
     // Normalize UK display for any location name
-    return normalizeUKLocationDisplay(location.name);
+    return normalizeUKLocationDisplay(sanitizedLocationName);
   }
   
   // Priority 1: Use backend-provided state information for US cities
@@ -1613,11 +1813,11 @@ export const resolveFullLocationName = (location) => {
   }
   
   // Priority 1.5: For US cities without state but with US country, try to construct proper name
-  if ((country === "US" || countryCode === "US") && location.name && location.name.includes(",")) {
+  if ((country === "US" || countryCode === "US") && sanitizedLocationName && sanitizedLocationName.includes(",")) {
     // If we have a properly formatted name like "San Diego, CA" and it's a US location, use it
-    const nameParts = location.name.split(",").map(p => p.trim());
+    const nameParts = sanitizedLocationName.split(",").map(p => p.trim());
     if (nameParts.length >= 2) {
-      return location.name;
+      return sanitizedLocationName;
     }
   }
   
@@ -1689,7 +1889,7 @@ export const resolveFullLocationName = (location) => {
   const constructedName = nameParts.join(", ");
   
   // Apply UK normalization to the constructed name
-  return normalizeUKLocationDisplay(constructedName);
+  return normalizeUKLocationDisplay(sanitizeLocationNameSegments(constructedName));
 };
 
 /**
@@ -1705,7 +1905,8 @@ export const resolveLocationNameForWeatherCard = (location) => {
     return 'Current Location';
   }
 
-  const primaryName = extractPrimaryLocationName(location);
+  const sanitizedLocationName = sanitizeLocationNameSegments(location.name);
+  const primaryName = extractPrimaryLocationName({ ...location, name: sanitizedLocationName });
   const trimmedPrimary = primaryName?.trim();
 
   if (!trimmedPrimary) {
@@ -1718,8 +1919,8 @@ export const resolveLocationNameForWeatherCard = (location) => {
       ? location.countryCode
       : '';
 
-  if (!countrySource && typeof location.name === 'string' && location.name.trim().includes(',')) {
-    const parts = location.name
+  if (!countrySource && typeof sanitizedLocationName === 'string' && sanitizedLocationName.includes(',')) {
+    const parts = sanitizedLocationName
       .split(',')
       .map((part) => part.trim())
       .filter(Boolean);
@@ -1737,7 +1938,9 @@ export const resolveLocationNameForWeatherCard = (location) => {
   const dcStateToken = typeof location.state === 'string'
     ? location.state.replace(/\./g, '').trim().toLowerCase()
     : '';
-  const dcNameValue = typeof location.name === 'string' ? location.name.trim() : '';
+  const dcNameValue = typeof sanitizedLocationName === 'string' && sanitizedLocationName
+    ? sanitizedLocationName
+    : (typeof location.name === 'string' ? location.name.trim() : '');
   const dcPrimaryLower = trimmedPrimary ? trimmedPrimary.toLowerCase() : '';
   const rawCountryValue = typeof location.country === 'string' ? location.country.trim() : '';
   const rawCountryCodeValue = typeof location.countryCode === 'string' ? location.countryCode.trim() : '';
@@ -1769,7 +1972,8 @@ export const resolveLocationNameForWeatherCard = (location) => {
     (countryFullName && countryFullName.toLowerCase().includes('united states'));
 
   if (isUSLocation) {
-    return resolveFullLocationName(location);
+    const resolvedName = resolveFullLocationName({ ...location, name: sanitizedLocationName });
+    return ensureUsDisplaySuffix(resolvedName);
   }
 
   const primaryLower = trimmedPrimary ? trimmedPrimary.toLowerCase() : '';
@@ -1777,7 +1981,9 @@ export const resolveLocationNameForWeatherCard = (location) => {
   const countryCodeLower = normalizedCountryCode ? normalizedCountryCode.toLowerCase() : '';
   const cityValue = typeof location.city === 'string' ? location.city.trim() : '';
   const cityLower = cityValue ? cityValue.toLowerCase() : '';
-  const fullNameValue = typeof location.name === 'string' ? location.name.trim() : '';
+  const fullNameValue = typeof sanitizedLocationName === 'string' && sanitizedLocationName
+    ? sanitizedLocationName
+    : (typeof location.name === 'string' ? location.name.trim() : '');
   const fullNameLower = fullNameValue ? fullNameValue.toLowerCase() : '';
 
   const looksLikeCountrySearch = (() => {
