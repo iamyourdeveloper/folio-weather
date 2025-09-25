@@ -11,6 +11,7 @@ import {
   searchUSCities,
   ALL_US_CITIES_FLAT,
 } from "../data/allUSCitiesComplete.js";
+import COUNTRY_CAPITALS from "../../frontend/src/data/countryCapitals.js";
 
 let cachedRegionDisplayNames;
 
@@ -131,6 +132,127 @@ const COUNTRY_KEYWORDS = {
 
 const COUNTRY_CODES_SET = new Set(Object.keys(COUNTRY_KEYWORDS));
 
+const normalizeCountryLookupKey = (value) => {
+  if (!value || typeof value !== 'string') {
+    return '';
+  }
+
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+};
+
+const addCountryAlias = (map, alias, code) => {
+  if (!alias || !code) {
+    return;
+  }
+
+  const key = normalizeCountryLookupKey(alias);
+  if (!key || map.has(key)) {
+    return;
+  }
+
+  map.set(key, code);
+};
+
+const EXTRA_COUNTRY_ALIASES = {
+  GB: ['UK', 'U.K.', 'Great Britain', 'Britain', 'England', 'Scotland', 'Wales'],
+  US: ['USA', 'U.S.', 'U.S.A', 'United States of America', 'America'],
+  AE: ['UAE', 'U.A.E'],
+  SY: ['Syrian Arab Republic'],
+  VN: ['Viet Nam'],
+  BO: ['Bolivia', 'Plurinational State of Bolivia'],
+  IR: ['Islamic Republic of Iran'],
+  KP: ["DPRK", "Democratic People's Republic of Korea"],
+  KR: ['Republic of Korea'],
+  MO: ['Macau', 'Macao', 'Macau SAR', 'Macao SAR'],
+  HK: ['Hong Kong SAR', 'Hong Kong Special Administrative Region'],
+  TW: ['ROC', 'Republic of China'],
+  PS: ['Palestinian Territories', 'State of Palestine'],
+  TZ: ['United Republic of Tanzania'],
+  CD: ['DR Congo', 'Democratic Republic of the Congo', 'Congo-Kinshasa'],
+};
+
+const COUNTRY_NAME_LOOKUP = (() => {
+  const map = new Map();
+
+  Object.entries(COUNTRY_CAPITALS).forEach(([code, info]) => {
+    addCountryAlias(map, code, code);
+    addCountryAlias(map, code.toLowerCase(), code);
+
+    if (info?.name) {
+      addCountryAlias(map, info.name, code);
+    }
+
+    if (Array.isArray(info?.altNames)) {
+      info.altNames.forEach((alias) => addCountryAlias(map, alias, code));
+    }
+  });
+
+  Object.entries(EXTRA_COUNTRY_ALIASES).forEach(([code, aliases]) => {
+    const canonical = code === 'UK' ? 'GB' : code;
+    aliases.forEach((alias) => addCountryAlias(map, alias, canonical));
+  });
+
+  return map;
+})();
+
+const collectCountryNameCandidates = (value) => {
+  if (!value || typeof value !== 'string') {
+    return [];
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const candidates = new Set([trimmed]);
+
+  trimmed.split(',').forEach((segment) => {
+    const part = segment.trim();
+    if (part) {
+      candidates.add(part);
+    }
+  });
+
+  const sanitized = trimmed
+    .replace(/[\u2019\u2018\u201c\u201d]/g, "'")
+    .replace(/[-/#!$%\^&*;:{}=+_`~()<>\[\]|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = sanitized.split(' ').filter(Boolean);
+  const maxPhraseLength = Math.min(4, words.length);
+
+  for (let len = maxPhraseLength; len >= 1; len -= 1) {
+    for (let i = 0; i <= words.length - len; i += 1) {
+      const phrase = words.slice(i, i + len).join(' ');
+      if (phrase) {
+        candidates.add(phrase);
+      }
+    }
+  }
+
+  return Array.from(candidates).sort((a, b) => b.length - a.length);
+};
+
+const lookupCountryCodeFromString = (value) => {
+  const candidates = collectCountryNameCandidates(value);
+  for (const candidate of candidates) {
+    const key = normalizeCountryLookupKey(candidate);
+    if (key && COUNTRY_NAME_LOOKUP.has(key)) {
+      return COUNTRY_NAME_LOOKUP.get(key);
+    }
+  }
+
+  return null;
+};
+
 class WeatherService {
   constructor() {
     // Ensure environment is loaded
@@ -218,6 +340,8 @@ class WeatherService {
     // Simple in-memory cache for API responses
     this.cache = new Map();
     this.cacheTimeout = 10 * 60 * 1000; // Increased to 10 minutes cache for better performance
+    this.staleCacheToleranceMs = 5 * 60 * 1000; // Allow up to 5 minutes of stale data as a fallback
+    this.inFlightRequests = new Map(); // Track ongoing upstream requests per cache key
 
     console.log(
       "🔑 WeatherService initialized with API key:",
@@ -231,6 +355,80 @@ class WeatherService {
     }
   }
 
+  // Attach metadata to axios responses so callers can observe cache behaviour
+  applyResponseMeta(response, meta = {}) {
+    if (!response || typeof response !== "object") {
+      return;
+    }
+
+    response.__meta = { ...meta };
+  }
+
+  // Merge metadata from axios responses into the payload returned to the client
+  applyPayloadMeta(payload, responseMeta) {
+    if (!responseMeta || typeof payload !== "object" || payload === null) {
+      return payload;
+    }
+
+    const meta = {
+      source: responseMeta.source ||
+        (responseMeta.fromCache ? "cache" : "network"),
+      fromCache: Boolean(responseMeta.fromCache),
+      isStale: Boolean(responseMeta.isStale),
+      cacheAgeMs:
+        typeof responseMeta.cacheAgeMs === "number"
+          ? responseMeta.cacheAgeMs
+          : null,
+      fallbackReason: responseMeta.fallbackReason || null,
+    };
+
+    return {
+      ...payload,
+      meta,
+    };
+  }
+
+  // Inspect cache entry state without mutating it
+  getCacheEntry(key) {
+    const cached = this.cache.get(key);
+    if (!cached) {
+      return null;
+    }
+
+    const ageMs = Date.now() - cached.timestamp;
+    return {
+      response: cached.data,
+      ageMs,
+      isFresh: ageMs < this.cacheTimeout,
+      isStale:
+        ageMs >= this.cacheTimeout &&
+        ageMs < this.cacheTimeout + this.staleCacheToleranceMs,
+    };
+  }
+
+  shouldServeStaleOnError(error) {
+    if (!error) {
+      return false;
+    }
+
+    if (error.response) {
+      const status = Number(error.response.status);
+      if (Number.isFinite(status)) {
+        return status >= 500 || status === 429;
+      }
+    }
+
+    if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+      return true;
+    }
+
+    if (error.request && !error.response) {
+      return true;
+    }
+
+    return false;
+  }
+
   // Cache key generator
   getCacheKey(url, params) {
     const sortedParams = Object.keys(params)
@@ -238,16 +436,6 @@ class WeatherService {
       .map((key) => `${key}=${params[key]}`)
       .join("&");
     return `${url}?${sortedParams}`;
-  }
-
-  // Check cache for existing data
-  getCachedData(key) {
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      console.log(`📦 Using cached data for: ${key}`);
-      return cached.data;
-    }
-    return null;
   }
 
   // Store data in cache
@@ -267,24 +455,73 @@ class WeatherService {
   // Enhanced API call with caching and retry logic
   async makeApiCall(url, params) {
     const cacheKey = this.getCacheKey(url, params);
+    const existingEntry = this.getCacheEntry(cacheKey);
 
-    // Check cache first
-    const cachedData = this.getCachedData(cacheKey);
-    if (cachedData) {
-      return cachedData;
+    if (existingEntry?.isFresh) {
+      this.applyResponseMeta(existingEntry.response, {
+        source: "cache",
+        fromCache: true,
+        isStale: false,
+        cacheAgeMs: existingEntry.ageMs,
+      });
+      console.log(`📦 Using cached data for: ${cacheKey}`);
+      return existingEntry.response;
     }
 
+    if (this.inFlightRequests.has(cacheKey)) {
+      console.log(`⏳ Awaiting in-flight request for: ${cacheKey}`);
+      return this.inFlightRequests.get(cacheKey);
+    }
+
+    const networkRequest = (async () => {
+      try {
+        console.log(`🌐 Making API call to: ${url} with params:`, params);
+        const response = await this.axiosInstance.get(url, { params });
+
+        this.applyResponseMeta(response, {
+          source: "network",
+          fromCache: false,
+          isStale: false,
+          cacheAgeMs: 0,
+        });
+
+        // Cache the successful response
+        this.setCachedData(cacheKey, response);
+
+        return response;
+      } catch (error) {
+        console.error(`❌ API call failed for ${url}:`, error.message);
+
+        const fallbackEntry = this.getCacheEntry(cacheKey);
+        if (
+          fallbackEntry &&
+          (fallbackEntry.isFresh || fallbackEntry.isStale) &&
+          this.shouldServeStaleOnError(error)
+        ) {
+          this.applyResponseMeta(fallbackEntry.response, {
+            source: "cache",
+            fromCache: true,
+            isStale: !fallbackEntry.isFresh,
+            cacheAgeMs: fallbackEntry.ageMs,
+            fallbackReason: error.message,
+          });
+          const ageSeconds = Math.round(fallbackEntry.ageMs / 1000);
+          console.warn(
+            `⚠️ Returning cached data for ${cacheKey} due to upstream error (age ~${ageSeconds}s)`
+          );
+          return fallbackEntry.response;
+        }
+
+        throw error;
+      }
+    })();
+
+    this.inFlightRequests.set(cacheKey, networkRequest);
+
     try {
-      console.log(`🌐 Making API call to: ${url} with params:`, params);
-      const response = await this.axiosInstance.get(url, { params });
-
-      // Cache the successful response
-      this.setCachedData(cacheKey, response);
-
-      return response;
-    } catch (error) {
-      console.error(`❌ API call failed for ${url}:`, error.message);
-      throw error;
+      return await networkRequest;
+    } finally {
+      this.inFlightRequests.delete(cacheKey);
     }
   }
 
@@ -312,7 +549,11 @@ class WeatherService {
         units: units,
       });
 
-      return this.formatCurrentWeatherData(response.data, originalName);
+      const payload = this.formatCurrentWeatherData(
+        response.data,
+        originalName
+      );
+      return this.applyPayloadMeta(payload, response.__meta);
     } catch (error) {
       const queryString = this.constructLocationQuery(city, originalName);
       console.log(`⚠️ Primary query failed for "${queryString}"`);
@@ -341,9 +582,13 @@ class WeatherService {
             `✅ Fallback successful: Using "${fallback.query}" for "${displayName}"`
           );
 
-          return this.formatCurrentWeatherData(
+          const fallbackPayload = this.formatCurrentWeatherData(
             fallbackResponse.data,
             displayName
+          );
+          return this.applyPayloadMeta(
+            fallbackPayload,
+            fallbackResponse.__meta
           );
         } catch (fallbackError) {
           console.log(
@@ -384,7 +629,11 @@ class WeatherService {
         units: units,
       });
 
-      return this.formatCurrentWeatherData(response.data, originalName);
+      const payload = this.formatCurrentWeatherData(
+        response.data,
+        originalName
+      );
+      return this.applyPayloadMeta(payload, response.__meta);
     } catch (error) {
       throw this.handleWeatherApiError(error);
     }
@@ -414,7 +663,11 @@ class WeatherService {
         units: units,
       });
 
-      return this.formatForecastData(response.data, originalName);
+      const payload = this.formatForecastData(
+        response.data,
+        originalName
+      );
+      return this.applyPayloadMeta(payload, response.__meta);
     } catch (error) {
       const queryString = this.constructLocationQuery(city, originalName);
       console.log(`⚠️ Primary forecast query failed for "${queryString}"`);
@@ -443,7 +696,14 @@ class WeatherService {
             `✅ Forecast fallback successful: Using "${fallback.query}" for "${displayName}"`
           );
 
-          return this.formatForecastData(fallbackResponse.data, displayName);
+          const fallbackPayload = this.formatForecastData(
+            fallbackResponse.data,
+            displayName
+          );
+          return this.applyPayloadMeta(
+            fallbackPayload,
+            fallbackResponse.__meta
+          );
         } catch (fallbackError) {
           console.log(
             `❌ Forecast fallback "${fallback.query}" failed: ${fallbackError.message}`
@@ -478,7 +738,11 @@ class WeatherService {
         units: units,
       });
 
-      return this.formatForecastData(response.data, originalName);
+      const payload = this.formatForecastData(
+        response.data,
+        originalName
+      );
+      return this.applyPayloadMeta(payload, response.__meta);
     } catch (error) {
       throw this.handleWeatherApiError(error);
     }
@@ -1573,6 +1837,11 @@ class WeatherService {
    * @returns {string|null} Country code or null
    */
   extractCountryCode(location) {
+    const inferredCode = lookupCountryCodeFromString(location);
+    if (inferredCode) {
+      return inferredCode;
+    }
+
     // Look for common country codes or names
     const countryMappings = {
       AU: ["Australia", "AU"],

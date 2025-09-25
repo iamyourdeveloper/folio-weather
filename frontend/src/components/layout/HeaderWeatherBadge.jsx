@@ -6,7 +6,10 @@ import {
   useCurrentWeatherByCity,
   useCurrentWeatherByCoords,
 } from "@hooks/useWeather";
-import { resolveFullLocationName } from "@utils/searchUtils";
+import {
+  resolveFullLocationName,
+  resolveLocationNameForWeatherCard,
+} from "@utils/searchUtils";
 
 /**
  * Small, live temperature display used in the header.
@@ -99,10 +102,10 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
         effectiveLocation?.type === "city"
           ? resolveFullLocationName(effectiveLocation)
           : effectiveLocation?.name;
-      const resolvedDataName = resolveFullLocationName(data.location);
+      const resolvedDataName = resolveLocationNameForWeatherCard(data.location);
       const locName =
-        manualSelectionName ||
         resolvedDataName ||
+        manualSelectionName ||
         data.location.name ||
         resolvedEffectiveName ||
         resolveFullLocationName(effectiveLocation) ||

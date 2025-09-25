@@ -515,7 +515,7 @@ const COUNTRY_ALIAS_DEFINITIONS = {
   RU: ['russia', 'russian federation', 'ru'],
   CA: ['canada', 'ca', 'can'],
   MX: ['mexico', 'mx'],
-  BR: ['brazil', 'brasil'],
+  BR: ['brazil', 'brasil', 'br'],
   AR: ['argentina'],
   CL: ['chile'],
   CO: ['colombia'],
@@ -589,8 +589,9 @@ const COUNTRY_ALIAS_DEFINITIONS = {
   IR: ['iran', 'islamic republic of iran', 'ir'],
   IQ: ['iraq', 'iq'],
   HK: ['hong kong', 'hk'],
+  MO: ['macao', 'macau', 'macau sar', 'macao special administrative region'],
   TW: ['taiwan', 'republic of china', 'roc', 'tw'],
-  BR: ['brazil', 'brasil', 'br'],
+  MV: ['maldives', 'republic of maldives', 'mv'],
   UY: ['uruguay', 'uy'],
   PY: ['paraguay', 'py'],
   BO: ['bolivia', 'plurinational state of bolivia', 'bo'],
@@ -1874,16 +1875,36 @@ export const resolveFullLocationName = (location) => {
   
   // Priority 6: Construct a properly formatted name based on available data
   const nameParts = [cityName];
-  
+
   // Add state if available and it's a US location
   if (state && (country === "US" || countryCode === "US")) {
     nameParts.push(state);
-  }
-  // Add country or country code for non-US locations
-  else if (country && country !== "US" && cityName !== country) {
-    nameParts.push(formatCountryForDisplay(country));
-  } else if (countryCode && countryCode !== "US" && cityName !== countryCode) {
-    nameParts.push(formatCountryForDisplay(countryCode));
+  } else {
+    const appendDistinctPart = (value) => {
+      if (!value || typeof value !== 'string') {
+        return;
+      }
+
+      const normalizedValue = value.trim();
+      if (!normalizedValue) {
+        return;
+      }
+
+      const lower = normalizedValue.toLowerCase();
+      const alreadyPresent = nameParts.some(
+        (part) => typeof part === 'string' && part.trim().toLowerCase() === lower
+      );
+
+      if (!alreadyPresent) {
+        nameParts.push(normalizedValue);
+      }
+    };
+
+    if (country && country !== "US") {
+      appendDistinctPart(formatCountryForDisplay(country));
+    } else if (countryCode && countryCode !== "US") {
+      appendDistinctPart(formatCountryForDisplay(countryCode));
+    }
   }
   
   const constructedName = nameParts.join(", ");

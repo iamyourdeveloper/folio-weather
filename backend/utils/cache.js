@@ -8,8 +8,26 @@ const cache = new NodeCache({
   maxKeys: 1000, // Limit cache size to prevent memory bloat
 });
 
+const CACHE_BYPASS_PARAMS = new Set(["_t", "_r", "_cb"]);
+
+const buildCacheKey = (req) => {
+  try {
+    const url = new URL(req.originalUrl, "http://localhost");
+    const params = new URLSearchParams(url.search);
+
+    CACHE_BYPASS_PARAMS.forEach((param) => params.delete(param));
+
+    const cleanedSearch = params.toString();
+    const baseKey = `${req.method}:${url.pathname}`;
+    return cleanedSearch ? `${baseKey}?${cleanedSearch}` : baseKey;
+  } catch (error) {
+    // Fallback to original URL if parsing fails
+    return `${req.method}:${req.originalUrl}`;
+  }
+};
+
 export const cacheMiddleware = (duration) => (req, res, next) => {
-  const key = req.originalUrl;
+  const key = buildCacheKey(req);
   const cachedResponse = cache.get(key);
 
   if (cachedResponse) {

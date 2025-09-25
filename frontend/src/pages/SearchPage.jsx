@@ -289,10 +289,7 @@ const SearchPage = () => {
         try {
           queryClient.invalidateQueries({
             queryKey: ["weather", "current", "city"],
-          });
-          queryClient.refetchQueries({
-            queryKey: ["weather", "current", "city"],
-            type: "active",
+            refetchType: "active",
           });
         } catch (_) {
           // Non-fatal in environments without a provider
@@ -396,10 +393,7 @@ const SearchPage = () => {
       try {
         queryClient.invalidateQueries({
           queryKey: ["weather", "current", "city"],
-        });
-        queryClient.refetchQueries({
-          queryKey: ["weather", "current", "city"],
-          type: "active",
+          refetchType: "active",
         });
       } catch (_) {}
 
@@ -425,10 +419,7 @@ const SearchPage = () => {
     try {
       queryClient.invalidateQueries({
         queryKey: ["weather", "current", "city"],
-      });
-      queryClient.refetchQueries({
-        queryKey: ["weather", "current", "city"],
-        type: "active",
+        refetchType: "active",
       });
     } catch (_) {}
 
@@ -496,10 +487,7 @@ const SearchPage = () => {
       try {
         queryClient.invalidateQueries({
           queryKey: ["weather", "current", "city"],
-        });
-        queryClient.refetchQueries({
-          queryKey: ["weather", "current", "city"],
-          type: "active",
+          refetchType: "active",
         });
       } catch (_) {}
 
