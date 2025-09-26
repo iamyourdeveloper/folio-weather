@@ -1444,6 +1444,35 @@ const handleSingleNameQuery = (
   }
 
   const normalizedCityKey = toInternationalKey(baseCity);
+
+  const aliasMatchesCountry = (key) =>
+    Boolean(countryCode && key && COUNTRY_ALIAS_MAP.get(key) === countryCode);
+
+  if (
+    countryCode &&
+    !candidateCity &&
+    (aliasMatchesCountry(normalizedOriginalKey) ||
+      aliasMatchesCountry(normalizedQueryKey) ||
+      aliasMatchesCountry(normalizedCityKey))
+  ) {
+    const capitalMatch =
+      getCountryCapital(countryCode) ||
+      getCountryCapital(originalQuery) ||
+      getCountryCapital(baseCity);
+
+    if (capitalMatch) {
+      const displayCountry =
+        getCountryFullName(countryCode) ||
+        formatCountryForDisplay(countryCode) ||
+        toTitleCase(originalQuery);
+
+      return {
+        city: capitalMatch,
+        fullName: `${capitalMatch}, ${displayCountry}`,
+      };
+    }
+  }
+
   if (!normalizedCityKey) {
     return { city: baseCity, fullName: originalQuery || baseCity };
   }
