@@ -41,7 +41,7 @@ const HeaderSearchDropdown = ({
   const suggestionRefs = useRef([]);
 
   // Debounced search function
-  const debouncedSearch = useCallback(
+const debouncedSearch = useCallback(
     debounce(async (query) => {
       if (!query || query.length < minQueryLength) {
         setSuggestions([]);
@@ -354,7 +354,9 @@ const HeaderSearchDropdown = ({
               } ${
                 suggestion.type === "us"
                   ? "header-search-dropdown__suggestion--us"
-                  : "header-search-dropdown__suggestion--international"
+                  : suggestion.type === "capital"
+                    ? "header-search-dropdown__suggestion--capital"
+                    : "header-search-dropdown__suggestion--international"
               }`}
               role="option"
               aria-selected={index === selectedIndex}
@@ -369,9 +371,9 @@ const HeaderSearchDropdown = ({
                 <span className="header-search-dropdown__suggestion-name">
                   {suggestion.displayName}
                 </span>
-                {suggestion.type === "us" && (
+                {suggestion.badge && (
                   <span className="header-search-dropdown__suggestion-badge">
-                    US
+                    {suggestion.badge}
                   </span>
                 )}
               </div>

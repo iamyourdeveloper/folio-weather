@@ -288,7 +288,11 @@ const SearchDropdown = ({
               onClick={() => handleSelectSuggestion(suggestion)}
               className={`search-dropdown__suggestion ${
                 index === selectedIndex ? 'search-dropdown__suggestion--selected' : ''
-              } ${suggestion.type === 'us' ? 'search-dropdown__suggestion--us' : 'search-dropdown__suggestion--international'}`}
+              } ${suggestion.type === 'us'
+                ? 'search-dropdown__suggestion--us'
+                : suggestion.type === 'capital'
+                  ? 'search-dropdown__suggestion--capital'
+                  : 'search-dropdown__suggestion--international'}`}
               role="option"
               aria-selected={index === selectedIndex}
             >
@@ -301,9 +305,9 @@ const SearchDropdown = ({
                 <span className="search-dropdown__suggestion-name">
                   {suggestion.displayName}
                 </span>
-                {suggestion.type === 'us' && (
+                {suggestion.badge && (
                   <span className="search-dropdown__suggestion-badge">
-                    US
+                    {suggestion.badge}
                   </span>
                 )}
               </div>

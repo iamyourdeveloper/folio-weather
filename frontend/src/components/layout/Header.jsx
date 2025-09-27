@@ -630,7 +630,7 @@ const Header = () => {
                 className="header__search-dropdown"
                 placeholder="Enter city name (e.g., London, New York, Tokyo)"
                 maxSuggestions={6}
-                minQueryLength={2}
+                minQueryLength={1}
                 debounceMs={200}
                 prioritizeUS={true}
               />
@@ -788,7 +788,7 @@ const Header = () => {
                 className="nav__search-dropdown"
                 placeholder="Enter city name (e.g., London, New York, Tokyo)"
                 maxSuggestions={8}
-                minQueryLength={2}
+                minQueryLength={1}
                 debounceMs={250}
                 prioritizeUS={true}
               />

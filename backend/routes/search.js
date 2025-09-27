@@ -9,6 +9,10 @@ import {
   ALL_US_CITIES_FLAT 
 } from "../data/allUSCitiesComplete.js";
 import RANDOM_CITIES from "../data/randomCities.js";
+import {
+  getCountryMetadataForInput,
+  buildCountryCapitalEntry,
+} from "../../shared/utils/countryLookup.js";
 
 const router = express.Router();
 
@@ -73,6 +77,164 @@ const formatCountryForDisplay = (country) => {
   }
 
   return upper.length === 2 ? upper : trimmed;
+};
+
+const US_SUFFIX_PATTERN = /(,?\s*(usa|u\.s\.a\.|united states(?: of america)?|us|u\.s\.))$/i;
+
+const ensureUsDisplaySuffix = (value) => {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (US_SUFFIX_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `${trimmed}, USA`;
+};
+
+const buildSuggestionPayload = (city, options = {}) => {
+  if (!city || typeof city !== 'object') {
+    return null;
+  }
+
+  const { includePriority = false } = options;
+  const suggestion = { ...city };
+
+  const rawCountry = ((suggestion.country ?? suggestion.countryCode) || '')
+    .toString()
+    .trim()
+    .toUpperCase();
+
+  const baseDisplayName =
+    suggestion.name ||
+    `${suggestion.city || ''}${suggestion.state ? ', ' + suggestion.state : ''}` +
+    (rawCountry && rawCountry !== 'US'
+      ? `, ${formatCountryForDisplay(rawCountry)}`
+      : '');
+
+  const inferredType =
+    rawCountry === 'US'
+      ? 'us'
+      : suggestion.type === 'capital' || suggestion.isCapital
+        ? 'capital'
+        : 'international';
+
+  const type = suggestion.type || inferredType;
+
+  const badgeValue = (suggestion.badge || rawCountry || '')
+    .toString()
+    .trim();
+
+  let badge = badgeValue ? badgeValue.toUpperCase() : '';
+  if (!badge) {
+    if (type === 'us') {
+      badge = 'US';
+    } else if (rawCountry) {
+      badge = rawCountry;
+    }
+  }
+
+  const displayName =
+    rawCountry === 'US'
+      ? ensureUsDisplaySuffix(baseDisplayName)
+      : baseDisplayName;
+
+  suggestion.id =
+    suggestion.id ||
+    `${suggestion.city || suggestion.name || 'unknown'}-${
+      suggestion.state || rawCountry || 'UNK'
+    }`;
+  suggestion.country = rawCountry || null;
+  suggestion.badge = badge || null;
+  suggestion.type = type;
+  suggestion.displayName = displayName;
+  suggestion.searchValue =
+    suggestion.searchValue || suggestion.city || suggestion.name || '';
+
+  if (includePriority) {
+    suggestion.priority = rawCountry === 'US' ? 1 : 2;
+  } else {
+    delete suggestion.priority;
+  }
+
+  return suggestion;
+};
+
+const buildSuggestionSignature = (entry) => {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const city = (entry.city || '').toString().trim().toLowerCase();
+  const state = (entry.state || '').toString().trim().toLowerCase();
+  const country = (
+    entry.country || entry.countryCode || entry.alpha2 || entry.alpha3 || ''
+  )
+    .toString()
+    .trim()
+    .toLowerCase();
+  const fallbackName = (entry.displayName || entry.name || '')
+    .toString()
+    .trim()
+    .toLowerCase();
+
+  if (!city && !fallbackName) {
+    return null;
+  }
+
+  if (city) {
+    return [city, state, country].join('|');
+  }
+
+  return fallbackName;
+};
+
+const dedupeSuggestions = (suggestions) => {
+  if (!Array.isArray(suggestions)) {
+    return [];
+  }
+
+  const signatureToEntry = new Map();
+  const fallbackEntries = [];
+
+  for (const entry of suggestions) {
+    const signature = buildSuggestionSignature(entry);
+
+    if (!signature) {
+      fallbackEntries.push(entry);
+      continue;
+    }
+
+    if (!signatureToEntry.has(signature)) {
+      signatureToEntry.set(signature, entry);
+      continue;
+    }
+
+    const existingEntry = signatureToEntry.get(signature);
+    const existingType = (existingEntry?.type || '').toString().trim().toLowerCase();
+    const currentType = (entry?.type || '').toString().trim().toLowerCase();
+
+    const typePriority = {
+      capital: 3,
+      us: 2,
+      international: 1,
+    };
+
+    const existingPriority = typePriority[existingType] || 0;
+    const currentPriority = typePriority[currentType] || 0;
+
+    if (currentPriority > existingPriority) {
+      signatureToEntry.set(signature, entry);
+    }
+  }
+
+  return [...signatureToEntry.values(), ...fallbackEntries];
 };
 
 // Normalize strings for consistent international comparisons (remove diacritics and lowercase)
@@ -477,13 +639,29 @@ const extractCityFromQuery = (query) => {
  * @returns {Array} Array of prioritized city results
  */
 const searchAllCitiesWithPriority = (query, limit) => {
+  const rawInput = typeof query === "string" ? query.trim() : "";
+  const countryMetadata = getCountryMetadataForInput(rawInput);
+  const capitalEntry = countryMetadata
+    ? buildCountryCapitalEntry(countryMetadata)
+    : null;
+
   // Enhanced normalization to handle punctuation and casing variations
   const normalizedQuery = normalizeSearchQuery(query).toLowerCase().trim();
   
   // Extract city name from complex queries like "london great britain"
-  const cityName = extractCityFromQuery(normalizedQuery);
+  let cityName = extractCityFromQuery(normalizedQuery);
+  if (
+    capitalEntry?.city &&
+    (!cityName || /^[a-z]{2,3}$/i.test(cityName)) &&
+    /^[a-z]{2,3}$/i.test(rawInput)
+  ) {
+    cityName = normalizeSearchQuery(capitalEntry.city).toLowerCase();
+  }
+
   const explicitCountry =
-    detectCountryCodeFromQuery(query) || detectCountryCodeFromQuery(normalizedQuery);
+    countryMetadata?.alpha2 ||
+    detectCountryCodeFromQuery(query) ||
+    detectCountryCodeFromQuery(normalizedQuery);
   
   // Get US city results with extracted city name
   const usResults = searchUSCities(cityName, limit);
@@ -553,6 +731,7 @@ const searchAllCitiesWithPriority = (query, limit) => {
   // 3. Partial US matches (maintaining original US priority for partial matches)
   // 4. Partial international matches
   const prioritizedResults = [
+    ...(capitalEntry ? [capitalEntry] : []),
     ...prioritizedExactIntl,
     ...exactUSMatches,
     ...partialUSMatches,
@@ -828,19 +1007,18 @@ router.get(
 
       // For real-time suggestions, ensure each result has proper formatting
       if (isRealtime) {
-        suggestions = suggestions.map(city => ({
-          ...city,
-          displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + formatCountryForDisplay(city.country) : ''}`,
-          searchValue: city.city,
-          type: city.country === 'US' ? 'us' : 'international'
-        }));
+        suggestions = suggestions
+          .map((city) => buildSuggestionPayload(city))
+          .filter(Boolean);
       }
+
+      const deduped = dedupeSuggestions(suggestions);
 
       res.json({
         success: true,
-        data: suggestions,
+        data: deduped,
         query: query || '',
-        count: suggestions.length,
+        count: deduped.length,
         limit: parsedLimit,
         realtime: isRealtime
       });
@@ -889,31 +1067,25 @@ router.get(
       suggestions = searchAllCitiesWithPriority(sanitizedQuery, parsedLimit);
 
       // Format for autocomplete dropdown
-      const formattedSuggestions = suggestions.map(city => ({
-        id: `${city.city}-${city.state || city.country}`,
-        city: city.city,
-        state: city.state,
-        country: city.country,
-        name: city.name,
-        displayName: city.name || `${city.city}${city.state ? ', ' + city.state : ''}${city.country && city.country !== 'US' ? ', ' + formatCountryForDisplay(city.country) : ''}`,
-        searchValue: city.city,
-        type: city.country === 'US' ? 'us' : 'international',
-        priority: city.country === 'US' ? 1 : 2 // US cities get higher priority
-      }));
+      const formattedSuggestions = suggestions
+        .map((city) => buildSuggestionPayload(city, { includePriority: true }))
+        .filter(Boolean);
 
       // Sort by priority (US first) and then alphabetically
       formattedSuggestions.sort((a, b) => {
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority;
+        if ((a.priority ?? 0) !== (b.priority ?? 0)) {
+          return (a.priority ?? 0) - (b.priority ?? 0);
         }
         return a.displayName.localeCompare(b.displayName);
       });
 
+      const deduped = dedupeSuggestions(formattedSuggestions);
+
       res.json({
         success: true,
-        data: formattedSuggestions,
+        data: deduped,
         query: sanitizedQuery,
-        count: formattedSuggestions.length,
+        count: deduped.length,
         limit: parsedLimit
       });
 

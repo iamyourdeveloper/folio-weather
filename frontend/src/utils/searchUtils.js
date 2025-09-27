@@ -3,7 +3,15 @@
  */
 
 import RANDOM_CITIES from "../data/randomCities.js";
-import { getCountryCapital } from "../data/countryCapitals.js";
+import {
+  getCountryCapital,
+  getCountryMetadata,
+} from "../data/countryCapitals.js";
+import {
+  getCountryMetadataForInput,
+  buildCountryCapitalEntry,
+  buildFuzzyCountryCapitalEntry,
+} from "../../../shared/utils/countryLookup.js";
 import { 
   searchUSCities, 
   getCitiesByState,
@@ -1404,6 +1412,18 @@ const handleSingleNameQuery = (
     return { city: originalQuery || '', fullName: originalQuery || '' };
   }
 
+  const rawInput = typeof originalQuery === 'string' ? originalQuery.trim() : '';
+  const countryMetadataFromCode = getCountryMetadataForInput(rawInput);
+  if (countryMetadataFromCode?.capital) {
+    const capitalEntry = buildCountryCapitalEntry(countryMetadataFromCode);
+    if (capitalEntry) {
+      return {
+        city: capitalEntry.city,
+        fullName: capitalEntry.name,
+      };
+    }
+  }
+
   // If the user's original text maps directly to a curated international city (e.g., "Rio" -> Rio de Janeiro)
   const originalAliasDefault = getInternationalDefaultForCity(originalQuery);
   if (originalAliasDefault) {
@@ -1455,6 +1475,17 @@ const handleSingleNameQuery = (
       aliasMatchesCountry(normalizedQueryKey) ||
       aliasMatchesCountry(normalizedCityKey))
   ) {
+    const metadata = getCountryMetadata(countryCode) || getCountryMetadata(originalQuery);
+    if (metadata?.capital) {
+      const capitalEntry = buildCountryCapitalEntry(metadata);
+      if (capitalEntry) {
+        return {
+          city: capitalEntry.city,
+          fullName: capitalEntry.name,
+        };
+      }
+    }
+
     const capitalMatch =
       getCountryCapital(countryCode) ||
       getCountryCapital(originalQuery) ||
@@ -2159,6 +2190,9 @@ export const searchAllCities = (query, limit = 20) => {
     : null;
   
   // Get US city results using the parsed city name
+  const countryMetadata = getCountryMetadataForInput(query);
+  const capitalEntry = countryMetadata ? buildCountryCapitalEntry(countryMetadata) : null;
+
   const usResults = searchUSCities(cityToSearch, limit);
   
   // Get international city results using the parsed city name
@@ -2201,6 +2235,7 @@ export const searchAllCities = (query, limit = 20) => {
   // 3. Partial US matches (maintaining original US priority for partial matches)
   // 4. Partial international matches
   const prioritizedResults = [
+    ...(capitalEntry ? [capitalEntry] : []),
     ...prioritizedExactIntl,
     ...exactUSMatches,
     ...partialUSMatches,
