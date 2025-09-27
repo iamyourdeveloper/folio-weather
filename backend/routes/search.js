@@ -8,6 +8,7 @@ import {
   getRandomUSCities, 
   ALL_US_CITIES_FLAT 
 } from "../data/allUSCitiesComplete.js";
+import { STATE_ABBREVIATIONS } from "../data/usCitiesStateMapping.js";
 import RANDOM_CITIES from "../data/randomCities.js";
 import {
   getCountryMetadataForInput,
@@ -687,14 +688,107 @@ const extractCityFromQuery = (query) => {
 };
 
 /**
+ * Check if a query is an abbreviation that should return both state and country results
+ * @param {string} query - Search query
+ * @returns {Object|null} Abbreviation info or null
+ */
+const getAbbreviationInfo = (query) => {
+  const normalizedQuery = query.trim().toUpperCase();
+  
+  // Check if it's a 2-letter abbreviation
+  if (!/^[A-Z]{2}$/.test(normalizedQuery)) {
+    return null;
+  }
+
+  const stateInfo = STATE_ABBREVIATIONS[normalizedQuery] ? {
+    type: 'state',
+    code: normalizedQuery,
+    fullName: STATE_ABBREVIATIONS[normalizedQuery]
+  } : null;
+
+  const countryInfo = getCountryMetadataForInput(normalizedQuery) ? {
+    type: 'country',
+    code: normalizedQuery,
+    metadata: getCountryMetadataForInput(normalizedQuery)
+  } : null;
+
+  // Return info if we found both state and country, or just one
+  if (stateInfo && countryInfo) {
+    return { state: stateInfo, country: countryInfo, type: 'both' };
+  } else if (stateInfo) {
+    return { state: stateInfo, type: 'state_only' };
+  } else if (countryInfo) {
+    return { country: countryInfo, type: 'country_only' };
+  }
+
+  return null;
+};
+
+/**
+ * Search for cities when query is an abbreviation (like "AZ")
+ * Returns both state cities and country cities/capital
+ * @param {Object} abbrevInfo - Abbreviation information
+ * @param {number} limit - Maximum results to return
+ * @returns {Array} Array of combined results
+ */
+const searchByAbbreviation = (abbrevInfo, limit) => {
+  const results = [];
+
+  // Add state cities if we have state info
+  if (abbrevInfo.state) {
+    const stateCities = getCitiesByState(abbrevInfo.state.code);
+    // Get top cities from the state (prioritize major cities)
+    const topStateCities = stateCities.slice(0, Math.min(8, Math.floor(limit * 0.6)));
+    results.push(...topStateCities);
+  }
+
+  // Add country capital and cities if we have country info
+  if (abbrevInfo.country) {
+    const countryMetadata = abbrevInfo.country.metadata;
+    const capitalEntry = buildCountryCapitalEntry(countryMetadata);
+    
+    if (capitalEntry) {
+      results.push(capitalEntry);
+    }
+
+    // Add other major cities from the country
+    const countryCities = getCountryCitySuggestions(abbrevInfo.country.code);
+    const topCountryCities = countryCities.slice(0, Math.min(4, Math.floor(limit * 0.3)));
+    results.push(...topCountryCities.map(city => ({
+      ...city,
+      country: abbrevInfo.country.code,
+      countryCode: abbrevInfo.country.code,
+      badge: abbrevInfo.country.code,
+      source: 'countryCities',
+      type: 'international'
+    })));
+  }
+
+  // Remove duplicates and limit results
+  const uniqueResults = results.filter((city, index, self) => 
+    index === self.findIndex(c => c.name === city.name)
+  );
+
+  return uniqueResults.slice(0, limit);
+};
+
+/**
  * Intelligent city search that prioritizes exact matches over partial matches
  * and major international cities over smaller cities for common names like "London"
+ * Enhanced to handle abbreviations like "AZ" showing both Arizona and Azerbaijan results
  * @param {string} query - Search query
  * @param {number} limit - Maximum results to return
  * @returns {Array} Array of prioritized city results
  */
 const searchAllCitiesWithPriority = (query, limit) => {
   const rawInput = typeof query === "string" ? query.trim() : "";
+  
+  // Check if this is an abbreviation query first
+  const abbrevInfo = getAbbreviationInfo(rawInput);
+  if (abbrevInfo) {
+    return searchByAbbreviation(abbrevInfo, limit);
+  }
+
   const countryMetadata = getCountryMetadataForInput(rawInput);
   const capitalEntry = countryMetadata
     ? buildCountryCapitalEntry(countryMetadata)
