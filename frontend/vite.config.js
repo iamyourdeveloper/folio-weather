@@ -1,11 +1,11 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import { fileURLToPath, URL } from 'node:url';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env so we can override backend URL without code changes
-  const env = loadEnv(mode, process.cwd(), "");
+  const env = loadEnv(mode, import.meta.url, "");
   const backendUrl = env.VITE_BACKEND_URL || "http://localhost:8000";
 
   return {
@@ -56,15 +56,15 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
-        "@components": path.resolve(__dirname, "./src/components"),
-        "@pages": path.resolve(__dirname, "./src/pages"),
-        "@hooks": path.resolve(__dirname, "./src/hooks"),
-        "@services": path.resolve(__dirname, "./src/services"),
-        "@utils": path.resolve(__dirname, "./src/utils"),
-        "@context": path.resolve(__dirname, "./src/context"),
-        "@styles": path.resolve(__dirname, "./src/styles"),
-        "@assets": path.resolve(__dirname, "./src/assets"),
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+        "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
+        "@pages": fileURLToPath(new URL("./src/pages", import.meta.url)),
+        "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
+        "@services": fileURLToPath(new URL("./src/services", import.meta.url)),
+        "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
+        "@context": fileURLToPath(new URL("./src/context", import.meta.url)),
+        "@styles": fileURLToPath(new URL("./src/styles", import.meta.url)),
+        "@assets": fileURLToPath(new URL("./src/assets", import.meta.url)),
       },
     },
     build: {

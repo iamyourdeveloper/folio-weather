@@ -32,7 +32,6 @@ const Header = () => {
     preferences,
     updatePreferences,
     searchLocation,
-    selectedLocation,
     selectLocation,
   } = useWeatherContext();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -82,7 +81,7 @@ const Header = () => {
         selectLocation(optimisticSelection);
         return;
       }
-    } catch (_) {
+    } catch {
       // Ignore lookup errors and fall back to provided metadata
     }
 
@@ -505,7 +504,7 @@ const Header = () => {
           >
             <Cloud size={32} />
             <span className="header__brand-text">
-              {import.meta.env.VITE_APP_NAME || "Weather App"}
+              {import.meta.env.VITE_APP_NAME || "FolioWeather"}
             </span>
           </Link>
         </div>
@@ -573,7 +572,7 @@ const Header = () => {
                 onChange={(e) => setHeaderSearchQuery(e.target.value)}
                 onSelect={handleDropdownSelect}
                 onClear={handleDropdownClear}
-                onFocus={(e) => {
+                onFocus={() => {
                   console.log("Search input focused");
                   setIsSearchActive(true);
                   if (isMenuOpen) {

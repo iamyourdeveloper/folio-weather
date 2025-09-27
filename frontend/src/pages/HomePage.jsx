@@ -280,7 +280,7 @@ const HomePage = () => {
         <section className="home-hero">
           <div className="home-hero__content">
             <h1 className="home-hero__title">
-              Welcome to {import.meta.env.VITE_APP_NAME || "Weather App"}
+              Welcome to {import.meta.env.VITE_APP_NAME || "FolioWeather"}
             </h1>
             <p className="home-hero__subtitle">
               Get real-time weather information, forecasts, and manage your

@@ -25,7 +25,7 @@ const Footer = () => {
           {/* App Info */}
           <div className="footer__section">
             <h4 className="footer__section-title">
-              {import.meta.env.VITE_APP_NAME || "Weather App"}
+              {import.meta.env.VITE_APP_NAME || "FolioWeather"}
             </h4>
             <p className="footer__description">
               A modern weather application built with React 19 and the MERN
