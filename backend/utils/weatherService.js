@@ -114,6 +114,7 @@ const COUNTRY_KEYWORDS = {
   HU: ['hungary', 'magyarorszag'],
   RU: ['russia', 'russian federation'],
   BR: ['brazil', 'brasil'],
+  CV: ['cape verde', 'cabo verde', 'cv'],
   GR: ['greece', 'hellas', 'gr'],
   JP: ['japan', 'nihon', 'nippon'],
   ES: ['spain', 'espana'],
@@ -1839,6 +1840,9 @@ class WeatherService {
   extractCountryCode(location) {
     const inferredCode = lookupCountryCodeFromString(location);
     if (inferredCode) {
+      if (inferredCode === 'CV' && /\bcabo\s+verde\b/i.test(location)) {
+        return 'CV';
+      }
       return inferredCode;
     }
 
@@ -1851,6 +1855,7 @@ class WeatherService {
       ES: ["Spain", "España", "ES"],
       JP: ["Japan", "日本", "JP"],
       BR: ["Brazil", "Brasil", "BR"],
+      CV: ["Cape Verde", "Cabo Verde", "CV"],
       GR: ["Greece", "Ελλάδα", "Hellas", "GR"],
       IN: ["India", "IN"],
       CN: ["China", "中国", "CN"],

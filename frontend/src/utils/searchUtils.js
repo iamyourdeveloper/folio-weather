@@ -192,6 +192,60 @@ const findInternationalCityData = (cityName, countryCode) => {
   );
 };
 
+const COUNTRY_CITY_SUGGESTIONS = (() => {
+  const map = new Map();
+
+  RANDOM_CITIES.forEach((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return;
+    }
+
+    const cityName = typeof entry.city === 'string' ? entry.city.trim() : '';
+    const rawCountry = typeof entry.country === 'string' ? entry.country.trim() : '';
+
+    if (!cityName || !rawCountry) {
+      return;
+    }
+
+    const countryCode = rawCountry.toUpperCase();
+    if (!countryCode) {
+      return;
+    }
+
+    if (!map.has(countryCode)) {
+      map.set(countryCode, []);
+    }
+
+    const preparedEntry = {
+      ...entry,
+      city: cityName,
+      country: countryCode,
+      countryCode,
+      badge: (entry.badge || countryCode || '').toString().toUpperCase() || countryCode,
+      type: entry.type || 'international',
+      source: entry.source || 'countryCities',
+    };
+
+    map.get(countryCode).push(preparedEntry);
+  });
+
+  return map;
+})();
+
+const getCountryCitySuggestions = (countryCode) => {
+  if (!countryCode || typeof countryCode !== 'string') {
+    return [];
+  }
+
+  const normalized = countryCode.trim().toUpperCase();
+  if (!normalized) {
+    return [];
+  }
+
+  const entries = COUNTRY_CITY_SUGGESTIONS.get(normalized);
+  return Array.isArray(entries) ? entries : [];
+};
+
 const buildInternationalCityDefaults = () => {
   const defaults = {};
   const countryCounts = new Map();
@@ -446,6 +500,7 @@ const COUNTRY_NAME_OVERRIDES = {
   GB: 'United Kingdom',
   UK: 'United Kingdom',
   US: 'United States',
+  CV: 'Cape Verde',
 };
 
 const COUNTRY_NAME_FALLBACKS = {
@@ -610,6 +665,7 @@ const COUNTRY_ALIAS_DEFINITIONS = {
   DO: ['dominican republic', 'do'],
   JM: ['jamaica', 'jm'],
   HT: ['haiti', 'ht'],
+  CV: ['cape verde', 'cabo verde', 'cv'],
 };
 
 const buildAliasKeySet = (code) => {
@@ -1135,6 +1191,10 @@ const normalizeLocationQuery = (query) => {
     "uk": "GB",
     "gb": "GB",
     
+    // Cape Verde variations (must come before Canada to avoid false matches)
+    "cape verde": "Cape Verde",
+    "cabo verde": "Cape Verde",
+    
     // Canada variations
     "ca": "Canada",
     "can": "Canada",
@@ -1294,6 +1354,31 @@ const normalizeLocationQuery = (query) => {
 
   // Step 6: Apply normalizations in order of specificity
   
+  // Check if the string already contains a known valid country name to avoid corruption
+  const knownCountries = new Set([
+    "Cape Verde", "United States", "United Kingdom", "Great Britain",
+    "Canada", "Australia", "Germany", "France", "Japan", "Greece",
+    "US", "USA", "UK", "GB", "CA", "AU", "DE", "FR", "JP", "GR"
+  ]);
+  
+  // Special handling for Cape Verde to prevent "Ca" from being matched as Canada
+  if (normalized.toLowerCase().includes("cape verde") || normalized.toLowerCase().includes("cabo verde")) {
+    // Don't normalize country names if Cape Verde is present
+    return normalized;
+  }
+  
+  // Check if we already have a valid country in the query
+  let hasValidCountry = false;
+  if (normalized.includes(',')) {
+    const parts = normalized.split(',');
+    if (parts.length >= 2) {
+      const lastPart = parts[parts.length - 1].trim();
+      if (knownCountries.has(lastPart)) {
+        hasValidCountry = true;
+      }
+    }
+  }
+  
   // First handle country normalizations at the end of the string
   // Sort country variations by length (longest first) to handle multi-word countries properly
   const sortedCountryEntries = Object.entries(countryNormalizations)
@@ -1301,37 +1386,40 @@ const normalizeLocationQuery = (query) => {
   
   let countryMatched = false;
 
-  for (const [variation, standard] of sortedCountryEntries) {
-    const patterns = [
-      // "city, country" format
-      new RegExp(`^(.+?),\\s*(${escapeRegex(variation)})\\s*$`, "i"),
-      // "city country" format (no comma) - alias must appear at end
-      new RegExp(`^(.+?)\\s+(${escapeRegex(variation)})\\s*$`, "i"),
-    ];
+  // Skip normalization if we already have a valid country
+  if (!hasValidCountry) {
+    for (const [variation, standard] of sortedCountryEntries) {
+      const patterns = [
+        // "city, country" format
+        new RegExp(`^(.+?),\\s*(${escapeRegex(variation)})\\s*$`, "i"),
+        // "city country" format (no comma) - alias must appear at end
+        new RegExp(`^(.+?)\\s+(${escapeRegex(variation)})\\s*$`, "i"),
+      ];
 
-    for (const pattern of patterns) {
-      const match = normalized.match(pattern);
-      if (match) {
-        const cityName = match[1].trim();
-        const matchedAlias = (match[2] || variation).trim();
+      for (const pattern of patterns) {
+        const match = normalized.match(pattern);
+        if (match) {
+          const cityName = match[1].trim();
+          const matchedAlias = (match[2] || variation).trim();
 
-        // Require explicit uppercase for two-letter country codes to avoid false positives
-        if (
-          variation.length === 2 &&
-          variation === variation.toUpperCase() &&
-          matchedAlias !== matchedAlias.toUpperCase()
-        ) {
-          continue;
+          // Require explicit uppercase for two-letter country codes to avoid false positives
+          if (
+            variation.length === 2 &&
+            variation === variation.toUpperCase() &&
+            matchedAlias !== matchedAlias.toUpperCase()
+          ) {
+            continue;
+          }
+
+          normalized = `${cityName}, ${standard}`;
+          countryMatched = true;
+          break;
         }
+      }
 
-        normalized = `${cityName}, ${standard}`;
-        countryMatched = true;
+      if (countryMatched) {
         break;
       }
-    }
-
-    if (countryMatched) {
-      break;
     }
   }
 
@@ -2193,6 +2281,41 @@ export const searchAllCities = (query, limit = 20) => {
   const countryMetadata = getCountryMetadataForInput(query);
   const capitalEntry = countryMetadata ? buildCountryCapitalEntry(countryMetadata) : null;
 
+  const normalizedCityKey = toInternationalKey(cityToSearch);
+  const normalizedRawKey = toInternationalKey(query);
+
+  const matchesExplicitCountry = (key) =>
+    Boolean(
+      key &&
+        normalizedCountryCode &&
+        COUNTRY_ALIAS_MAP.has(key) &&
+        COUNTRY_ALIAS_MAP.get(key) === normalizedCountryCode
+    );
+
+  const matchesCountryCode = (key) =>
+    Boolean(
+      key && normalizedCountryCode && key === normalizedCountryCode.toLowerCase()
+    );
+
+  const looksLikeCountryQuery = Boolean(normalizedCountryCode) && (
+    !cityToSearch ||
+    matchesExplicitCountry(normalizedCityKey) ||
+    matchesExplicitCountry(normalizedRawKey) ||
+    matchesCountryCode(normalizedCityKey) ||
+    matchesCountryCode(normalizedRawKey)
+  );
+
+  const countrySpecificSuggestions = looksLikeCountryQuery && normalizedCountryCode
+    ? getCountryCitySuggestions(normalizedCountryCode).map((entry) => ({
+        ...entry,
+        country: normalizedCountryCode,
+        countryCode: normalizedCountryCode,
+        badge: (entry.badge || normalizedCountryCode).toUpperCase(),
+        source: entry.source || 'countryCities',
+        type: entry.type || 'international',
+      }))
+    : [];
+
   const usResults = searchUSCities(cityToSearch, limit);
   
   // Get international city results using the parsed city name
@@ -2236,6 +2359,7 @@ export const searchAllCities = (query, limit = 20) => {
   // 4. Partial international matches
   const prioritizedResults = [
     ...(capitalEntry ? [capitalEntry] : []),
+    ...countrySpecificSuggestions,
     ...prioritizedExactIntl,
     ...exactUSMatches,
     ...partialUSMatches,

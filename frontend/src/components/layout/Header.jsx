@@ -137,18 +137,23 @@ const Header = () => {
     setIsSearching(true);
 
     try {
+      // Check if it's a region query first (e.g., "Africa")
       const regionResult = getRandomRegionCapital(fullQuery);
+      let locationInfo;
+      
       if (regionResult) {
         console.log("Resolved region query to capital:", regionResult);
+        locationInfo = {
+          city: regionResult.city,
+          fullName: regionResult.fullName,
+          countryCode: regionResult.countryCode,
+        };
+      } else {
+        // Use parseLocationQuery which handles country codes, city names, etc.
+        // It already has logic to handle "CV" -> "Praia, Cape Verde"
+        locationInfo = parseLocationQuery(fullQuery);
+        console.log("Parsed location query:", locationInfo);
       }
-
-      const locationInfo = regionResult
-        ? {
-            city: regionResult.city,
-            fullName: regionResult.fullName,
-            countryCode: regionResult.countryCode,
-          }
-        : parseLocationQuery(fullQuery);
 
       const resolvedCity = locationInfo.city || fullQuery;
       const resolvedFullName = locationInfo.fullName || fullQuery;
@@ -162,7 +167,7 @@ const Header = () => {
 
       applyOptimisticSelection(resolvedCity, resolvedFullName, {
         name: resolvedFullName,
-        country: regionResult?.countryCode,
+        country: locationInfo?.countryCode,
       });
 
       // Navigate to search page
@@ -222,17 +227,17 @@ const Header = () => {
     try {
       // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      try {
-        const { city, fullName } = parseLocationQuery(fullQuery);
-        selectLocation({ 
-          type: "city", 
-          city, 
-          name: fullName,
-          state: location.state,
-          country: location.country,
-          coordinates: location.coordinates
-        });
-      } catch (_) {}
+      
+      // Use the location data directly from the dropdown since it's already correct
+      // Don't parse it again with parseLocationQuery as that can corrupt the data
+      selectLocation({ 
+        type: location.type || "city", 
+        city: location.city || fullQuery.split(",")[0].trim(), 
+        name: location.displayName || location.name || fullQuery,
+        state: location.state,
+        country: location.country,
+        coordinates: location.coordinates
+      });
 
       // Navigate to search page
       navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
@@ -287,17 +292,17 @@ const Header = () => {
     try {
       // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      try {
-        const { city, fullName } = parseLocationQuery(fullQuery);
-        selectLocation({ 
-          type: "city", 
-          city, 
-          name: fullName,
-          state: location.state,
-          country: location.country,
-          coordinates: location.coordinates
-        });
-      } catch (_) {}
+      
+      // Use the location data directly from the dropdown since it's already correct
+      // Don't parse it again with parseLocationQuery as that can corrupt the data
+      selectLocation({ 
+        type: location.type || "city", 
+        city: location.city || fullQuery.split(",")[0].trim(), 
+        name: location.displayName || location.name || fullQuery,
+        state: location.state,
+        country: location.country,
+        coordinates: location.coordinates
+      });
 
       // Navigate to search page
       navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
@@ -719,18 +724,23 @@ const Header = () => {
                 setIsSearching(true);
 
                 try {
+                  // Check if it's a region query first (e.g., "Africa")
                   const regionResult = getRandomRegionCapital(fullQuery);
+                  let locationInfo;
+                  
                   if (regionResult) {
                     console.log("Resolved mobile region query to capital:", regionResult);
+                    locationInfo = {
+                      city: regionResult.city,
+                      fullName: regionResult.fullName,
+                      countryCode: regionResult.countryCode,
+                    };
+                  } else {
+                    // Use parseLocationQuery which handles country codes, city names, etc.
+                    // It already has logic to handle "CV" -> "Praia, Cape Verde"
+                    locationInfo = parseLocationQuery(fullQuery);
+                    console.log("Parsed mobile location query:", locationInfo);
                   }
-
-                  const locationInfo = regionResult
-                    ? {
-                        city: regionResult.city,
-                        fullName: regionResult.fullName,
-                        countryCode: regionResult.countryCode,
-                      }
-                    : parseLocationQuery(fullQuery);
 
                   const resolvedCity = locationInfo.city || fullQuery;
                   const resolvedFullName = locationInfo.fullName || fullQuery;
@@ -744,7 +754,7 @@ const Header = () => {
 
                   applyOptimisticSelection(resolvedCity, resolvedFullName, {
                     name: resolvedFullName,
-                    country: regionResult?.countryCode,
+                    country: locationInfo?.countryCode,
                   });
 
                   // Navigate to search page

@@ -247,6 +247,61 @@ const toInternationalKey = (value) => {
     .trim();
 };
 
+const COUNTRY_CITY_SUGGESTIONS = (() => {
+  const map = new Map();
+
+  RANDOM_CITIES.forEach((cityData) => {
+    if (!cityData || typeof cityData !== 'object') {
+      return;
+    }
+
+    const cityName = typeof cityData.city === 'string' ? cityData.city.trim() : '';
+    const countryCodeRaw =
+      typeof cityData.country === 'string' ? cityData.country.trim() : '';
+
+    if (!cityName || !countryCodeRaw) {
+      return;
+    }
+
+    const countryCode = countryCodeRaw.toUpperCase();
+    if (!countryCode) {
+      return;
+    }
+
+    if (!map.has(countryCode)) {
+      map.set(countryCode, []);
+    }
+
+    const preparedEntry = {
+      ...cityData,
+      city: cityName,
+      country: countryCode,
+      countryCode,
+      badge: (cityData.badge || countryCode || '').toString().toUpperCase() || countryCode,
+      type: cityData.type || 'international',
+      source: cityData.source || 'countryCities',
+    };
+
+    map.get(countryCode).push(preparedEntry);
+  });
+
+  return map;
+})();
+
+const getCountryCitySuggestions = (countryCode) => {
+  if (!countryCode || typeof countryCode !== 'string') {
+    return [];
+  }
+
+  const normalized = countryCode.trim().toUpperCase();
+  if (!normalized) {
+    return [];
+  }
+
+  const entries = COUNTRY_CITY_SUGGESTIONS.get(normalized);
+  return Array.isArray(entries) ? entries : [];
+};
+
 /**
  * Normalize search queries to handle punctuation, casing, and formatting variations
  * @param {string} query - The search query
@@ -662,6 +717,39 @@ const searchAllCitiesWithPriority = (query, limit) => {
     countryMetadata?.alpha2 ||
     detectCountryCodeFromQuery(query) ||
     detectCountryCodeFromQuery(normalizedQuery);
+
+  const normalizedCityKey = toInternationalKey(cityName);
+  const normalizedRawKey = toInternationalKey(rawInput);
+
+  const matchesExplicitCountry = (key) =>
+    Boolean(
+      key &&
+        explicitCountry &&
+        COUNTRY_ALIAS_MAP.has(key) &&
+        COUNTRY_ALIAS_MAP.get(key) === explicitCountry
+    );
+
+  const matchesCountryCode = (key) =>
+    Boolean(key && explicitCountry && key === explicitCountry.toLowerCase());
+
+  const looksLikeCountryQuery = Boolean(explicitCountry) && (
+    !cityName ||
+    matchesExplicitCountry(normalizedCityKey) ||
+    matchesExplicitCountry(normalizedRawKey) ||
+    matchesCountryCode(normalizedCityKey) ||
+    matchesCountryCode(normalizedRawKey)
+  );
+
+  const countrySpecificSuggestions = looksLikeCountryQuery
+    ? getCountryCitySuggestions(explicitCountry).map((entry) => ({
+        ...entry,
+        country: explicitCountry,
+        countryCode: explicitCountry,
+        badge: (entry.badge || explicitCountry).toUpperCase(),
+        source: entry.source || 'countryCities',
+        type: entry.type || 'international',
+      }))
+    : [];
   
   // Get US city results with extracted city name
   const usResults = searchUSCities(cityName, limit);
@@ -732,6 +820,7 @@ const searchAllCitiesWithPriority = (query, limit) => {
   // 4. Partial international matches
   const prioritizedResults = [
     ...(capitalEntry ? [capitalEntry] : []),
+    ...countrySpecificSuggestions,
     ...prioritizedExactIntl,
     ...exactUSMatches,
     ...partialUSMatches,
