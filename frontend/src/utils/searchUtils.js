@@ -539,7 +539,7 @@ const getRegionDisplayNames = () => {
   return cachedRegionDisplayNames;
 };
 
-const getCountryFullName = (countryOrCode) => {
+export const getCountryFullName = (countryOrCode) => {
   if (!countryOrCode || typeof countryOrCode !== 'string') return null;
 
   const trimmed = countryOrCode.trim();
@@ -758,7 +758,7 @@ const STATE_ALIAS_DEFINITIONS = {
   'ohio': 'OH', 'oh': 'OH',
   'oklahoma': 'OK', 'ok': 'OK',
   'oregon': 'OR', 'or': 'OR',
-  'pennsylvania': 'PA', 'pa': 'PA',
+  'pennsylvania': 'PA',
   'rhode island': 'RI', 'ri': 'RI',
   'south carolina': 'SC', 'sc': 'SC',
   'south dakota': 'SD', 'sd': 'SD',
@@ -971,6 +971,76 @@ export const parseLocationQuery = (query) => {
 
   if (!trimmedQuery) {
     return { city: "", fullName: "" };
+  }
+
+  // Handle two-letter and three-letter country codes - prioritize country capitals
+  // This ensures both Alpha-2 (PA) and Alpha-3 (PAN) codes work correctly
+  const upperQuery = trimmedQuery.toUpperCase();
+  
+  // Check if it's a 2-letter or 3-letter country code
+  if (/^[A-Z]{2,3}$/.test(upperQuery)) {
+    // First check if this is an Alpha-3 code and convert to Alpha-2
+    let codeToCheck = upperQuery;
+    
+    // Import the metadata lookup function for Alpha-3 support
+    const countryMetadata = getCountryMetadataForInput(upperQuery);
+    
+    // If we found country metadata (works for both Alpha-2 and Alpha-3), use it
+    if (countryMetadata?.capital) {
+      const countryName = countryMetadata.name || upperQuery;
+      return {
+        city: countryMetadata.capital,
+        fullName: `${countryMetadata.capital}, ${countryName}`,
+      };
+    }
+    
+    // Fallback: Check conflicting Alpha-2 abbreviations with US states
+    if (upperQuery.length === 2) {
+      const CONFLICTING_ABBREVIATIONS = {
+        'AL': { country: 'AL', countryName: 'Albania', capital: 'Tirana' },
+        'AR': { country: 'AR', countryName: 'Argentina', capital: 'Buenos Aires' },
+        'AZ': { country: 'AZ', countryName: 'Azerbaijan', capital: 'Baku' },
+        'CA': { country: 'CA', countryName: 'Canada', capital: 'Ottawa' },
+        'CO': { country: 'CO', countryName: 'Colombia', capital: 'Bogota' },
+        'DE': { country: 'DE', countryName: 'Germany', capital: 'Berlin' },
+        'GA': { country: 'GA', countryName: 'Gabon', capital: 'Libreville' },
+        'ID': { country: 'ID', countryName: 'Indonesia', capital: 'Jakarta' },
+        'IL': { country: 'IL', countryName: 'Israel', capital: 'Jerusalem' },
+        'IN': { country: 'IN', countryName: 'India', capital: 'New Delhi' },
+        'LA': { country: 'LA', countryName: 'Laos', capital: 'Vientiane' },
+        'MA': { country: 'MA', countryName: 'Morocco', capital: 'Rabat' },
+        'MD': { country: 'MD', countryName: 'Moldova', capital: 'Chisinau' },
+        'ME': { country: 'ME', countryName: 'Montenegro', capital: 'Podgorica' },
+        'MN': { country: 'MN', countryName: 'Mongolia', capital: 'Ulan Bator' },
+        'MO': { country: 'MO', countryName: 'Macau', capital: null }, // Macau doesn't have a capital
+        'MS': { country: 'MS', countryName: 'Montserrat', capital: 'Plymouth' },
+        'MT': { country: 'MT', countryName: 'Malta', capital: 'Valletta' },
+        'NC': { country: 'NC', countryName: 'New Caledonia', capital: 'Noumea' },
+        'NE': { country: 'NE', countryName: 'Niger', capital: 'Niamey' },
+        'PA': { country: 'PA', countryName: 'Panama', capital: 'Panama City' },
+        'SC': { country: 'SC', countryName: 'Seychelles', capital: 'Victoria' },
+        'SD': { country: 'SD', countryName: 'Sudan', capital: 'Khartoum' },
+        'TN': { country: 'TN', countryName: 'Tunisia', capital: 'Tunis' },
+        'VA': { country: 'VA', countryName: 'Vatican City', capital: 'Vatican City' }
+      };
+      
+      const conflictInfo = CONFLICTING_ABBREVIATIONS[upperQuery];
+      if (conflictInfo) {
+        // Handle special case where country doesn't have a capital (like Macau)
+        if (!conflictInfo.capital) {
+          if (conflictInfo.country === 'MO') {
+            return {
+              city: 'Macau',
+              fullName: 'Macau'
+            };
+          }
+        }
+        return {
+          city: conflictInfo.capital,
+          fullName: `${conflictInfo.capital}, ${conflictInfo.countryName}`,
+        };
+      }
+    }
   }
 
   // Normalize and handle special patterns first
@@ -1259,7 +1329,6 @@ const normalizeLocationQuery = (query) => {
     "texas": "TX",
     "tx": "TX",
     "pennsylvania": "PA",
-    "pa": "PA",
     "illinois": "IL",
     "il": "IL",
     "ohio": "OH",
@@ -1501,6 +1570,7 @@ const handleSingleNameQuery = (
   }
 
   const rawInput = typeof originalQuery === 'string' ? originalQuery.trim() : '';
+
   const countryMetadataFromCode = getCountryMetadataForInput(rawInput);
   if (countryMetadataFromCode?.capital) {
     const capitalEntry = buildCountryCapitalEntry(countryMetadataFromCode);
@@ -2255,6 +2325,61 @@ const applyExplicitCountryPriority = (cities, countryCode) => {
   return [...matches, ...others];
 };
 
+const prioritizeByCountryAndRemoveDuplicates = (entries, preferredCountryCode = null) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return entries;
+  }
+
+  const normalizedPreferred = preferredCountryCode
+    ? preferredCountryCode.toString().trim().toUpperCase()
+    : null;
+
+  const seenNames = new Set();
+  const prioritized = [];
+
+  const pushEntry = (entry) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+
+    const identifier = typeof entry.name === "string" && entry.name.trim()
+      ? entry.name.trim().toLowerCase()
+      : typeof entry.fullName === "string" && entry.fullName.trim()
+        ? entry.fullName.trim().toLowerCase()
+        : typeof entry.city === "string" && entry.city.trim()
+          ? `${entry.city.trim().toLowerCase()}::${entry.country || entry.countryCode || ""}`
+          : null;
+
+    if (!identifier || seenNames.has(identifier)) {
+      return;
+    }
+
+    seenNames.add(identifier);
+    prioritized.push(entry);
+  };
+
+  const byCountry = [];
+  const others = [];
+
+  entries.forEach((entry) => {
+    const entryCountry = (entry?.countryCode || entry?.country || "")
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    if (normalizedPreferred && entryCountry === normalizedPreferred) {
+      byCountry.push(entry);
+    } else {
+      others.push(entry);
+    }
+  });
+
+  byCountry.forEach(pushEntry);
+  others.forEach(pushEntry);
+
+  return prioritized;
+};
+
 /**
  * Comprehensive search function that searches both US and international cities
  * Uses intelligent prioritization: exact international matches first, then exact US, then partial matches
@@ -2366,13 +2491,23 @@ export const searchAllCities = (query, limit = 20) => {
     ...prioritizedPartialIntl
   ];
   
-  // Remove duplicates and limit results
-  const uniqueResults = prioritizedResults.filter((city, index, self) => 
-    index === self.findIndex(c => c.name === city.name)
+  // Remove duplicates (by canonical name) before final prioritization
+  const uniqueResults = prioritizedResults.filter((city, index, self) =>
+    index === self.findIndex((candidate) => {
+      const candidateName = (candidate?.name || candidate?.fullName || candidate?.city || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      const currentName = (city?.name || city?.fullName || city?.city || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      return candidateName === currentName && candidate?.country === city?.country && candidate?.countryCode === city?.countryCode;
+    })
   );
   
-  const orderedResults = applyExplicitCountryPriority(
-    uniqueResults,
+  const orderedResults = prioritizeByCountryAndRemoveDuplicates(
+    applyExplicitCountryPriority(uniqueResults, normalizedCountryCode),
     normalizedCountryCode
   );
 

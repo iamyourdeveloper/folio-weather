@@ -20,14 +20,16 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.11.0",
-    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^4.21.2",
     "helmet": "^8.1.0",
-    "mongoose": "^8.18.0",
     "morgan": "^1.10.1",
     "node-cache": "^5.1.2"
+  },
+  "optionalDependencies": {
+    "bcryptjs": "^3.0.2",
+    "mongoose": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

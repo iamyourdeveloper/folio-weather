@@ -347,7 +347,6 @@ const normalizeSearchQuery = (query) => {
     '\\bny\\b': 'new york',
     '\\bfl\\b': 'florida',
     '\\btx\\b': 'texas',
-    '\\bpa\\b': 'pennsylvania',
   };
 
   // Apply replacements

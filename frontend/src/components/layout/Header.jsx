@@ -20,6 +20,7 @@ import {
   isValidLocationQuery,
   searchAllCities,
   extractLocationComponents,
+  getCountryFullName,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 
@@ -63,6 +64,10 @@ const Header = () => {
     const { stateCode: parsedState, countryCode: parsedCountry } =
       extractLocationComponents(fullName) || {};
 
+    const resolvedCountryCode = fallback.countryCode || parsedCountry;
+    const resolvedCountryName = fallback.countryName ||
+      (resolvedCountryCode ? getCountryFullName(resolvedCountryCode) : undefined);
+
     try {
       const [first] = searchAllCities(fullName, 1);
       if (first) {
@@ -73,7 +78,16 @@ const Header = () => {
         };
 
         if (first.state) optimisticSelection.state = first.state;
-        if (first.country) optimisticSelection.country = first.country;
+        if (first.country || first.countryCode) {
+          optimisticSelection.country = first.countryCode || first.country;
+        } else if (resolvedCountryCode) {
+          optimisticSelection.country = resolvedCountryCode;
+        }
+
+        if (first.countryName || resolvedCountryName) {
+          optimisticSelection.countryName = first.countryName || resolvedCountryName;
+        }
+
         if (first.coordinates) {
           optimisticSelection.coordinates = first.coordinates;
         }
@@ -94,8 +108,11 @@ const Header = () => {
     if (fallback.state || parsedState) {
       fallbackSelection.state = fallback.state || parsedState;
     }
-    if (fallback.country || parsedCountry) {
-      fallbackSelection.country = fallback.country || parsedCountry;
+    if (resolvedCountryCode) {
+      fallbackSelection.country = resolvedCountryCode;
+    }
+    if (resolvedCountryName) {
+      fallbackSelection.countryName = resolvedCountryName;
     }
     if (fallback.coordinates) {
       fallbackSelection.coordinates = fallback.coordinates;
@@ -146,6 +163,7 @@ const Header = () => {
           city: regionResult.city,
           fullName: regionResult.fullName,
           countryCode: regionResult.countryCode,
+          countryName: regionResult.countryName,
         };
       } else {
         // Use parseLocationQuery which handles country codes, city names, etc.
@@ -156,9 +174,12 @@ const Header = () => {
 
       const resolvedCity = locationInfo.city || fullQuery;
       const resolvedFullName = locationInfo.fullName || fullQuery;
+      const resolvedCountryCode = locationInfo.countryCode;
+      const resolvedCountryName = locationInfo.countryName;
       console.log("Parsed location:", {
         city: resolvedCity,
         fullName: resolvedFullName,
+        countryCode: resolvedCountryCode,
       });
 
       // Update query context first
@@ -166,7 +187,8 @@ const Header = () => {
 
       applyOptimisticSelection(resolvedCity, resolvedFullName, {
         name: resolvedFullName,
-        country: locationInfo?.countryCode,
+        countryCode: resolvedCountryCode,
+        countryName: resolvedCountryName,
       });
 
       // Navigate to search page
@@ -234,7 +256,8 @@ const Header = () => {
         city: location.city || fullQuery.split(",")[0].trim(), 
         name: location.displayName || location.name || fullQuery,
         state: location.state,
-        country: location.country,
+        country: location.country || location.countryCode,
+        countryName: location.countryName,
         coordinates: location.coordinates
       });
 
@@ -299,7 +322,8 @@ const Header = () => {
         city: location.city || fullQuery.split(",")[0].trim(), 
         name: location.displayName || location.name || fullQuery,
         state: location.state,
-        country: location.country,
+        country: location.country || location.countryCode,
+        countryName: location.countryName,
         coordinates: location.coordinates
       });
 
@@ -733,6 +757,7 @@ const Header = () => {
                       city: regionResult.city,
                       fullName: regionResult.fullName,
                       countryCode: regionResult.countryCode,
+                      countryName: regionResult.countryName,
                     };
                   } else {
                     // Use parseLocationQuery which handles country codes, city names, etc.
@@ -743,9 +768,12 @@ const Header = () => {
 
                   const resolvedCity = locationInfo.city || fullQuery;
                   const resolvedFullName = locationInfo.fullName || fullQuery;
+                  const resolvedCountryCode = locationInfo.countryCode;
+                  const resolvedCountryName = locationInfo.countryName;
                   console.log("Parsed mobile location:", {
                     city: resolvedCity,
                     fullName: resolvedFullName,
+                    countryCode: resolvedCountryCode,
                   });
 
                   // Update query context first
@@ -753,7 +781,8 @@ const Header = () => {
 
                   applyOptimisticSelection(resolvedCity, resolvedFullName, {
                     name: resolvedFullName,
-                    country: locationInfo?.countryCode,
+                    countryCode: resolvedCountryCode,
+                    countryName: resolvedCountryName,
                   });
 
                   // Navigate to search page
