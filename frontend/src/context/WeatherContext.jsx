@@ -858,8 +858,22 @@ export const WeatherProvider = ({ children }) => {
     if (stateCode) {
       manualSelection.state = stateCode;
     }
-    if (countryCode) {
-      manualSelection.country = countryCode;
+    const inferredCountry =
+      parsed.countryCode || countryCode || parsed.alpha2 || null;
+    if (inferredCountry) {
+      manualSelection.country = inferredCountry;
+    }
+    if (parsed.countryName) {
+      manualSelection.countryName = parsed.countryName;
+    }
+    if (parsed.alpha2) {
+      manualSelection.alpha2 = parsed.alpha2;
+    }
+    if (parsed.alpha3) {
+      manualSelection.alpha3 = parsed.alpha3;
+    }
+    if (parsed.numeric) {
+      manualSelection.numeric = parsed.numeric;
     }
 
     return manualSelection;

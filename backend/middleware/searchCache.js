@@ -3,11 +3,14 @@
  * Implements caching for city search results to improve performance
  */
 
+const CACHE_SIGNATURE = 'v20240227_puerto_rico_header_priority';
+
 class SearchCache {
   constructor(maxSize = 1000, ttl = 30 * 60 * 1000) { // 30 minutes TTL
     this.cache = new Map();
     this.maxSize = maxSize;
     this.ttl = ttl;
+    this.signature = CACHE_SIGNATURE;
     
     // Clean up expired entries every 5 minutes
     setInterval(() => this.cleanup(), 5 * 60 * 1000);
@@ -23,6 +26,12 @@ class SearchCache {
     const cached = this.cache.get(normalizedQuery);
     
     if (!cached) return null;
+
+     // Bust cache if the signature changed between deployments
+    if (cached.signature !== this.signature) {
+      this.cache.delete(normalizedQuery);
+      return null;
+    }
     
     // Check if expired
     if (Date.now() - cached.timestamp > this.ttl) {
@@ -49,7 +58,8 @@ class SearchCache {
     
     this.cache.set(normalizedQuery, {
       results: results,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      signature: this.signature,
     });
   }
 
@@ -59,7 +69,9 @@ class SearchCache {
   cleanup() {
     const now = Date.now();
     for (const [key, value] of this.cache.entries()) {
-      if (now - value.timestamp > this.ttl) {
+      const expired = now - value.timestamp > this.ttl;
+      const signatureMismatch = value.signature !== this.signature;
+      if (expired || signatureMismatch) {
         this.cache.delete(key);
       }
     }

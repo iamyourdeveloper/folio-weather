@@ -26,6 +26,7 @@ const testCases = [
   { query: "New York New York", expected: "New York, NY" },
   { query: "Paris, France", expected: "Paris, France" },
   { query: "Tokyo", expected: "Tokyo (no match in DB)" },
+  { query: "Puerto Rico", expected: "San Juan, Puerto Rico (capital)" },
 ];
 
 testCases.forEach(({ query, expected }) => {

@@ -61,9 +61,25 @@ export const buildCountryCapitalEntry = (metadata) => {
   const countryName = metadata.name || alpha2 || alpha3 || "";
   const capital = metadata.capital;
 
+  const displayName = (() => {
+    if (!capital) {
+      return countryName || "";
+    }
+    if (!countryName) {
+      return capital;
+    }
+
+    const capitalKey = capital.trim().toLowerCase();
+    const countryKey = countryName.trim().toLowerCase();
+    if (capitalKey && capitalKey === countryKey) {
+      return capital;
+    }
+    return `${capital}, ${countryName}`;
+  })();
+
   const entry = {
     city: capital,
-    name: `${capital}, ${countryName}`,
+    name: displayName,
     country: alpha2 || null,
     alpha2,
     alpha3,
@@ -129,4 +145,3 @@ export const buildFuzzyCountryCapitalEntry = (value) => {
 
 export const ISO_ALPHA2_CODES = Object.freeze(Object.keys(ALPHA2_TO_METADATA));
 export const ISO_ALPHA3_CODES = Object.freeze(Object.keys(ALPHA3_TO_ALPHA2));
-

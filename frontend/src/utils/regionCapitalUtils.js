@@ -257,6 +257,51 @@ const pickRandom = (items) => {
   return items[index] || null;
 };
 
+const isCountryQuery = (value) => {
+  if (!value || typeof value !== "string") {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  const upper = trimmed.toUpperCase();
+  if (COUNTRY_CAPITALS[upper]) {
+    return true;
+  }
+
+  const normalizedKey = normalizeQueryKey(trimmed);
+  if (!normalizedKey) {
+    return false;
+  }
+
+  for (const entry of Object.values(COUNTRY_CAPITALS)) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+
+    if (entry.alpha3 && entry.alpha3.toUpperCase() === upper) {
+      return true;
+    }
+
+    if (entry.name && normalizeQueryKey(entry.name) === normalizedKey) {
+      return true;
+    }
+
+    if (Array.isArray(entry.altNames)) {
+      for (const alt of entry.altNames) {
+        if (normalizeQueryKey(alt) === normalizedKey) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+};
+
 const buildRegionOptions = (regionName) => {
   const countryCodes = REGION_COUNTRY_CODES[regionName];
   if (!countryCodes) {
@@ -294,6 +339,10 @@ export const getRandomRegionCapital = (query) => {
   }
 
   const trimmed = query.trim();
+
+  if (isCountryQuery(trimmed)) {
+    return null;
+  }
 
   const canonicalRegion = (() => {
     if (trimmed && REGION_COUNTRY_CODES[trimmed]) {

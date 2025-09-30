@@ -13,6 +13,7 @@ import RANDOM_CITIES from "../data/randomCities.js";
 import {
   getCountryMetadataForInput,
   buildCountryCapitalEntry,
+  buildFuzzyCountryCapitalEntry,
 } from "../../shared/utils/countryLookup.js";
 
 const router = express.Router();
@@ -99,6 +100,27 @@ const ensureUsDisplaySuffix = (value) => {
   return `${trimmed}, USA`;
 };
 
+const enrichCapitalEntry = (entry, metadata = null) => {
+  if (!entry) return null;
+
+  const alpha2 = entry.country || entry.alpha2 || metadata?.alpha2 || null;
+  const alpha3 = entry.alpha3 || metadata?.alpha3 || null;
+  const numeric = entry.numeric || metadata?.numeric || null;
+  const countryName = entry.countryName || metadata?.name || null;
+  const badge = entry.badge || (alpha2 || alpha3 || '').toString().toUpperCase() || null;
+
+  return {
+    ...entry,
+    country: alpha2 || null,
+    countryCode: alpha2 || null,
+    alpha2,
+    alpha3,
+    numeric,
+    countryName: countryName || null,
+    badge,
+  };
+};
+
 const buildSuggestionPayload = (city, options = {}) => {
   if (!city || typeof city !== 'object') {
     return null;
@@ -159,7 +181,13 @@ const buildSuggestionPayload = (city, options = {}) => {
     suggestion.searchValue || suggestion.city || suggestion.name || '';
 
   if (includePriority) {
-    suggestion.priority = rawCountry === 'US' ? 1 : 2;
+    if (type === 'capital') {
+      suggestion.priority = 0;
+    } else if (rawCountry === 'US') {
+      suggestion.priority = 1;
+    } else {
+      suggestion.priority = 2;
+    }
   } else {
     delete suggestion.priority;
   }
@@ -248,6 +276,16 @@ const toInternationalKey = (value) => {
     .trim();
 };
 
+const normalizeCountryNameKey = (value) => {
+  if (!value || typeof value !== 'string') return '';
+
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+};
+
 const COUNTRY_CITY_SUGGESTIONS = (() => {
   const map = new Map();
 
@@ -327,6 +365,27 @@ const normalizeSearchQuery = (query) => {
   normalized = normalized.replace(/\s*,\s*/g, ', '); // Normalize comma spacing
   normalized = normalized.replace(/\s*\.\s*/g, '. '); // Normalize period spacing
   
+  const aliasKey = toInternationalKey(normalized);
+  const shouldCheckDirectCountryAlias =
+    (aliasKey && aliasKey.length > 2) ||
+    (normalized === normalized.toUpperCase() && /^[A-Z]{2,3}$/.test(normalized));
+
+  if (aliasKey && shouldCheckDirectCountryAlias) {
+    for (const [code, aliases] of Object.entries(COUNTRY_ALIAS_DEFINITIONS)) {
+      if (aliasKey === toInternationalKey(code)) {
+        return code;
+      }
+
+      if (Array.isArray(aliases)) {
+        for (const alias of aliases) {
+          if (aliasKey === toInternationalKey(alias)) {
+            return code;
+          }
+        }
+      }
+    }
+  }
+  
   // Handle common country/state abbreviations
   const commonReplacements = {
     // Country variations (case insensitive)
@@ -381,6 +440,7 @@ const COUNTRY_ALIAS_DEFINITIONS = {
   CO: ['colombia'],
   PE: ['peru'],
   VE: ['venezuela'],
+  PR: ['puerto rico'],
   RU: ['russia', 'russian federation', 'ru'],
   CN: ['china', 'prc', 'p.r.c'],
   JP: ['japan', 'nippon'],
@@ -744,7 +804,10 @@ const searchByAbbreviation = (abbrevInfo, limit) => {
   // Add country capital and cities if we have country info
   if (abbrevInfo.country) {
     const countryMetadata = abbrevInfo.country.metadata;
-    const capitalEntry = buildCountryCapitalEntry(countryMetadata);
+    const capitalEntry = enrichCapitalEntry(
+      buildCountryCapitalEntry(countryMetadata),
+      countryMetadata
+    );
     
     if (capitalEntry) {
       results.push(capitalEntry);
@@ -788,16 +851,49 @@ const searchAllCitiesWithPriority = (query, limit) => {
     return searchByAbbreviation(abbrevInfo, limit);
   }
 
-  const countryMetadata = getCountryMetadataForInput(rawInput);
-  const capitalEntry = countryMetadata
-    ? buildCountryCapitalEntry(countryMetadata)
-    : null;
+  let countryMetadata = getCountryMetadataForInput(rawInput);
 
   // Enhanced normalization to handle punctuation and casing variations
   const normalizedQuery = normalizeSearchQuery(query).toLowerCase().trim();
   
   // Extract city name from complex queries like "london great britain"
   let cityName = extractCityFromQuery(normalizedQuery);
+
+  const detectedCountryCode =
+    countryMetadata?.alpha2 ||
+    detectCountryCodeFromQuery(query) ||
+    detectCountryCodeFromQuery(normalizedQuery);
+
+  if (!countryMetadata && detectedCountryCode) {
+    countryMetadata = getCountryMetadataForInput(detectedCountryCode);
+  }
+
+  if (!countryMetadata) {
+    const fuzzyResult = buildFuzzyCountryCapitalEntry(rawInput);
+    if (fuzzyResult?.metadata) {
+      const normalizedInputKey = normalizeCountryNameKey(rawInput);
+      const normalizedMetadataKey = normalizeCountryNameKey(
+        fuzzyResult.metadata.name || ''
+      );
+      const matchesAltName = Array.isArray(fuzzyResult.metadata.altNames)
+        ? fuzzyResult.metadata.altNames.some(
+            (alt) => normalizeCountryNameKey(alt) === normalizedInputKey
+          )
+        : false;
+
+      if (
+        normalizedInputKey &&
+        (normalizedInputKey === normalizedMetadataKey || matchesAltName)
+      ) {
+        countryMetadata = fuzzyResult.metadata;
+      }
+    }
+  }
+
+  const capitalEntry = countryMetadata
+    ? enrichCapitalEntry(buildCountryCapitalEntry(countryMetadata), countryMetadata)
+    : null;
+
   if (
     capitalEntry?.city &&
     (!cityName || /^[a-z]{2,3}$/i.test(cityName)) &&
@@ -808,8 +904,8 @@ const searchAllCitiesWithPriority = (query, limit) => {
 
   const explicitCountry =
     countryMetadata?.alpha2 ||
-    detectCountryCodeFromQuery(query) ||
-    detectCountryCodeFromQuery(normalizedQuery);
+    detectedCountryCode ||
+    null;
 
   const normalizedCityKey = toInternationalKey(cityName);
   const normalizedRawKey = toInternationalKey(rawInput);

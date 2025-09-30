@@ -239,8 +239,13 @@ const SearchPage = () => {
       if (fallback.state || parsedState) {
         fallbackSelection.state = fallback.state || parsedState;
       }
-      if (fallback.country || parsedCountry) {
-        fallbackSelection.country = fallback.country || parsedCountry;
+      const fallbackCountry =
+        fallback.country || fallback.countryCode || parsedCountry;
+      if (fallbackCountry) {
+        fallbackSelection.country = fallbackCountry;
+      }
+      if (fallback.countryName) {
+        fallbackSelection.countryName = fallback.countryName;
       }
       if (fallback.coordinates) {
         fallbackSelection.coordinates = fallback.coordinates;
@@ -539,8 +544,23 @@ const SearchPage = () => {
 
   // Expanded popular cities list (curated subset from RANDOM_CITIES)
   // Do not slice here so regional tabs can access the full set.
+  const formatPopularCityLabel = (name, country) => {
+    const base = (name || "").trim();
+    if (!base) return base;
+
+    if (country === "US") {
+      const upper = base.toUpperCase();
+      if (upper.endsWith("USA") || upper.endsWith("UNITED STATES")) {
+        return base;
+      }
+      return `${base}, USA`;
+    }
+
+    return base;
+  };
+
   const ALL_POPULAR_CITIES = (RANDOM_CITIES || []).map((c) => ({
-    label: c.name || c.city,
+    label: formatPopularCityLabel(c.name || c.city, c.country),
     query: c.name || c.city, // Use full name (e.g., "Norfolk, VA") instead of just city name
     country: c.country,
   }));

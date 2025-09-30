@@ -10,7 +10,6 @@ import {
 import {
   getCountryMetadataForInput,
   buildCountryCapitalEntry,
-  buildFuzzyCountryCapitalEntry,
 } from "../../../shared/utils/countryLookup.js";
 import { 
   searchUSCities, 
@@ -73,6 +72,27 @@ const WASHINGTON_DC_TRAILING_ALIASES = [
   'us',
   'america',
 ];
+
+const enrichCapitalEntry = (entry, metadata = null) => {
+  if (!entry) return null;
+
+  const alpha2 = entry.country || entry.alpha2 || metadata?.alpha2 || null;
+  const alpha3 = entry.alpha3 || metadata?.alpha3 || null;
+  const numeric = entry.numeric || metadata?.numeric || null;
+  const countryName = entry.countryName || metadata?.name || null;
+  const badge = entry.badge || (alpha2 || alpha3 || '').toString().toUpperCase() || null;
+
+  return {
+    ...entry,
+    country: alpha2 || null,
+    countryCode: alpha2 || null,
+    alpha2,
+    alpha3,
+    numeric,
+    countryName: countryName || null,
+    badge,
+  };
+};
 
 const stripWashingtonDcTrailingAliases = (value) => {
   if (!value) {
@@ -662,6 +682,7 @@ const COUNTRY_ALIAS_DEFINITIONS = {
   CR: ['costa rica', 'cr'],
   PA: ['panama', 'pa'],
   CU: ['cuba', 'cu'],
+  PR: ['puerto rico'],
   DO: ['dominican republic', 'do'],
   JM: ['jamaica', 'jm'],
   HT: ['haiti', 'ht'],
@@ -973,24 +994,49 @@ export const parseLocationQuery = (query) => {
     return { city: "", fullName: "" };
   }
 
+  const directCountryMetadata = getCountryMetadata(trimmedQuery);
+  if (directCountryMetadata?.capital) {
+    const capitalEntry = enrichCapitalEntry(
+      buildCountryCapitalEntry(directCountryMetadata),
+      directCountryMetadata
+    );
+    if (capitalEntry) {
+      return {
+        ...capitalEntry,
+        fullName: capitalEntry.name,
+      };
+    }
+  }
+
   // Handle two-letter and three-letter country codes - prioritize country capitals
   // This ensures both Alpha-2 (PA) and Alpha-3 (PAN) codes work correctly
   const upperQuery = trimmedQuery.toUpperCase();
   
   // Check if it's a 2-letter or 3-letter country code
   if (/^[A-Z]{2,3}$/.test(upperQuery)) {
-    // First check if this is an Alpha-3 code and convert to Alpha-2
-    let codeToCheck = upperQuery;
-    
-    // Import the metadata lookup function for Alpha-3 support
     const countryMetadata = getCountryMetadataForInput(upperQuery);
-    
-    // If we found country metadata (works for both Alpha-2 and Alpha-3), use it
-    if (countryMetadata?.capital) {
-      const countryName = countryMetadata.name || upperQuery;
+
+    if (countryMetadata) {
+      const capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(countryMetadata),
+        countryMetadata
+      );
+      if (capitalEntry?.city) {
+        return {
+          ...capitalEntry,
+          fullName: capitalEntry.name || capitalEntry.city,
+        };
+      }
+
+      const fallbackName = countryMetadata.name || upperQuery;
       return {
-        city: countryMetadata.capital,
-        fullName: `${countryMetadata.capital}, ${countryName}`,
+        city: fallbackName,
+        fullName: fallbackName,
+        countryCode: countryMetadata.alpha2 || null,
+        countryName: countryMetadata.name || null,
+        alpha2: countryMetadata.alpha2 || null,
+        alpha3: countryMetadata.alpha3 || null,
+        numeric: countryMetadata.numeric || null,
       };
     }
     
@@ -1284,6 +1330,25 @@ const normalizeLocationQuery = (query) => {
     "america": "US",
   };
 
+  const sortedCountryEntries = Object.entries(countryNormalizations)
+    .sort(([a], [b]) => b.length - a.length);
+
+  const normalizedLower = normalized.toLowerCase();
+
+  for (const [variation, standard] of sortedCountryEntries) {
+    if (normalizedLower === variation.toLowerCase()) {
+      if (
+        variation.length === 2 &&
+        variation === variation.toUpperCase() &&
+        normalized !== normalized.toUpperCase()
+      ) {
+        continue;
+      }
+
+      return standard;
+    }
+  }
+
   // Step 5: Handle state/province name variations (enhanced)
   const stateNormalizations = {
     // Canadian provinces
@@ -1450,9 +1515,6 @@ const normalizeLocationQuery = (query) => {
   
   // First handle country normalizations at the end of the string
   // Sort country variations by length (longest first) to handle multi-word countries properly
-  const sortedCountryEntries = Object.entries(countryNormalizations)
-    .sort(([a], [b]) => b.length - a.length);
-  
   let countryMatched = false;
 
   // Skip normalization if we already have a valid country
@@ -1509,6 +1571,25 @@ const normalizeLocationQuery = (query) => {
         const cityName = match[1].trim();
         const matchedAlias = (match[2] || variation).trim();
         const trailing = match[3] ? match[3].trim() : '';
+        const cleanedSuffix = trailing ? trailing.replace(/^,/, '').trim() : '';
+
+        // Skip if the alias is embedded within a larger word (e.g., "Puerto Rico")
+        const aliasLower = matchedAlias.toLowerCase();
+        const matchIndex = typeof match.index === 'number' ? match.index : 0;
+        const aliasIndexInMatch = match[0]
+          .toLowerCase()
+          .indexOf(aliasLower, cityName.length);
+
+        if (aliasIndexInMatch !== -1) {
+          const aliasGlobalIndex = matchIndex + aliasIndexInMatch;
+          const aliasEndIndex = aliasGlobalIndex + matchedAlias.length;
+          const charBefore = aliasGlobalIndex > 0 ? normalized[aliasGlobalIndex - 1] : '';
+          const charAfter = aliasEndIndex < normalized.length ? normalized[aliasEndIndex] : '';
+
+          if ((charBefore && /[a-z]/i.test(charBefore)) || (charAfter && /[a-z]/i.test(charAfter))) {
+            continue;
+          }
+        }
 
         // Avoid treating mid-word connectors like "de" as the Delaware state unless explicitly capitalized
         if (
@@ -1518,13 +1599,30 @@ const normalizeLocationQuery = (query) => {
           continue;
         }
 
-        let suffix = '';
-        if (trailing) {
-          const cleanedSuffix = trailing.replace(/^,/, '').trim();
-          if (cleanedSuffix && (countryMatched || /[a-z]/i.test(cleanedSuffix))) {
-            suffix = `, ${cleanedSuffix}`;
+        // Guard against matching partial words (e.g., "Valley" -> "VA") by ensuring the
+        // trailing segment either doesn't exist or starts with something recognizable like a
+        // country/state alias or a postal code. Otherwise skip this alias match.
+        if (cleanedSuffix) {
+          const firstSuffix = cleanedSuffix
+            .split(',')
+            .map((part) => part.trim())
+            .find(Boolean);
+
+          if (firstSuffix) {
+            const suffixKey = toInternationalKey(firstSuffix);
+            const looksLikePostalCode = /^(?:\d{3,}|\d{5}(?:-\d{4})?)$/.test(firstSuffix);
+            const isKnownSuffix =
+              COUNTRY_ALIAS_MAP.has(suffixKey) ||
+              STATE_ALIAS_MAP.has(suffixKey) ||
+              looksLikePostalCode;
+
+            if (!isKnownSuffix) {
+              continue;
+            }
           }
         }
+
+        const suffix = cleanedSuffix ? `, ${cleanedSuffix}` : '';
 
         normalized = `${cityName}, ${standard}${suffix}`;
         stateMatched = true;
@@ -1573,10 +1671,13 @@ const handleSingleNameQuery = (
 
   const countryMetadataFromCode = getCountryMetadataForInput(rawInput);
   if (countryMetadataFromCode?.capital) {
-    const capitalEntry = buildCountryCapitalEntry(countryMetadataFromCode);
+    const capitalEntry = enrichCapitalEntry(
+      buildCountryCapitalEntry(countryMetadataFromCode),
+      countryMetadataFromCode
+    );
     if (capitalEntry) {
       return {
-        city: capitalEntry.city,
+        ...capitalEntry,
         fullName: capitalEntry.name,
       };
     }
@@ -1635,10 +1736,13 @@ const handleSingleNameQuery = (
   ) {
     const metadata = getCountryMetadata(countryCode) || getCountryMetadata(originalQuery);
     if (metadata?.capital) {
-      const capitalEntry = buildCountryCapitalEntry(metadata);
+      const capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(metadata),
+        metadata
+      );
       if (capitalEntry) {
         return {
-          city: capitalEntry.city,
+          ...capitalEntry,
           fullName: capitalEntry.name,
         };
       }
@@ -1659,6 +1763,26 @@ const handleSingleNameQuery = (
         city: capitalMatch,
         fullName: `${capitalMatch}, ${displayCountry}`,
       };
+    }
+  }
+
+  if (!countryCode) {
+    const metadataFromName =
+      getCountryMetadata(baseCity) ||
+      getCountryMetadata(rawInput) ||
+      getCountryMetadata(normalizedQuery);
+
+    if (metadataFromName?.capital) {
+      const capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(metadataFromName),
+        metadataFromName
+      );
+      if (capitalEntry) {
+        return {
+          ...capitalEntry,
+          fullName: capitalEntry.name,
+        };
+      }
     }
   }
 
@@ -2403,8 +2527,44 @@ export const searchAllCities = (query, limit = 20) => {
     : null;
   
   // Get US city results using the parsed city name
-  const countryMetadata = getCountryMetadataForInput(query);
-  const capitalEntry = countryMetadata ? buildCountryCapitalEntry(countryMetadata) : null;
+  const baseCountryMetadata = getCountryMetadataForInput(query);
+  let capitalEntry = baseCountryMetadata
+    ? enrichCapitalEntry(buildCountryCapitalEntry(baseCountryMetadata), baseCountryMetadata)
+    : null;
+
+  if (!capitalEntry && normalizedCountryCode) {
+    const metadataFromCode = getCountryMetadataForInput(normalizedCountryCode);
+    if (metadataFromCode) {
+      capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(metadataFromCode),
+        metadataFromCode
+      );
+    }
+  }
+
+  if (!capitalEntry && parsedQuery?.countryName) {
+    const metadataFromName = getCountryMetadata(parsedQuery.countryName);
+    if (metadataFromName) {
+      capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(metadataFromName),
+        metadataFromName
+      );
+    }
+  }
+
+  if (!capitalEntry && parsedQuery?.country) {
+    const metadataFromParsedCode = getCountryMetadataForInput(parsedQuery.country);
+    if (metadataFromParsedCode) {
+      capitalEntry = enrichCapitalEntry(
+        buildCountryCapitalEntry(metadataFromParsedCode),
+        metadataFromParsedCode
+      );
+    }
+  }
+
+  if (capitalEntry && !capitalEntry.fullName) {
+    capitalEntry = { ...capitalEntry, fullName: capitalEntry.name };
+  }
 
   const normalizedCityKey = toInternationalKey(cityToSearch);
   const normalizedRawKey = toInternationalKey(query);
