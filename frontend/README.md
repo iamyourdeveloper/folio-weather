@@ -27,9 +27,10 @@ Copy the example and adjust as needed:
 cp .env.example .env
 ```
 
+The UI always displays the hard-coded app name `FolioWeather`, so no environment variable is required for the title.
+
 Key variables:
 
-- `VITE_APP_NAME`: App title shown in the UI
 - `VITE_API_BASE_URL`: Backend API base (default `http://localhost:8000/api`)
 - `VITE_DEBUG`: Enable verbose console logs when `true`
 - `VITE_ENABLE_GEOLOCATION`: Toggle geolocation features

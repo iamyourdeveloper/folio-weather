@@ -22,6 +22,7 @@ import ForecastCard from "@components/weather/ForecastCard";
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
 import { resolveFullLocationName } from "@utils/searchUtils";
+import { APP_NAME } from "@/constants/appInfo.js";
 import {
   getForecastDateLabel,
   formatDateDisplay,
@@ -280,7 +281,7 @@ const HomePage = () => {
         <section className="home-hero">
           <div className="home-hero__content">
             <h1 className="home-hero__title">
-              Welcome to {import.meta.env.VITE_APP_NAME || "FolioWeather"}
+              Welcome to {APP_NAME}
             </h1>
             <p className="home-hero__subtitle">
               Get real-time weather information, forecasts, and manage your

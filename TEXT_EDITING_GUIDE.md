@@ -4,43 +4,35 @@ This guide provides specific file locations and line numbers where you can edit 
 
 ## 🏷️ App Name/Brand
 
-The app name is controlled by the `VITE_APP_NAME` environment variable with "Weather App" as fallback.
+The app name is defined in `frontend/src/constants/appInfo.js` as `APP_NAME` and is permanently set to `FolioWeather`.
 
 ### Locations to Edit:
 
 **Homepage Title:**
 ```jsx
-// File: frontend/src/pages/HomePage.jsx (Lines 282-284)
+// File: frontend/src/pages/HomePage.jsx (Lines 283-285)
 <h1 className="home-hero__title">
-  Welcome to {import.meta.env.VITE_APP_NAME || "Weather App"}
+  Welcome to {APP_NAME}
 </h1>
-
-// <h1 className="home-hero__title">
-  // Welcome to {import.meta.env.VITE_APP_NAME || "FolioWeather"}
-// </h1>
 ```
 
 **Header Brand:**
 ```jsx
-// File: frontend/src/components/layout/Header.jsx (Lines 507-509)
-<span className="header__brand-text">
-  {import.meta.env.VITE_APP_NAME || "Weather App"}
-</span>
+// File: frontend/src/components/layout/Header.jsx (Lines 531-532)
+<span className="header__brand-text">{APP_NAME}</span>
 ```
 
 **Footer Brand:**
 ```jsx
-// File: frontend/src/components/layout/Footer.jsx (Lines 27-29)
-<h4 className="footer__section-title">
-  {import.meta.env.VITE_APP_NAME || "Weather App"}
-</h4>
+// File: frontend/src/components/layout/Footer.jsx (Lines 28-29)
+<h4 className="footer__section-title">{APP_NAME}</h4>
 ```
 
 **Document Title:**
 ```jsx
-// File: frontend/src/main.jsx (Lines 7-8)
-const appName = import.meta.env.VITE_APP_NAME || 'Weather App';
-document.title = appName;
+// File: frontend/src/main.jsx (Lines 5-7)
+import { APP_NAME } from '@/constants/appInfo.js';
+document.title = APP_NAME;
 ```
 
 ## 🏠 Homepage Content
@@ -224,8 +216,8 @@ placeholder="Enter city name (e.g., London, New York, Tokyo)"
 ## 📱 Page Titles and Meta
 
 ### Document Title:
-- **File:** `frontend/src/main.jsx` (Lines 7-8)
-- **Environment Variable:** Set `VITE_APP_NAME` in your `.env` file
+- **File:** `frontend/src/main.jsx` (Lines 5-7)
+- **Constant:** Update `APP_NAME` in `frontend/src/constants/appInfo.js`
 
 ### Page-Specific Titles:
 Each page component may have its own title structure. Check individual page files in `frontend/src/pages/` for page-specific headings and titles.
@@ -246,11 +238,11 @@ If you want to change text styling, these are the main CSS classes:
 ## 🔧 Quick Edit Checklist
 
 ### To Change App Name Everywhere:
-1. Set `VITE_APP_NAME` in your `.env` file, OR
-2. Replace `"Weather App"` fallback text in:
-   - `frontend/src/main.jsx` (line 7)
+1. Edit `APP_NAME` in `frontend/src/constants/appInfo.js`
+2. Verify usage in:
+   - `frontend/src/main.jsx` (line 5)
    - `frontend/src/pages/HomePage.jsx` (line 283)
-   - `frontend/src/components/layout/Header.jsx` (line 508)
+   - `frontend/src/components/layout/Header.jsx` (line 531)
    - `frontend/src/components/layout/Footer.jsx` (line 28)
 
 ### To Change Navigation:

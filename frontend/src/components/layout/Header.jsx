@@ -23,6 +23,7 @@ import {
   getCountryFullName,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
+import { APP_NAME } from "@/constants/appInfo.js";
 
 /**
  * Header component with navigation and search functionality
@@ -527,9 +528,7 @@ const Header = () => {
             }}
           >
             <Cloud size={32} />
-            <span className="header__brand-text">
-              {import.meta.env.VITE_APP_NAME || "FolioWeather"}
-            </span>
+            <span className="header__brand-text">{APP_NAME}</span>
           </Link>
         </div>
 

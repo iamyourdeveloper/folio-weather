@@ -84,7 +84,7 @@ JWT_SECRET=your_jwt_secret_here
 ### Frontend (.env)
 
 ```env
-VITE_APP_NAME=FolioWeather
+# App name is hard-coded as FolioWeather inside the frontend
 VITE_DEBUG=true
 VITE_API_BASE_URL=http://localhost:8000/api
 VITE_ENABLE_GEOLOCATION=true

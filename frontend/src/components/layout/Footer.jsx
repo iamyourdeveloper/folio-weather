@@ -1,5 +1,6 @@
 import { Heart, Github, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { APP_NAME } from "@/constants/appInfo.js";
 
 /**
  * Footer component with app information and links
@@ -24,9 +25,7 @@ const Footer = () => {
         <div className="footer__content">
           {/* App Info */}
           <div className="footer__section">
-            <h4 className="footer__section-title">
-              {import.meta.env.VITE_APP_NAME || "FolioWeather"}
-            </h4>
+            <h4 className="footer__section-title">{APP_NAME}</h4>
             <p className="footer__description">
               A modern weather application built with React 19 and the MERN
               stack. Get real-time weather data, forecasts, and manage your
@@ -112,7 +111,7 @@ const Footer = () => {
         <div className="footer__bottom">
           <div className="footer__bottom-content">
             <p className="footer__copyright">
-              © {currentYear} FolioWeather. Made with{" "}
+              © {currentYear} {APP_NAME}. Made with{" "}
               <Heart size={16} className="footer__heart" /> for learning and
               demonstration purposes.
             </p>

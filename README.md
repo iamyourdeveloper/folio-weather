@@ -2,6 +2,8 @@
 
 A comprehensive weather application built with the MERN stack (MongoDB, Express.js, React 19, Node.js) that provides real-time weather data with a beautiful, responsive interface and advanced features.
 
+> **Name Guarantee:** The application name is permanently set to `FolioWeather` across every environment and distribution of this project.
+
 ## ✨ Features
 
 ### 🌤️ Weather Data & Forecasting
