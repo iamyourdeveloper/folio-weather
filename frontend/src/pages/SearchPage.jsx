@@ -16,6 +16,7 @@ import {
   searchAllCities,
   extractLocationComponents,
   resolveFullLocationName,
+  getCountryFullName,
 } from "@/utils/searchUtils.js";
 import { getRandomRegionCapital } from "@/utils/regionCapitalUtils.js";
 import {
@@ -209,62 +210,184 @@ const SearchPage = () => {
       const { stateCode: parsedState, countryCode: parsedCountry } =
         extractLocationComponents(fullName) || {};
 
+      const normalizeCode = (value) => {
+        if (!value) return null;
+        const trimmed = value.toString().trim();
+        return trimmed ? trimmed.toUpperCase() : null;
+      };
+
+      const fallbackState =
+        typeof fallback.state === "string" && fallback.state.trim()
+          ? fallback.state.trim()
+          : parsedState || undefined;
+
+      const fallbackCoordinates =
+        fallback.coordinates &&
+        typeof fallback.coordinates === "object" &&
+        typeof fallback.coordinates.lat === "number" &&
+        typeof fallback.coordinates.lon === "number"
+          ? {
+              lat: fallback.coordinates.lat,
+              lon: fallback.coordinates.lon,
+            }
+          : null;
+
+      const normalizeString = (value) => {
+        if (!value || typeof value !== "string") return "";
+        return value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+      };
+
+      const extractCityKey = (value) => {
+        if (!value || typeof value !== "string") return "";
+        const [firstPart] = value.split(",");
+        return normalizeString(firstPart);
+      };
+
+      const fallbackCountryCandidates = [
+        normalizeCode(fallback.countryCode),
+        normalizeCode(fallback.country),
+        normalizeCode(fallback.alpha2),
+        normalizeCode(fallback.alpha3),
+      ];
+
+      const resolvedCountryCode =
+        fallbackCountryCandidates.find(Boolean) || normalizeCode(parsedCountry);
+
+      const resolvedCountryName =
+        fallback.countryName ||
+        (resolvedCountryCode ? getCountryFullName(resolvedCountryCode) : undefined);
+
+      const targetCityKey = extractCityKey(fallback.city || cityName);
+      const baseSelection = {
+        type: "city",
+        city: fallback.city || cityName,
+        name: fallback.name || fullName,
+      };
+
+      if (fallbackState) {
+        baseSelection.state = fallbackState;
+      }
+      if (resolvedCountryCode) {
+        baseSelection.country = resolvedCountryCode;
+      }
+      if (resolvedCountryName) {
+        baseSelection.countryName = resolvedCountryName;
+      }
+      if (fallbackCoordinates) {
+        baseSelection.coordinates = fallbackCoordinates;
+      }
+
+      const targetCountry = resolvedCountryCode;
+      const targetState = fallbackState
+        ? fallbackState.toString().trim().toUpperCase()
+        : null;
+
       try {
         const [first] = searchAllCities(fullName, 1);
         if (first) {
-          const optimisticName = first.name || first.displayName || fullName;
-          const optimisticSelection = {
-            type: "city",
-            city: first.city || cityName,
-            name: optimisticName,
-          };
+          const candidateCountry = normalizeCode(
+            first.countryCode || first.country
+          );
+          const candidateState = first.state
+            ? first.state.toString().trim().toUpperCase()
+            : null;
+          const candidateCityKey = extractCityKey(
+            first.city || first.name || first.displayName
+          );
 
-          if (first.state) optimisticSelection.state = first.state;
-          if (first.country) optimisticSelection.country = first.country;
-          if (first.coordinates) optimisticSelection.coordinates = first.coordinates;
+          const matchesCountry =
+            !targetCountry ||
+            !candidateCountry ||
+            candidateCountry === targetCountry;
+          const matchesState =
+            !targetState ||
+            !candidateState ||
+            candidateState === targetState;
+          const matchesCity =
+            !targetCityKey || candidateCityKey === targetCityKey;
 
-          selectLocation(optimisticSelection);
-          return;
+          if (matchesCountry && matchesState && matchesCity) {
+            const optimisticSelection = {
+              type: "city",
+              city: first.city || cityName,
+              name: first.name || first.displayName || fullName,
+            };
+
+            if (candidateState) {
+              optimisticSelection.state = first.state;
+            }
+            if (candidateCountry || targetCountry) {
+              optimisticSelection.country = candidateCountry || targetCountry;
+            }
+            if (first.countryName || resolvedCountryName) {
+              optimisticSelection.countryName =
+                first.countryName || resolvedCountryName;
+            }
+            if (first.coordinates) {
+              optimisticSelection.coordinates = first.coordinates;
+            } else if (fallbackCoordinates) {
+              optimisticSelection.coordinates = fallbackCoordinates;
+            }
+
+            selectLocation(optimisticSelection);
+            return;
+          }
         }
       } catch (_) {
         // Ignore lookup failures and fall back to provided metadata
       }
 
-      const fallbackSelection = {
-        type: "city",
-        city: cityName,
-        name: fallback.name || fullName,
-      };
-
-      if (fallback.state || parsedState) {
-        fallbackSelection.state = fallback.state || parsedState;
-      }
-      const fallbackCountry =
-        fallback.country || fallback.countryCode || parsedCountry;
-      if (fallbackCountry) {
-        fallbackSelection.country = fallbackCountry;
-      }
-      if (fallback.countryName) {
-        fallbackSelection.countryName = fallback.countryName;
-      }
-      if (fallback.coordinates) {
-        fallbackSelection.coordinates = fallback.coordinates;
-      }
-
-      selectLocation(fallbackSelection);
+      selectLocation(baseSelection);
     },
     [selectLocation]
   );
 
   // Memoize the navigation handler to prevent infinite re-renders
   const handleCityParamNavigation = useCallback(
-    (cityParam) => {
+    (cityParam, queryHints = {}) => {
       if (!cityParam || !cityParam.trim()) {
         return;
       }
 
       const rawQuery = cityParam.trim();
       const regionResult = getRandomRegionCapital(rawQuery);
+      const fallbackFromQuery = {};
+      if (typeof queryHints.state === "string" && queryHints.state.trim()) {
+        fallbackFromQuery.state = queryHints.state.trim();
+      }
+      if (typeof queryHints.country === "string" && queryHints.country.trim()) {
+        fallbackFromQuery.country = queryHints.country.trim();
+      }
+      if (
+        typeof queryHints.countryCode === "string" &&
+        queryHints.countryCode.trim()
+      ) {
+        fallbackFromQuery.countryCode = queryHints.countryCode.trim();
+        if (!fallbackFromQuery.country) {
+          fallbackFromQuery.country = queryHints.countryCode.trim();
+        }
+      }
+      if (
+        typeof queryHints.countryName === "string" &&
+        queryHints.countryName.trim()
+      ) {
+        fallbackFromQuery.countryName = queryHints.countryName.trim();
+      }
+
+      const hintLat = queryHints.lat;
+      const hintLon = queryHints.lon;
+      if (
+        typeof hintLat === "number" &&
+        typeof hintLon === "number" &&
+        !Number.isNaN(hintLat) &&
+        !Number.isNaN(hintLon)
+      ) {
+        fallbackFromQuery.coordinates = { lat: hintLat, lon: hintLon };
+      }
 
       const runNavigationSearch = ({
         city,
@@ -273,9 +396,28 @@ const SearchPage = () => {
         showNoMatch = true,
         countryCode,
         scrollToTopFirst = false,
+        fallbackHints = {},
       }) => {
         if (!city || !fullName) {
           return;
+        }
+
+        const selectionHints = {
+          ...fallbackHints,
+          city: fallbackHints.city || city,
+          name: fallbackHints.name || fullName,
+        };
+
+        if (countryCode) {
+          const normalizedCode = countryCode.toString().trim();
+          if (normalizedCode) {
+            if (!selectionHints.country) {
+              selectionHints.country = normalizedCode;
+            }
+            if (!selectionHints.countryCode) {
+              selectionHints.countryCode = normalizedCode;
+            }
+          }
         }
 
         setLocalSearchQuery("");
@@ -283,10 +425,7 @@ const SearchPage = () => {
         searchLocation(fullName);
         setPendingOriginalName(fullName);
 
-        applyOptimisticSelection(city, fullName, {
-          name: fullName,
-          country: countryCode,
-        });
+        applyOptimisticSelection(city, fullName, selectionHints);
 
         setNoMatchQuery(noMatchLabel ?? fullName);
         setShowNoMatch(showNoMatch);
@@ -319,6 +458,13 @@ const SearchPage = () => {
           countryCode: regionResult.countryCode,
           noMatchLabel: regionResult.fullName,
           showNoMatch: false,
+          fallbackHints: {
+            country: regionResult.countryCode,
+            countryCode: regionResult.countryCode,
+            countryName: regionResult.countryName,
+            city: regionResult.city,
+            name: regionResult.fullName,
+          },
         });
         return;
       }
@@ -331,6 +477,7 @@ const SearchPage = () => {
         fullName,
         noMatchLabel: rawQuery,
         scrollToTopFirst: invalidArrival,
+        fallbackHints: fallbackFromQuery,
       });
     },
     [
@@ -368,7 +515,38 @@ const SearchPage = () => {
       return;
     }
 
-    handleCityParamNavigation(cityParam);
+    const hints = {};
+    const rawState = params.get("state");
+    const rawCountry = params.get("country");
+    const rawCountryCode = params.get("countryCode");
+    const rawCountryName = params.get("countryName");
+    const rawLat = params.get("lat");
+    const rawLon = params.get("lon");
+
+    if (rawState && rawState.trim()) {
+      hints.state = rawState;
+    }
+    if (rawCountry && rawCountry.trim()) {
+      hints.country = rawCountry;
+    }
+    if (rawCountryCode && rawCountryCode.trim()) {
+      hints.countryCode = rawCountryCode;
+      if (!hints.country) {
+        hints.country = rawCountryCode;
+      }
+    }
+    if (rawCountryName && rawCountryName.trim()) {
+      hints.countryName = rawCountryName;
+    }
+
+    const parsedLat = rawLat ? parseFloat(rawLat) : NaN;
+    const parsedLon = rawLon ? parseFloat(rawLon) : NaN;
+    if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLon)) {
+      hints.lat = parsedLat;
+      hints.lon = parsedLon;
+    }
+
+    handleCityParamNavigation(cityParam, hints);
   }, [routerLocation.search, handleCityParamNavigation]);
 
   // Debounced search handler for input changes

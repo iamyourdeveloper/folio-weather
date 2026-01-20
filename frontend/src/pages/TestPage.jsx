@@ -57,14 +57,9 @@ const TestPage = () => {
   const weatherTest = useCurrentWeatherByCity(testCity, "metric", null, {
     enabled: enableWeatherTest,
   });
-  const forecastTest = useForecastByCity(
-    testCity,
-    "metric",
-    null,
-    {
-      enabled: enableForecastTest,
-    }
-  );
+  const forecastTest = useForecastByCity(testCity, "metric", null, {
+    enabled: enableForecastTest,
+  });
 
   const runOnceSuccess = !!runOnceData && !runOnceError;
   const weatherSummary = {
@@ -123,6 +118,7 @@ const TestPage = () => {
         border: "1px solid #ddd",
         borderRadius: "8px",
         backgroundColor: "#f9f9f9",
+        color: "#1e293b",
       }}
     >
       <h3 style={{ marginTop: 0, color: "#333" }}>{title}</h3>
@@ -189,7 +185,7 @@ const TestPage = () => {
 
       <TestSection title="🔗 Basic API Connection Tests">
         <div style={{ marginBottom: "15px" }}>
-          <h4>
+          <h4 style={{ color: "#1e293b" }}>
             API Connection Test -{" "}
             <StatusBadge
               status={
@@ -223,7 +219,7 @@ const TestPage = () => {
         </div>
 
         <div>
-          <h4>
+          <h4 style={{ color: "#1e293b" }}>
             Units Test -{" "}
             <StatusBadge
               status={
@@ -315,70 +311,76 @@ const TestPage = () => {
             </button>
             <button
               onClick={async () => {
-              const city = inputCity.trim();
-              if (!city) return;
-              const token = ++runOnceTokenRef.current;
-              setRunOnceLoading(true);
-              setRunOnceError(null);
-              setRunOnceData(null);
-              setTestCity(city); // keep UI in sync
-              try {
-                const [w, f] = await Promise.all([
-                  weatherService.getCurrentWeatherByCity(city, "metric", null),
-                  weatherService.getForecastByCity(city, "metric", null),
-                ]);
-                if (runOnceTokenRef.current === token) {
-                  setRunOnceData({ weather: w, forecast: f });
+                const city = inputCity.trim();
+                if (!city) return;
+                const token = ++runOnceTokenRef.current;
+                setRunOnceLoading(true);
+                setRunOnceError(null);
+                setRunOnceData(null);
+                setTestCity(city); // keep UI in sync
+                try {
+                  const [w, f] = await Promise.all([
+                    weatherService.getCurrentWeatherByCity(
+                      city,
+                      "metric",
+                      null
+                    ),
+                    weatherService.getForecastByCity(city, "metric", null),
+                  ]);
+                  if (runOnceTokenRef.current === token) {
+                    setRunOnceData({ weather: w, forecast: f });
+                  }
+                } catch (err) {
+                  if (runOnceTokenRef.current === token) {
+                    setRunOnceError(err);
+                  }
+                } finally {
+                  if (runOnceTokenRef.current === token) {
+                    setRunOnceLoading(false);
+                  }
                 }
-              } catch (err) {
-                if (runOnceTokenRef.current === token) {
-                  setRunOnceError(err);
-                }
-              } finally {
-                if (runOnceTokenRef.current === token) {
-                  setRunOnceLoading(false);
-                }
-              }
-            }}
-            disabled={enableWeatherTest || enableForecastTest || runOnceLoading}
-            className="test-city-btn test-city-btn--run"
-            style={{
-              padding: "6px 10px",
-              marginLeft: "10px",
-              backgroundColor:
+              }}
+              disabled={
                 enableWeatherTest || enableForecastTest || runOnceLoading
-                  ? "#74c0d0"
-                  : "#17a2b8",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Run Once
-          </button>
-          <button
-            onClick={() => {
-              runOnceTokenRef.current++;
-              setRunOnceLoading(false);
-              setRunOnceError(null);
-              setRunOnceData(null);
-            }}
-            className="test-city-btn test-city-btn--clear"
-            style={{
-              padding: "6px 10px",
-              marginLeft: "10px",
-              backgroundColor: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Clear Run Once
-          </button>
+              }
+              className="test-city-btn test-city-btn--run"
+              style={{
+                padding: "6px 10px",
+                marginLeft: "10px",
+                backgroundColor:
+                  enableWeatherTest || enableForecastTest || runOnceLoading
+                    ? "#74c0d0"
+                    : "#17a2b8",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Run Once
+            </button>
+            <button
+              onClick={() => {
+                runOnceTokenRef.current++;
+                setRunOnceLoading(false);
+                setRunOnceError(null);
+                setRunOnceData(null);
+              }}
+              className="test-city-btn test-city-btn--clear"
+              style={{
+                padding: "6px 10px",
+                marginLeft: "10px",
+                backgroundColor: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Clear Run Once
+            </button>
           </div>
         </div>
 
@@ -455,7 +457,15 @@ const TestPage = () => {
           </button>
         </div>
 
-        <p className="test-control-help" style={{ fontSize: "14px", color: "#666", fontStyle: "italic", marginBottom: "20px" }}>
+        <p
+          className="test-control-help"
+          style={{
+            fontSize: "14px",
+            color: "#666",
+            fontStyle: "italic",
+            marginBottom: "20px",
+          }}
+        >
           💡 Weather and Forecast tests do not run automatically. Use the
           buttons above to start/stop tests.
         </p>
@@ -483,7 +493,8 @@ const TestPage = () => {
           <div>
             <div style={{ marginBottom: 12 }}>
               <h4>
-                Current Weather - <StatusBadge status="success">SUCCESS</StatusBadge>
+                Current Weather -{" "}
+                <StatusBadge status="success">SUCCESS</StatusBadge>
               </h4>
               <pre
                 style={{
@@ -499,7 +510,8 @@ const TestPage = () => {
             </div>
             <div>
               <h4>
-                5-Day Forecast - <StatusBadge status="success">SUCCESS</StatusBadge>
+                5-Day Forecast -{" "}
+                <StatusBadge status="success">SUCCESS</StatusBadge>
               </h4>
               <pre
                 style={{
@@ -516,7 +528,9 @@ const TestPage = () => {
           </div>
         )}
         {!runOnceLoading && !runOnceError && !runOnceData && (
-          <p style={{ color: "#666" }}>Click "Run Once" to fetch data without starting tests.</p>
+          <p style={{ color: "#666" }}>
+            Click "Run Once" to fetch data without starting tests.
+          </p>
         )}
       </TestSection>
 
@@ -568,9 +582,7 @@ const TestPage = () => {
           >
             <strong>Weather Data</strong>
             <br />
-            <StatusBadge
-              status={weatherSummary.status}
-            >
+            <StatusBadge status={weatherSummary.status}>
               {weatherSummary.text}
             </StatusBadge>
           </div>
@@ -585,9 +597,7 @@ const TestPage = () => {
           >
             <strong>Forecast Data</strong>
             <br />
-            <StatusBadge
-              status={forecastSummary.status}
-            >
+            <StatusBadge status={forecastSummary.status}>
               {forecastSummary.text}
             </StatusBadge>
           </div>
@@ -595,18 +605,18 @@ const TestPage = () => {
       </TestSection>
 
       <TestSection title="ℹ️ Debug Information">
-        <div style={{ fontSize: "14px", color: "#666" }}>
-          <p>
+        <div style={{ fontSize: "14px", color: "#64748b" }}>
+          <p style={{ color: "inherit" }}>
             <strong>Frontend URL:</strong> {window.location.origin}
           </p>
-          <p>
+          <p style={{ color: "inherit" }}>
             <strong>API Base URL:</strong>{" "}
             {import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"}
           </p>
-          <p>
+          <p style={{ color: "inherit" }}>
             <strong>Environment:</strong> {import.meta.env.MODE}
           </p>
-          <p>
+          <p style={{ color: "inherit" }}>
             <strong>React Query Dev Tools:</strong> Check browser console and
             network tab
           </p>

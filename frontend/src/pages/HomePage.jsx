@@ -84,6 +84,7 @@ const HomePage = () => {
   const sliderRef = useRef(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
 
   // Weather section ref for scrolling
   const weatherSectionRef = useRef(null);
@@ -96,6 +97,7 @@ const HomePage = () => {
     const maxScroll = el.scrollWidth - el.clientWidth;
     setCanPrev(el.scrollLeft > 0);
     setCanNext(el.scrollLeft < maxScroll - 1);
+    setHasOverflow(el.scrollWidth > el.clientWidth + 1);
   };
 
   useEffect(() => {
@@ -676,7 +678,7 @@ const HomePage = () => {
                   })}
                 </div>
               </div>
-              {favorites.length > 3 && (
+              {hasOverflow && (
                 <div className="favorites-slider__controls">
                   <button
                     className="favorites-slider__nav favorites-slider__nav--prev"

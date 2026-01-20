@@ -95,68 +95,105 @@ const FavoritesPage = () => {
           {favorites.length > 0 ? (
             <>
               <div className="favorites-grid" role="list">
-                {favorites.map((favorite) => (
-                  <div
-                    key={favorite.id}
-                    className={
-                      `favorite-item` +
-                      (draggingId === favorite.id ? ' favorite-item--dragging' : '') +
-                      (dragOverId === favorite.id ? ' favorite-item--dragover' : '')
-                    }
-                    role="listitem"
-                    draggable
-                    onDragStart={(e) => onDragStart(e, favorite.id)}
-                    onDragOver={(e) => onDragOver(e, favorite.id)}
-                    onDragLeave={onDragLeave}
-                    onDrop={(e) => onDrop(e, favorite.id)}
-                    onDragEnd={onDragEnd}
-                    aria-grabbed={draggingId === favorite.id}
-                  >
-                    <div className="favorite-item__header">
-                      <div className="favorite-item__draghandle" title="Drag to reorder" aria-label="Drag to reorder">
-                        <GripVertical size={16} />
+                {favorites.map((favorite) => {
+                  const displayName = resolveFullLocationName(favorite);
+
+                  const primaryQuery =
+                    (displayName && displayName !== 'Unknown Location'
+                      ? displayName
+                      : favorite.name || favorite.city || '') || '';
+
+                  const searchParams = new URLSearchParams();
+                  if (primaryQuery) {
+                    searchParams.set('city', primaryQuery);
+                  }
+                  if (favorite.state) {
+                    searchParams.set('state', favorite.state);
+                  }
+                  if (favorite.country) {
+                    searchParams.set('country', favorite.country);
+                    searchParams.set('countryCode', favorite.country);
+                  }
+                  if (favorite.countryCode) {
+                    searchParams.set('countryCode', favorite.countryCode);
+                  }
+                  if (favorite.countryName) {
+                    searchParams.set('countryName', favorite.countryName);
+                  }
+                  const hasCoords =
+                    favorite.coordinates &&
+                    typeof favorite.coordinates.lat === 'number' &&
+                    typeof favorite.coordinates.lon === 'number';
+                  if (hasCoords) {
+                    searchParams.set('lat', String(favorite.coordinates.lat));
+                    searchParams.set('lon', String(favorite.coordinates.lon));
+                  }
+                  const queryString = searchParams.toString();
+                  const viewDetailsHref = queryString ? `/search?${queryString}` : '/search';
+
+                  return (
+                    <div
+                      key={favorite.id}
+                      className={
+                        `favorite-item` +
+                        (draggingId === favorite.id ? ' favorite-item--dragging' : '') +
+                        (dragOverId === favorite.id ? ' favorite-item--dragover' : '')
+                      }
+                      role="listitem"
+                      draggable
+                      onDragStart={(e) => onDragStart(e, favorite.id)}
+                      onDragOver={(e) => onDragOver(e, favorite.id)}
+                      onDragLeave={onDragLeave}
+                      onDrop={(e) => onDrop(e, favorite.id)}
+                      onDragEnd={onDragEnd}
+                      aria-grabbed={draggingId === favorite.id}
+                    >
+                      <div className="favorite-item__header">
+                        <div className="favorite-item__draghandle" title="Drag to reorder" aria-label="Drag to reorder">
+                          <GripVertical size={16} />
+                        </div>
+                        <div className="favorite-item__location">
+                          <MapPin size={16} />
+                          <span className="favorite-item__name">{displayName}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveFavorite(favorite.id)}
+                          className="favorite-item__remove"
+                          aria-label="Remove from favorites"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <div className="favorite-item__location">
-                        <MapPin size={16} />
-                        <span className="favorite-item__name">{resolveFullLocationName(favorite)}</span>
+                      
+                      <ForecastCard location={favorite} />
+                      
+                      <div className="favorite-item__actions">
+                        <Link 
+                          to={viewDetailsHref}
+                          className="btn btn--secondary btn--small"
+                          onClick={(e) => {
+                            // Promote this favorite to the active selection so the
+                            // header badge and Home reflect it immediately.
+                            try {
+                              selectLocation({
+                                type: 'city',
+                                city: favorite.city || favorite.name,
+                                name: displayName,
+                                state: favorite.state,
+                                country: favorite.country,
+                                countryCode: favorite.countryCode,
+                                countryName: favorite.countryName,
+                                coordinates: favorite.coordinates,
+                              });
+                            } catch (_) {}
+                          }}
+                        >
+                          View Details
+                        </Link>
                       </div>
-                      <button
-                        onClick={() => handleRemoveFavorite(favorite.id)}
-                        className="favorite-item__remove"
-                        aria-label="Remove from favorites"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
-                    
-                    <ForecastCard location={favorite} />
-                    
-                    <div className="favorite-item__actions">
-                      <Link 
-                        to={`/search?city=${encodeURIComponent(favorite.city || favorite.name)}`}
-                        className="btn btn--secondary btn--small"
-                        onClick={(e) => {
-                          // Promote this favorite to the active selection so the
-                          // header badge and Home reflect it immediately.
-                          try {
-                            const name = resolveFullLocationName(favorite);
-                            selectLocation({
-                              type: 'city',
-                              city: favorite.city || favorite.name,
-                              name,
-                              state: favorite.state,
-                              country: favorite.country,
-                              countryCode: favorite.countryCode,
-                              coordinates: favorite.coordinates,
-                            });
-                          } catch (_) {}
-                        }}
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               {/* Clear All Favorites Button - centered beneath favorites */}

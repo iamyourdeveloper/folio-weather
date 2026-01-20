@@ -319,19 +319,21 @@ const SettingsPage = () => {
 
           {/* Save Button */}
           <div className="settings-form__actions">
-            <button type="submit" className="btn btn--primary">
-              <Save size={16} />
-              Save Settings
-            </button>
-            <button 
-              type="button" 
-              className="btn btn--secondary"
-              onClick={handleReset}
-              data-testid="reset-defaults"
-            >
-              <RotateCcw size={16} />
-              Reset to Defaults
-            </button>
+            <div className="settings-form__actions-buttons">
+              <button type="submit" className="btn btn--primary">
+                <Save size={16} />
+                Save Settings
+              </button>
+              <button 
+                type="button" 
+                className="btn btn--secondary"
+                onClick={handleReset}
+                data-testid="reset-defaults"
+              >
+                <RotateCcw size={16} />
+                Reset to Defaults
+              </button>
+            </div>
             <p className="settings-form__note">
               Changes apply after you click Save.
             </p>

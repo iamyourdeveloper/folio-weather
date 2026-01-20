@@ -63,6 +63,16 @@
   box-shadow: 7px 3px 16px -8px rgba(0, 0, 0, 0.2);
 }
 
+@media (prefers-color-scheme: dark) {
+  .home-hero {
+    box-shadow: 7px 3px 16px -8px rgba(248, 250, 252, 0.22);
+  }
+}
+
+.theme-dark .home-hero {
+  box-shadow: 11px 5px 16px -8px rgba(248, 250, 252, 0.82);
+}
+
 .home-hero__content {
   max-width: 600px;
   margin: 0 auto;
@@ -256,7 +266,7 @@
   justify-content: center;
   align-items: center;
   gap: 0.75rem;
-  margin-top: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .favorites-slider__nav {
@@ -272,6 +282,19 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Ensure SVG icons are perfectly centered */
+.favorites-slider__nav svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.favorites-slider__nav:hover:not(:disabled),
+.favorites-slider__nav:focus:not(:disabled) {
+  background: var(--color-background-secondary);
+  box-shadow: var(--shadow-lg);
 }
 
 .favorites-slider__nav:disabled {
@@ -284,6 +307,30 @@
 }
 .favorites-slider__nav--next {
   right: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .favorites-slider__nav {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.4),
+      0 10px 24px rgba(248, 250, 252, 0.22), 0 0 18px rgba(248, 250, 252, 0.18);
+  }
+
+  .favorites-slider__nav:hover:not(:disabled),
+  .favorites-slider__nav:focus:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.55),
+      0 12px 28px rgba(248, 250, 252, 0.3), 0 0 22px rgba(248, 250, 252, 0.24);
+  }
+}
+
+.theme-dark .favorites-slider__nav {
+  box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.4),
+    0 10px 24px rgba(248, 250, 252, 0.22), 0 0 18px rgba(248, 250, 252, 0.18);
+}
+
+.theme-dark .favorites-slider__nav:hover:not(:disabled),
+.theme-dark .favorites-slider__nav:focus:not(:disabled) {
+  box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.55),
+    0 12px 28px rgba(248, 250, 252, 0.3), 0 0 22px rgba(248, 250, 252, 0.24);
 }
 
 @media (max-width: 640px) {
@@ -697,6 +744,32 @@
   right: auto;
 }
 
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  .regions-slider__nav {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.4),
+      0 10px 24px rgba(248, 250, 252, 0.22), 0 0 18px rgba(248, 250, 252, 0.18);
+  }
+
+  .regions-slider__nav:hover:not(:disabled),
+  .regions-slider__nav:focus:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.55),
+      0 12px 28px rgba(248, 250, 252, 0.3), 0 0 22px rgba(248, 250, 252, 0.24);
+  }
+}
+
+@media (max-width: 768px) {
+  .theme-dark .regions-slider__nav {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.4),
+      0 10px 24px rgba(248, 250, 252, 0.22), 0 0 18px rgba(248, 250, 252, 0.18);
+  }
+
+  .theme-dark .regions-slider__nav:hover:not(:disabled),
+  .theme-dark .regions-slider__nav:focus:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.55),
+      0 12px 28px rgba(248, 250, 252, 0.3), 0 0 22px rgba(248, 250, 252, 0.24);
+  }
+}
+
 /* On small screens, make tabs horizontally scrollable chips and show arrows */
 @media (max-width: 768px) {
   .search-suggestions__tabs {
@@ -1098,6 +1171,9 @@
   padding-top: 2rem;
   border-top: 1px solid var(--color-border);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .settings-form__note {
@@ -1107,13 +1183,23 @@
 }
 
 /* Add spacing between action buttons */
-.settings-form__actions .btn + .btn {
+.settings-form__actions-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-form__actions-buttons .btn + .btn {
   margin-left: 0.75rem;
 }
 
-/* Mobile: when buttons stack vertically, add vertical spacing instead */
+/* Mobile: stack buttons vertically */
 @media (max-width: 768px) {
-  .settings-form__actions .btn + .btn {
+  .settings-form__actions-buttons {
+    flex-direction: column;
+  }
+
+  .settings-form__actions-buttons .btn + .btn {
     margin-left: 0;
     margin-top: 0.75rem;
   }
