@@ -19,7 +19,7 @@ PORT=8000
 2. If you change the backend port, update the frontend env to point to it:
 
 ```env
-# frontend/.env
+# frontend/.env.development
 VITE_API_BASE_URL=http://localhost:8000/api
 ```
 

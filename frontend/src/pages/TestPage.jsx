@@ -53,6 +53,16 @@ const TestPage = () => {
   // API Tests
   const apiTest = useWeatherApiTest();
   const unitsTest = useWeatherUnits();
+  const unitsPayload = unitsTest.data?.data ?? unitsTest.data;
+  const unitsList = Array.isArray(unitsPayload?.units)
+    ? unitsPayload.units
+    : [];
+  const unitsReady = unitsTest.isSuccess && unitsList.length > 0;
+  const unitsStatus = unitsTest.isLoading
+    ? "loading"
+    : unitsTest.isError || (unitsTest.isSuccess && !unitsReady)
+    ? "error"
+    : "success";
 
   // Weather Data Tests
   const weatherTest = useCurrentWeatherByCity(testCity, "metric", null, {
@@ -223,24 +233,18 @@ const TestPage = () => {
           <h4 style={{ color: "#1e293b" }}>
             Units Test -{" "}
             <StatusBadge
-              status={
-                unitsTest.isLoading
-                  ? "loading"
-                  : unitsTest.isError
-                  ? "error"
-                  : "success"
-              }
+              status={unitsStatus}
             >
-              {unitsTest.isLoading
+              {unitsStatus === "loading"
                 ? "LOADING"
-                : unitsTest.isError
+                : unitsStatus === "error"
                 ? "ERROR"
                 : "SUCCESS"}
             </StatusBadge>
           </h4>
           {unitsTest.isLoading && <LoadingSpinner />}
           {unitsTest.isError && <ErrorMessage error={unitsTest.error} />}
-          {unitsTest.data && (
+          {unitsReady && (
             <div
               style={{
                 background: "#e8f5e8",
@@ -248,14 +252,25 @@ const TestPage = () => {
                 borderRadius: "4px",
               }}
             >
-              ✅ Retrieved {unitsTest.data.data.units.length} temperature units
+              ✅ Retrieved {unitsList.length} temperature units
               <ul>
-                {unitsTest.data.data.units.map((unit) => (
+                {unitsList.map((unit) => (
                   <li key={unit.key}>
                     {unit.name} ({unit.symbol}) - {unit.description}
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {unitsTest.isSuccess && !unitsReady && (
+            <div
+              style={{
+                background: "#fff3cd",
+                padding: "10px",
+                borderRadius: "4px",
+              }}
+            >
+              ⚠️ Units data missing or malformed from the API response.
             </div>
           )}
         </div>
@@ -562,14 +577,14 @@ const TestPage = () => {
             style={{
               textAlign: "center",
               padding: "10px",
-              background: unitsTest.isSuccess ? "#d4edda" : "#f8d7da",
+              background: unitsReady ? "#d4edda" : "#f8d7da",
               borderRadius: "4px",
             }}
           >
             <strong>Units Endpoint</strong>
             <br />
-            <StatusBadge status={unitsTest.isSuccess ? "success" : "error"}>
-              {unitsTest.isSuccess ? "PASS" : "FAIL"}
+            <StatusBadge status={unitsReady ? "success" : "error"}>
+              {unitsReady ? "PASS" : "FAIL"}
             </StatusBadge>
           </div>
 

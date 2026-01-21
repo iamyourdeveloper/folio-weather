@@ -230,13 +230,13 @@ PORT=8000
 FRONTEND_URL=http://localhost:3000
 ```
 
-**Frontend Environment (`frontend/.env`):**
+**Frontend Environment (`frontend/.env.development`):**
 
 ```bash
-cp frontend/.env.example frontend/.env
+cp frontend/.env.example frontend/.env.development
 ```
 
-The frontend `.env` file is pre-configured for development.
+The frontend `.env.development` file is pre-configured for development.
 
 4. **Start the development servers:**
 
@@ -463,13 +463,25 @@ This application can be deployed on:
 - **Docker** containers for full-stack deployment
 - **Traditional VPS** with PM2 process management
 
-### Vercel Frontend + External Backend (Recommended)
+### Vercel Full-Stack (Repo Root)
 
-1. **Deploy frontend on Vercel** from the repo root, build command `npm run build`, output `frontend/dist`.
+1. **Set the Vercel project root to the repo root** so `vercel.json` is used.
+2. **Deploy frontend + backend together** (build command `npm run build`, output `frontend/dist`).
+3. **Set backend env** on Vercel:
+   - `OPENWEATHER_API_KEY=...`
+   - `FRONTEND_URL=https://your-vercel-domain.vercel.app`
+   - `NODE_ENV=production`
+   - `PORT` (only if your host requires a fixed port)
+
+### Vercel Frontend + External Backend
+
+1. **Deploy frontend on Vercel** (repo root or `frontend/` root).
 2. **Host backend separately** (Railway/Render/Fly/Heroku) and expose a public HTTPS URL.
-3. **Set frontend env** on Vercel:
-   - `VITE_API_BASE_URL=https://your-backend-host.com/api`
-4. **Set backend env** on your backend host:
+3. **If deploying from `frontend/` root**, keep `frontend/vercel.json` so `/api/*` is proxied to the backend.
+4. **Set frontend env** on Vercel:
+   - `BACKEND_URL=https://your-backend-host.com` (required for the proxy)
+   - `VITE_API_BASE_URL=/api` (optional; default)
+5. **Set backend env** on your backend host:
    - `OPENWEATHER_API_KEY=...`
    - `FRONTEND_URL=https://your-vercel-domain.vercel.app`
    - `NODE_ENV=production`

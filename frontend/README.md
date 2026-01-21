@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-By default, the app runs at `http://localhost:3000` and proxies API calls to `http://localhost:8000/api` (see `VITE_API_BASE_URL`).
+By default, the app runs at `http://localhost:3000` and proxies API calls to `http://localhost:8000/api` (see `VITE_API_BASE_URL` in `frontend/.env.development`).
 
 ## Environment
 

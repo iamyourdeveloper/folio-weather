@@ -31,7 +31,7 @@ This guide will help you set up and run the FolioWeather for development.
    cp backend/.env.example backend/.env
 
    # Frontend environment
-   cp frontend/.env.example frontend/.env
+   cp frontend/.env.example frontend/.env.development
    ```
 
 4. **Get OpenWeather API Key**
@@ -192,7 +192,7 @@ folio-weather/
 
    - Ensure backend is running on port 8000
    - Check CORS configuration
-   - Verify VITE_API_BASE_URL in frontend/.env
+   - Verify VITE_API_BASE_URL in frontend/.env.development
 
 3. **Weather data not loading**
    - Verify OpenWeather API key is valid
@@ -201,7 +201,7 @@ folio-weather/
 
 ### Debug Mode
 
-Enable debug logging by setting `VITE_DEBUG=true` in frontend/.env. This will show detailed API request/response information in the browser console.
+Enable debug logging by setting `VITE_DEBUG=true` in frontend/.env.development. This will show detailed API request/response information in the browser console.
 
 ## Testing
 
