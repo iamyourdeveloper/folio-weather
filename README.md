@@ -71,6 +71,33 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 
 Note: PWA install and offline support are planned future enhancements.
 
+## ✅ Deployed Specs & Implementations
+
+### Core Specs
+
+- **Frontend**: React 19 SPA built with Vite, served as static assets from `frontend/dist`
+- **Backend**: Express API for weather/search, deployed as serverless functions on Vercel
+- **API Base Path**: `/api` on the same origin (configurable via `VITE_API_BASE_URL`)
+- **Data Sources**: OpenWeatherMap API + curated city datasets in `backend/data` and `frontend/src/data`
+- **State + Persistence**: Context API + React Query caching; favorites/settings stored in `localStorage`
+
+### Implementation Highlights
+
+- **Resilience**: Axios circuit breaker, retries with backoff, and in-flight request de-duplication
+- **Caching**: Backend NodeCache for weather + search caches with 5-30 minute TTL windows
+- **Search UX**: Autocomplete, regional tabs, sort modes, and disambiguation for duplicate city names
+- **Error Handling**: Centralized API error handler + React Error Boundary fallback
+- **Shared Utilities**: `shared/` metadata for consistent country/capital handling across frontend/backend
+
+### Hosting (Production)
+
+- **Live URL**: https://folio-weather.vercel.app
+- **Platform**: Vercel full-stack deployment from repo root using `vercel.json`
+- **Build Output**: `@vercel/static-build` serves `frontend/dist` from `npm run build`
+- **Serverless API**: `@vercel/node` functions at `backend/api/index.mjs` and `backend/api/[...path].mjs`
+- **Routing**: `/api/*` routed to serverless backend; SPA fallback rewrites to `index.html`
+- **Env Vars**: `OPENWEATHER_API_KEY`, `FRONTEND_URL`, `NODE_ENV=production` (optional `VITE_API_BASE_URL`)
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -122,6 +149,8 @@ Note: PWA install and offline support are planned future enhancements.
 ```
 folio-weather/
 ├── backend/                     # Node.js/Express backend
+│   ├── api/                     # Vercel serverless entrypoints
+│   ├── app.js                   # Express app shared by server + serverless
 │   ├── config/                  # Database configuration
 │   ├── data/                    # US/international city datasets
 │   ├── middleware/              # Error handling and caching
@@ -132,6 +161,7 @@ folio-weather/
 │   ├── server.js                # Express server
 │   └── package.json             # Backend scripts and deps
 ├── frontend/                    # React 19 + Vite app
+│   ├── api/                     # Vercel proxy (frontend-only deploy)
 │   ├── src/
 │   │   ├── assets/              # Static assets
 │   │   ├── components/          # Reusable UI components
@@ -152,6 +182,7 @@ folio-weather/
 │   ├── public/                  # Public assets
 │   ├── dist/                    # Production build output
 │   ├── .env.example             # Frontend env template
+│   ├── vercel.json              # Frontend-only deployment config
 │   ├── vite.config.js           # Vite config
 │   └── package.json             # Frontend scripts and deps
 ├── shared/                      # Shared data/utilities
@@ -185,6 +216,7 @@ folio-weather/
 ├── fix-crashes.sh
 ├── start-app.sh
 ├── package.json
+├── vercel.json                  # Full-stack deployment config
 └── README.md
 ```
 
