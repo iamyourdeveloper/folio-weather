@@ -12,6 +12,7 @@
     "client": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
     "install-deps": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "postinstall": "cd backend && npm install && cd ../frontend && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

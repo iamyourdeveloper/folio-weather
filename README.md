@@ -484,6 +484,16 @@ This application can be deployed on:
 
 If you see a 404 on refresh or deep links, keep `vercel.json` at the repo root to rewrite all paths to `index.html`.
 
+### Vercel Build Error: `vite: command not found`
+
+This means the `frontend/` dependencies were not installed.
+
+- Keep the **Root Directory** at the repo root.
+- Use **Build Command**: `npm run build`
+- Use **Output Directory**: `frontend/dist`
+- Leave **Install Command** as default (`npm install`) so `postinstall` can install `frontend/` and `backend/` deps,
+  or explicitly set it to `npm run install-deps`.
+
 ### Backend Performance Tips
 
 - Keep caching enabled (already in `backend/utils/cache.js`).
