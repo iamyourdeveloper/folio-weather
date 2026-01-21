@@ -1,3 +1,41 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "backend/api/index.mjs",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "backend/api/[...path].mjs",
+      "use": "@vercel/node"
+    }
+  ],
+  "functions": {
+    "backend/api/*.mjs": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api$",
+      "dest": "/backend/api/index.mjs"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/api/[...path].mjs"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
