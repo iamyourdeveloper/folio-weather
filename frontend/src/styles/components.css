@@ -546,19 +546,26 @@
 }
 
 .footer__copyright {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 
 .footer__heart {
   color: var(--color-error);
+  display: inline-block;
+  vertical-align: top;
 }
 
 .footer__text--small {
   font-size: 0.75rem;
+}
+
+.footer__version {
+  display: none;
+}
+
+.footer__bottom-links {
+  display: none;
 }
 
 /* ===== WEATHER CARD COMPONENT ===== */
