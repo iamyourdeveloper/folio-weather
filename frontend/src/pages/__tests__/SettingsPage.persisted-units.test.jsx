@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider from '../../context/WeatherContext.jsx';
 import { QueryProvider } from '../../context/QueryProvider.jsx';
 import SettingsPage from '../SettingsPage.jsx';
@@ -21,11 +22,13 @@ describe('SettingsPage persisted units', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
     root.render(
-      <QueryProvider>
-        <WeatherProvider>
-          <SettingsPage />
-        </WeatherProvider>
-      </QueryProvider>
+      <MemoryRouter>
+        <QueryProvider>
+          <WeatherProvider>
+            <SettingsPage />
+          </WeatherProvider>
+        </QueryProvider>
+      </MemoryRouter>
     );
 
     // Find radios
@@ -46,4 +49,3 @@ describe('SettingsPage persisted units', () => {
     document.body.removeChild(container);
   });
 });
-

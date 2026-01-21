@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider from '../../context/WeatherContext.jsx';
 import { QueryProvider } from '../../context/QueryProvider.jsx';
 import SettingsPage from '../SettingsPage.jsx';
@@ -13,11 +14,13 @@ describe('SettingsPage toast', () => {
     const root = createRoot(container);
 
     root.render(
-      <QueryProvider>
-        <WeatherProvider>
-          <SettingsPage />
-        </WeatherProvider>
-      </QueryProvider>
+      <MemoryRouter>
+        <QueryProvider>
+          <WeatherProvider>
+            <SettingsPage />
+          </WeatherProvider>
+        </QueryProvider>
+      </MemoryRouter>
     );
 
     // Change units to imperial

@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider from '../../context/WeatherContext.jsx';
 import { QueryProvider } from '../../context/QueryProvider.jsx';
 import SettingsPage from '../SettingsPage.jsx';
@@ -17,11 +18,13 @@ describe('SettingsPage default highlight on refresh', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
     root.render(
-      <QueryProvider>
-        <WeatherProvider>
-          <SettingsPage />
-        </WeatherProvider>
-      </QueryProvider>
+      <MemoryRouter>
+        <QueryProvider>
+          <WeatherProvider>
+            <SettingsPage />
+          </WeatherProvider>
+        </QueryProvider>
+      </MemoryRouter>
     );
 
     const imperial = await new Promise((resolve, reject) => {
@@ -40,4 +43,3 @@ describe('SettingsPage default highlight on refresh', () => {
     document.body.removeChild(container);
   });
 });
-

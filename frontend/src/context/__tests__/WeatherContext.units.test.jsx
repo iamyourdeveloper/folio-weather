@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider, { useWeatherContext } from '../WeatherContext.jsx';
 import { queryClient } from '../../context/QueryProvider.jsx';
 
@@ -29,9 +30,11 @@ describe('WeatherContext unit change invalidation', () => {
 
     let api;
     root.render(
-      <WeatherProvider>
-        <Harness onReady={(ctx) => (api = ctx)} />
-      </WeatherProvider>
+      <MemoryRouter>
+        <WeatherProvider>
+          <Harness onReady={(ctx) => (api = ctx)} />
+        </WeatherProvider>
+      </MemoryRouter>
     );
     // Wait until context is ready
     await new Promise((resolve, reject) => {

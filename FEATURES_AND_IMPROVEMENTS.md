@@ -7,30 +7,36 @@
 #### Weather Data & API Integration
 
 - ✅ Real-time weather data via OpenWeatherMap API
-- ✅ 5-day weather forecasts with 3-hour intervals
-- ✅ Coordinate-based and city-based weather lookup
+- ✅ 5-day weather forecasts with 3-hour intervals + toggles
+- ✅ Coordinate-based and city-based weather lookup with geolocation support
 - ✅ Multiple temperature units (Celsius, Fahrenheit, Kelvin)
-- ✅ Comprehensive weather data (temperature, humidity, wind, pressure, UV index)
+- ✅ Detailed conditions (wind, humidity, pressure, visibility, cloudiness, UV)
+- ✅ Sunrise/sunset times with condition icons
 
 #### User Interface & Experience
 
 - ✅ Modern React 19 with responsive design
 - ✅ Dark/Light theme support with live preview
-- ✅ Header weather badge with live updates
-- ✅ Global loading states and error boundaries
+- ✅ Header weather badge with live updates + smooth scroll
+- ✅ Global loading states, top-bar progress, and error boundaries
 - ✅ Smooth animations and transitions
 - ✅ Mobile-first responsive design
 - ✅ Forecast toggle reset on favorite location selection
+- ✅ Connection status banner with retry action
+- ✅ Random City + Use My Location quick actions
 
 #### Location Services
 
 - ✅ Geolocation support with fallback options
 - ✅ Advanced city search with 15,000+ US cities database
 - ✅ Real-time autocomplete suggestions with debouncing
+- ✅ Header search dropdown with real-time results
 - ✅ US cities display with proper state information (e.g., "Springfield, IL")
 - ✅ State-specific searches (search by state name or abbreviation)
 - ✅ Coordinate-based city disambiguation for duplicate names
 - ✅ International city search with global fallback
+- ✅ Country/region-aware parsing (country codes + capitals)
+- ✅ Search Suggestions Explorer with region tabs, sort modes, and Show More
 - ✅ Comprehensive search API with caching and performance optimization
 - ✅ Favorites management with drag-and-drop reordering
 - ✅ Duplicate prevention for favorites
@@ -43,7 +49,7 @@
 - ✅ Context API for global state management
 - ✅ Custom hooks for reusable logic
 - ✅ Optimized re-renders and memory usage
-- ✅ Search result caching and performance optimization
+- ✅ Backend cache middleware for weather and search endpoints
 - ✅ Debounced search inputs for reduced API calls
 - ✅ US city search prioritization for faster results
 - ✅ Error boundaries for crash prevention
@@ -57,6 +63,7 @@
 - ✅ Development tools and debugging support
 - ✅ Connection status monitoring and network awareness
 - ✅ Global loading states with top bar progress indicator
+- ✅ Shared country metadata utilities across frontend/backend
 - ✅ Well-documented codebase with comprehensive test suite
 
 ---

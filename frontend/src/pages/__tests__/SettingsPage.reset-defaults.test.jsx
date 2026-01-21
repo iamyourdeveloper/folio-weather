@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider from '../../context/WeatherContext.jsx';
 import { QueryProvider } from '../../context/QueryProvider.jsx';
 import SettingsPage from '../SettingsPage.jsx';
@@ -19,11 +20,13 @@ describe('SettingsPage reset to defaults', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
     root.render(
-      <QueryProvider>
-        <WeatherProvider>
-          <SettingsPage />
-        </WeatherProvider>
-      </QueryProvider>
+      <MemoryRouter>
+        <QueryProvider>
+          <WeatherProvider>
+            <SettingsPage />
+          </WeatherProvider>
+        </QueryProvider>
+      </MemoryRouter>
     );
 
     // Click reset
@@ -60,4 +63,3 @@ describe('SettingsPage reset to defaults', () => {
     document.body.removeChild(container);
   });
 });
-

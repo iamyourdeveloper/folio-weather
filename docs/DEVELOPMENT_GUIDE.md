@@ -102,11 +102,15 @@ VITE_ENABLE_NOTIFICATIONS=true
 - 🔍 Comprehensive city search with 15,000+ US cities database
 - 🏛️ US cities display with proper state information (e.g., "Springfield, IL")
 - 🚀 Real-time autocomplete suggestions with smart prioritization
-- 🌍 State-specific and international city searches
+- 🌍 State-specific and international city searches with disambiguation
+- 🧭 Country/region-aware query parsing (country codes + capitals)
 - ⭐ Favorite locations management (save/remove)
 - 💡 Favorites enhancements: duplicate prevention and a clear favorited indicator
 - 🔀 Drag-and-drop favorites reordering (Favorites page)
 - 🎞️ Favorites slider on Home with prev/next controls
+- 🔁 Auto-rotate favorites on app load when auto-location is off/unavailable
+- 🎲 Random City + Use My Location quick actions on Home
+- 🧷 Header weather badge with smooth scroll to current weather
 - ⚙️ User preferences and settings with staged changes
 - 🌙 Dark/Light theme support with live preview
 - 🔄 Enhanced error handling with connection monitoring
@@ -115,6 +119,7 @@ VITE_ENABLE_NOTIFICATIONS=true
 - 🧱 Error Boundary fallback UI
 - 📶 Global top bar progress indicator bound to query activity
 - 🏎️ Advanced search caching for improved performance
+- 🔎 Search Suggestions Explorer with region tabs and progressive “Show More”
 
 ### 🔧 Development Features
 
@@ -146,25 +151,30 @@ VITE_ENABLE_NOTIFICATIONS=true
 ## Project Structure
 
 ```
-weather-api/
-├── backend/                 # Node.js/Express server
+folio-weather/
+├── backend/                # Node.js/Express server
 │   ├── config/             # Database configuration
+│   ├── data/               # US/international city datasets
 │   ├── middleware/         # Express middleware
-│   ├── models/             # MongoDB models
+│   ├── models/             # Mongoose models (future auth)
 │   ├── routes/             # API routes
 │   ├── utils/              # Utility functions
 │   └── server.js           # Main server file
 ├── frontend/               # React 19 application
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── hooks/          # Custom hooks
+│   │   ├── constants/      # App constants
 │   │   ├── context/        # React context providers
+│   │   ├── data/           # Cities + metadata
+│   │   ├── hooks/          # Custom hooks
+│   │   ├── pages/          # Page components
 │   │   ├── services/       # API services
 │   │   ├── styles/         # CSS stylesheets
 │   │   └── utils/          # Utility functions
 │   └── vite.config.js      # Vite configuration
+├── shared/                 # Shared data/utilities
 ├── docs/                   # Documentation
+├── tests/                  # Test and QA scripts
 └── package.json            # Root package.json with scripts
 ```
 

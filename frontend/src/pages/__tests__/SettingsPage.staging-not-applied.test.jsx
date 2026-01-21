@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import WeatherProvider, { useWeatherContext } from '../../context/WeatherContext.jsx';
 import { QueryProvider } from '../../context/QueryProvider.jsx';
 import SettingsPage from '../SettingsPage.jsx';
@@ -25,12 +26,14 @@ describe('SettingsPage staged changes do not apply until Save', () => {
 
     let currentUnits = null;
     root.render(
-      <QueryProvider>
-        <WeatherProvider>
-          <SettingsPage />
-          <ReadUnits onReady={(u) => (currentUnits = u)} />
-        </WeatherProvider>
-      </QueryProvider>
+      <MemoryRouter>
+        <QueryProvider>
+          <WeatherProvider>
+            <SettingsPage />
+            <ReadUnits onReady={(u) => (currentUnits = u)} />
+          </WeatherProvider>
+        </QueryProvider>
+      </MemoryRouter>
     );
 
     // Wait for initial

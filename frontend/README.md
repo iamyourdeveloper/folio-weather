@@ -40,7 +40,9 @@ Key variables:
 - Real-time header search with autocomplete and US city prioritization
 - Advanced Search page with curated regions, sort modes, and progressive loading
 - Home favorites slider + quick actions (Random City, Use My Location)
+- Header weather badge with live temperature + smooth scroll to current weather
 - Favorites management with drag-and-drop reordering and duplicate prevention
+- Forecast toggle resets on new searches or favorite selection
 - Settings with staged save, live theme preview, and unit selection
 - Global top-bar progress tied to React Query activity
 - Error Boundary, connection status indicator, and graceful error handling

@@ -8,77 +8,64 @@ A comprehensive weather application built with the MERN stack (MongoDB, Express.
 
 ### 🌤️ Weather Data & Forecasting
 
-- **Real-time Weather**: Current weather conditions for any city worldwide with live updates
-- **5-Day Forecasts**: Detailed weather forecasts with 3-hour intervals and interactive toggles
-- **Multiple Data Sources**: Integrated with OpenWeatherMap API with intelligent caching
-- **Coordinate-based Weather**: Weather data by GPS coordinates with automatic location detection
-- **Multiple Units**: Support for metric, imperial, and Kelvin temperature units with instant conversion
-- **Weather Alerts**: Real-time weather condition monitoring and status indicators
+- **Real-time Weather**: Current conditions by city or coordinates via OpenWeatherMap
+- **5-Day Forecasts**: Detailed 3-hour interval forecasts with on-demand toggles
+- **Multiple Units**: Metric, imperial, and Kelvin conversions with instant updates
+- **Detailed Conditions**: Wind, humidity, pressure, visibility, cloudiness, UV index
+- **Sun Times + Icons**: Sunrise/sunset times with condition icons and descriptions
 
 ### 🗺️ Location Services
 
-- **Geolocation Support**: Automatic current location detection
-- **Advanced City Search**: Comprehensive search with 15,000+ US cities and state information
-- **Real-time Autocomplete**: Smart search suggestions with US city prioritization
-- **State-Specific Search**: Search cities by US state with proper state display
-- **Coordinate Input**: Manual latitude/longitude weather lookup
-- **US Cities Database**: Complete database with state mapping and coordinate disambiguation
-- **International Cities**: Global city search with fallback support
+- **Geolocation Support**: Auto-detect with a manual "Use My Location" fallback
+- **Advanced City Search**: 15,000+ US cities with state mapping
+- **State-Specific Search**: Proper US state display (e.g., "Springfield, IL")
+- **Disambiguation**: Coordinate-based resolution for duplicate city names
+- **Region & Country Parsing**: Country codes, capitals, and region shortcuts
+- **International Cities**: Curated global city coverage with fallback support
 
 ### ⭐ Favorites & Navigation
 
-- **Favorite Locations**: Save and manage favorite weather locations
-- **Duplicate Prevention**: Consistent detection to avoid duplicate entries
+- **Favorite Locations**: Save, remove, and clear favorites
+- **Duplicate Prevention**: Avoid duplicate entries with a favorited indicator
 - **Drag-and-Drop Reorder**: Reorder favorites on the Favorites page
-- **Home Favorites Slider**: Horizontal, accessible slider with controls
-- **Auto-Rotate Favorite**: Auto-selects the next favorite on app load when geolocation is unavailable
+- **Home Favorites Slider**: Horizontal slider with prev/next controls
+- **Auto-Rotate on Load**: Rotate favorites when auto-location is off/unavailable
 
 ### ⭐ User Experience
 
-- **Quick Access**: Fast switching between saved locations
-- **Auto Location**: Automatic weather for current location on app load
-- **Enhanced Header Search**: Real-time search with autocomplete suggestions and state information
-- **Search Integration**: Header search with instant results and mobile-optimized interface
-- **Search Suggestions Explorer**: Curated popular cities on the Search page with region tabs (All, North America, Europe, Asia, Middle East, Africa, Oceania), sort modes (Random/Curated/A–Z), and progressive “Show More” loading
-- **Favorited Indicator**: Filled-heart visual when a location is already saved
-- **Header Weather Badge**: Live temperature + location badge in the header that mirrors the active location and updates immediately after searches
-- **Smooth Anchor Navigation**: Header weather badge and hash links (e.g., `#current-weather`, `#top`) smoothly scroll to key sections
-- **Random City**: One-click action on Home to preview weather for a randomly selected city (drawn from a broad, global list to reduce repeats)
-- **Connection Status**: Real-time network connectivity monitoring
-- **Smart City Display**: US cities automatically show with state information (e.g., "Springfield, IL")
-- **Forecast Toggle Reset**: Clicking favorite locations automatically resets forecast toggle to "View Forecast" state
+- **Quick Actions**: Search, Favorites, Random City, and Use My Location
+- **Header Search**: Real-time autocomplete dropdown with state-aware suggestions
+- **Search Suggestions Explorer**: Region tabs, sort modes (Random/Curated/A–Z), and “Show More” pagination
+- **Header Weather Badge**: Live temperature + location with smooth scroll to current weather
+- **Smooth Anchor Navigation**: Hash links like `#current-weather` and `#top`
+- **Connection Status**: Online/offline banner with retry
+- **Forecast Toggle Reset**: New searches or favorites reset the forecast toggle
 
 ### 🎨 Interface & Design
 
 - **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **Dark/Light Themes**: Toggle between light and dark modes
-- **Modern UI**: Clean, intuitive interface with smooth animations
-- **Loading States**: Elegant loading spinners and a global top-bar progress indicator
-- **Error Handling**: Graceful error messages and an app-wide Error Boundary fallback
+- **Theme Support**: Light, dark, and auto modes with live preview
+- **Modern UI**: Clean layout with smooth animations
+- **Loading States**: Spinners plus a global top-bar progress indicator
+- **Error Handling**: Graceful errors and an app-wide Error Boundary fallback
 
 ### ⚙️ Settings & Preferences
 
-- **Temperature Units**: Choose between Celsius, Fahrenheit, or Kelvin
-- **Theme Preferences**: Persistent dark/light mode selection
+- **Temperature Units**: Celsius, Fahrenheit, or Kelvin
+- **Theme Preferences**: Persistent theme selection with live preview
 - **Auto Location**: Enable/disable automatic location detection
-- **Display Options**: Toggle visibility for pressure, UV index, sunrise/sunset, wind, humidity
-- **Staged Save + Preview**: Edit settings safely, preview theme instantly, then click Save (with toast) to apply; unit changes trigger a brief refresh indicator
+- **Display Options**: Toggle wind, humidity, pressure, UV index, sunrise/sunset
+- **Staged Save + Preview**: Apply changes with Save; unit changes show a brief refresh indicator
 
 ### 🔧 Technical Features
 
-- **React Query Caching**: Smart data caching with refetch-on-focus and retries
-- **Search Performance**: Advanced search caching with 15-30 minute TTL for improved response times
-- **US Cities Database**: Comprehensive database of 15,000+ US locations with state mapping
-- **Search API**: RESTful search endpoints with autocomplete, state filtering, and statistics
-- **Real-time Autocomplete**: Debounced search with intelligent US city prioritization
-- **Error Boundaries**: Robust error handling and recovery with detailed error reporting
-- **API Testing**: Built-in API endpoint testing interface with comprehensive diagnostics
-- **Real-time Updates**: Automatic weather data refresh with connection monitoring
-- **Connection Monitoring**: Network status awareness and offline state handling
-- **Global Loading States**: Top bar progress indicator bound to all API activity
-- **Favorites Data Integrity**: Validation and recovery for corrupted favorites in localStorage
-- **Performance Optimization**: Code splitting, lazy loading, and optimized bundle sizes
-- **Production Ready**: Optimized builds with source maps and performance monitoring
+- **React Query Caching**: Smart data caching with tailored stale/cache times
+- **Backend Caching**: Weather + search caches with TTL (5-30 minutes)
+- **Search API**: Endpoints for cities, state filters, suggestions, autocomplete, stats
+- **Input Validation**: Sanitized query handling and clear error responses
+- **API Testing**: Built-in `/test` interface for endpoint diagnostics
+- **Favorites Data Integrity**: Validation and recovery for localStorage data
+- **Shared Metadata**: Country/capital utilities shared across frontend/backend
 
 Note: PWA install and offline support are planned future enhancements.
 
@@ -100,140 +87,103 @@ Note: PWA install and offline support are planned future enhancements.
 
 - **Node.js**: JavaScript runtime for server-side development
 - **Express.js**: Fast, minimalist web framework
-- **MongoDB**: NoSQL database for user data and preferences (ready for implementation)
-- **Mongoose**: MongoDB object modeling for Node.js
+- **MongoDB**: Optional persistence (runs in demo mode when not configured)
+- **Mongoose**: Optional ODM for future auth/preferences models
 - **RESTful APIs**: Clean, standardized API endpoints with comprehensive search functionality
 - **Search Database**: 15,000+ US cities with state mapping and coordinate disambiguation
-- **Caching Middleware**: Intelligent search result caching with TTL management
+- **Caching Middleware**: Weather/search caching with TTL management
 - **CORS**: Cross-origin resource sharing configuration
 - **Helmet**: Security middleware for Express
 - **Morgan**: HTTP request logging middleware
+- **Node Cache**: In-memory cache for API responses
 
 ### External Services
 
 - **OpenWeatherMap API**: Real-time weather data and forecasts
 - **Geolocation API**: Browser-based location services
 
+### Shared Utilities
+
+- **Country Metadata**: Shared country/capital utilities in `shared/`
+
 ### Development Tools
 
-- **Concurrent**: Run frontend and backend simultaneously
+- **Concurrently**: Run frontend and backend simultaneously
 - **Nodemon**: Automatic server restart during development
 - **ESLint**: Code linting and style enforcement
 - **React Query DevTools**: Inspect queries and cache in development
+- **Vitest**: Frontend unit testing framework
 - **Environment Variables**: Secure configuration management
 
 ## 📁 Project Structure
 
 ```
 folio-weather/
-├── frontend/                    # React 19 Frontend Application
+├── backend/                     # Node.js/Express backend
+│   ├── config/                  # Database configuration
+│   ├── data/                    # US/international city datasets
+│   ├── middleware/              # Error handling and caching
+│   ├── models/                  # Mongoose models (future auth/persistence)
+│   ├── routes/                  # Weather/search/users APIs
+│   ├── utils/                   # API helpers and weather service
+│   ├── .env.example             # Backend env template
+│   ├── server.js                # Express server
+│   └── package.json             # Backend scripts and deps
+├── frontend/                    # React 19 + Vite app
 │   ├── src/
-│   │   ├── components/         # Reusable React components
-│   │   │   ├── common/         # Common components (ErrorBoundary)
-│   │   │   ├── layout/         # Layout components (Header, HeaderWeatherBadge, Footer)
-│   │   │   ├── ui/             # UI components (LoadingSpinner, ErrorMessage, SearchDropdown, HeaderSearchDropdown, ConnectionStatus, TopBarProgress)
-│   │   │   └── weather/        # Weather-specific components (WeatherCard, ForecastCard)
-│   │   ├── context/            # React Context providers
-│   │   │   ├── WeatherContext.jsx    # Weather data and preferences state
-│   │   │   └── QueryProvider.jsx     # API query state management
-│   │   ├── data/               # Static data and constants
-│   │   ├── hooks/              # Custom React hooks
-│   │   │   ├── useWeather.js   # Weather data fetching hooks
-│   │   │   └── useGeolocation.js     # Geolocation functionality
-│   │   ├── pages/              # Application pages/routes
-│   │   │   ├── HomePage.jsx    # Main dashboard with current weather
-│   │   │   ├── SearchPage.jsx  # Weather search functionality
-│   │   │   ├── FavoritesPage.jsx     # Saved locations management
-│   │   │   ├── SettingsPage.jsx      # User preferences and settings
-│   │   │   └── TestPage.jsx    # API testing interface
-│   │   ├── services/           # API and external service integrations
-│   │   │   ├── api.js          # Base API configuration
-│   │   │   ├── searchApi.js    # Search API service calls
-│   │   │   └── weatherService.js     # Weather API service calls
-│   │   ├── styles/             # CSS stylesheets
-│   │   │   ├── App.css         # Main application styles
-│   │   │   ├── components.css  # Component-specific styles
-│   │   │   ├── pages.css       # Page-specific styles
-│   │   │   ├── search.css      # Search interface styles
-│   │   │   └── index.css       # Global styles and CSS reset
-│   │   └── utils/              # Utility functions and helpers
-│   │       └── searchUtils.js  # Search parsing and validation utilities
-│   ├── public/                 # Static assets
-│   ├── .env.example           # Frontend environment variables template
-│   ├── vite.config.js         # Vite build configuration
-│   └── package.json           # Frontend dependencies and scripts
-├── backend/                    # Node.js/Express Backend Server
-│   ├── config/                # Configuration files
-│   │   └── database.js        # MongoDB connection configuration
-│   ├── data/                  # Search databases and city data
-│   │   ├── allUSCitiesComplete.js     # Consolidated US cities database
-│   │   ├── comprehensiveUSCities.js   # 15,000+ US cities by state
-│   │   ├── randomCities.js           # International cities database
-│   │   └── usCitiesStateMapping.js   # US cities state mapping & disambiguation
-│   ├── middleware/            # Express middleware
-│   │   ├── errorHandler.js    # Global error handling middleware
-│   │   └── searchCache.js     # Search caching middleware
-│   ├── models/                # MongoDB/Mongoose data models
-│   │   ├── User.js            # User account model
-│   │   ├── FavoriteLocation.js # Favorite locations model
-│   │   └── WeatherAlert.js    # Weather alerts model
-│   ├── routes/                # API route handlers
-│   │   ├── search.js          # Search API endpoints
-│   │   ├── weather.js         # Weather API endpoints
-│   │   └── users.js           # User management endpoints
-│   ├── utils/                 # Backend utilities
-│   │   ├── cache.js           # Caching utilities
-│   │   └── weatherService.js  # OpenWeatherMap API integration
-│   ├── .env.example          # Backend environment variables template
-│   ├── server.js             # Main Express server file
-│   └── package.json          # Backend dependencies and scripts
-├── docs/                      # Comprehensive Documentation
-│   ├── fixes-and-implementations/     # Fix & Implementation Documentation
-│   │   ├── README.md         # Comprehensive fixes index with categories
-│   │   ├── CRASH_FIX_SUMMARY.md      # Critical crash fixes
-│   │   ├── FINAL_HEADER_SEARCH_FIX.md # Final header search solutions
-│   │   ├── FORECAST_TOGGLE_RESET_IMPLEMENTATION.md # Forecast toggle reset feature
-│   │   ├── HEADER_DROPDOWN_*.md      # Header dropdown fixes (3 files)
-│   │   ├── HEADER_SEARCH_*.md        # Header search fixes (4 files)
-│   │   ├── LOCATION_ERROR_FIX_SUMMARY.md # Location service fixes
-│   │   ├── MOBILE_SEARCH_ALIGNMENT_FIX.md # Mobile interface fixes
-│   │   ├── REALTIME_DROPDOWN_*.md    # Real-time dropdown features
-│   │   └── COMPREHENSIVE_*.md        # Complete implementation solutions (4 files)
-│   ├── API_REFERENCE.md       # Complete API endpoint documentation
-│   ├── API_SETUP.md          # API setup and configuration guide
-│   ├── BACKEND_PORT_AND_DATABASE.md # Backend configuration details
-│   ├── DEVELOPMENT_GUIDE.md   # Development setup and workflow guide
-│   └── TEST_FORECAST_TOGGLE_RESET.md # Forecast toggle reset testing guide
-├── tests/                     # Comprehensive Test Suite
-│   ├── api/                  # API integration tests (3 files)
-│   ├── development/          # Development and feature tests (17 files)
-│   │   └── demo-us-cities-solution.mjs # Search system demo
-│   ├── frontend/             # Frontend-specific tests
-│   │   └── test-favorite-forecast-toggle-reset.js # Forecast toggle reset test
-│   ├── integration/          # Integration test suites (16 files)
-│   │   ├── test-header-dropdown-*.mjs # Header dropdown tests (3 files)
-│   │   ├── test-header-search-*.mjs   # Header search tests (8 files)
-│   │   ├── test-mobile-search-alignment.mjs # Mobile search tests
-│   │   ├── test-realtime-dropdown.mjs # Real-time dropdown tests
-│   │   └── [other integration tests]  # Comprehensive city/state search, location fixes, header refinements
-│   └── README.md             # Testing documentation with organized file index
-├── Chat History/              # Development Session Documentation
-│   ├── README.md             # Chat history organization guide
-│   ├── Development-Session-Overview.md  # Complete development timeline
-│   └── [Session Files]       # Individual development session logs
-├── fix-crashes.sh            # Crash fix utility script
-├── start-app.sh              # Application startup script
-├── CHANGELOG.md              # Version history and feature changes
-├── FEATURES_AND_IMPROVEMENTS.md # Feature analysis and roadmap
-├── GIT_GUIDE.md              # Git workflow and repository management
-├── GITHUB_CONFIG_TEST.md     # GitHub configuration testing
-├── INTEGRATION_TEST_RESULTS.md # Testing results and validation
-├── NEXT_STEPS.md             # Future development roadmap
-├── QUICK_IMPROVEMENTS_CHECKLIST.md # Quick reference for enhancements
-├── SCROLL_TEST_INSTRUCTIONS.md # Scroll testing procedures
-├── TODO.md                   # Project requirements and planning
-├── package.json              # Root package.json with development scripts
-└── README.md                 # This comprehensive project guide
+│   │   ├── assets/              # Static assets
+│   │   ├── components/          # Reusable UI components
+│   │   │   ├── common/          # ErrorBoundary
+│   │   │   ├── layout/          # Header, Footer, badge
+│   │   │   ├── ui/              # Dropdowns, spinners, status, progress
+│   │   │   └── weather/         # WeatherCard, ForecastCard
+│   │   ├── constants/           # App constants
+│   │   ├── context/             # Weather + query providers
+│   │   ├── data/                # Cities, country data
+│   │   ├── hooks/               # useWeather, useGeolocation
+│   │   ├── pages/               # Home, Search, Favorites, Settings, Test
+│   │   ├── services/            # API clients
+│   │   ├── styles/              # App/component/page CSS
+│   │   ├── utils/               # Search/date/performance helpers
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── public/                  # Public assets
+│   ├── dist/                    # Production build output
+│   ├── .env.example             # Frontend env template
+│   ├── vite.config.js           # Vite config
+│   └── package.json             # Frontend scripts and deps
+├── shared/                      # Shared data/utilities
+│   ├── data/
+│   ├── utils/
+│   └── package.json
+├── docs/                        # Documentation
+│   ├── fixes-and-implementations/
+│   ├── API_REFERENCE.md
+│   ├── DEVELOPMENT_GUIDE.md
+│   └── ...
+├── tests/                       # Test and QA scripts
+│   ├── api/
+│   ├── development/
+│   ├── frontend/
+│   ├── integration/
+│   ├── manual/
+│   └── README.md
+├── Chat History/                # Development session logs
+├── CHANGELOG.md
+├── CURRENT_IMPLEMENTATIONS_SUMMARY.md
+├── FEATURES_AND_IMPROVEMENTS.md
+├── GIT_GUIDE.md
+├── GITHUB_CONFIG_TEST.md
+├── INTEGRATION_TEST_RESULTS.md
+├── NEXT_STEPS.md
+├── QUICK_IMPROVEMENTS_CHECKLIST.md
+├── SCROLL_TEST_INSTRUCTIONS.md
+├── TEXT_EDITING_GUIDE.md
+├── TODO.md
+├── fix-crashes.sh
+├── start-app.sh
+├── package.json
+└── README.md
 ```
 
 ## 🚀 Getting Started
@@ -512,6 +462,29 @@ This application can be deployed on:
 - **Netlify** (Frontend) + **Railway/Heroku** (Backend)
 - **Docker** containers for full-stack deployment
 - **Traditional VPS** with PM2 process management
+
+### Vercel Frontend + External Backend (Recommended)
+
+1. **Deploy frontend on Vercel** from the repo root, build command `npm run build`, output `frontend/dist`.
+2. **Host backend separately** (Railway/Render/Fly/Heroku) and expose a public HTTPS URL.
+3. **Set frontend env** on Vercel:
+   - `VITE_API_BASE_URL=https://your-backend-host.com/api`
+4. **Set backend env** on your backend host:
+   - `OPENWEATHER_API_KEY=...`
+   - `FRONTEND_URL=https://your-vercel-domain.vercel.app`
+   - `NODE_ENV=production`
+   - `PORT` (only if your host requires a fixed port)
+
+### CORS + HTTPS Notes
+
+- Add your Vercel domain to the CORS allowlist in `backend/server.js`.
+- Always use HTTPS URLs for `FRONTEND_URL` and `VITE_API_BASE_URL` in production.
+
+### Backend Performance Tips
+
+- Keep caching enabled (already in `backend/utils/cache.js`).
+- Consider rate limiting at the host level to protect your API key.
+- Use a region close to your users to reduce latency.
 
 ## 🐛 Troubleshooting
 
