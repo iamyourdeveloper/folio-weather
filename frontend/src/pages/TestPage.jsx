@@ -8,6 +8,7 @@ import {
 import LoadingSpinner from "@components/ui/LoadingSpinner";
 import ErrorMessage from "@components/ui/ErrorMessage";
 import weatherService from "@services/weatherService.js";
+import { API_BASE_URL } from "@services/api.js";
 
 const TestPage = () => {
   // Separate input value from the city used for queries
@@ -611,7 +612,7 @@ const TestPage = () => {
           </p>
           <p style={{ color: "inherit" }}>
             <strong>API Base URL:</strong>{" "}
-            {import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"}
+            {API_BASE_URL}
           </p>
           <p style={{ color: "inherit" }}>
             <strong>Environment:</strong> {import.meta.env.MODE}

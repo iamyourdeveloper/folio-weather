@@ -74,9 +74,42 @@ const createRequestKey = (config) => {
   )}`;
 };
 
+const resolveApiBaseUrl = () => {
+  const envBase = import.meta.env.VITE_API_BASE_URL;
+  if (typeof envBase === "string" && envBase.trim() !== "") {
+    const trimmed = envBase.trim();
+
+    if (import.meta.env.PROD && typeof window !== "undefined") {
+      try {
+        const resolved = new URL(trimmed, window.location.origin);
+        const hostname = resolved.hostname;
+        const isLocalhost =
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname === "0.0.0.0";
+
+        if (isLocalhost) {
+          console.warn(
+            "VITE_API_BASE_URL points to localhost in production; falling back to /api."
+          );
+          return "/api";
+        }
+      } catch {
+        return trimmed;
+      }
+    }
+
+    return trimmed;
+  }
+
+  return "/api";
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
+  baseURL: API_BASE_URL,
   timeout: 60000, // Increased timeout to 60 seconds for better reliability
   headers: {
     "Content-Type": "application/json",
@@ -311,4 +344,5 @@ api.interceptors.response.use(
   }
 );
 
+export { API_BASE_URL };
 export default api;
