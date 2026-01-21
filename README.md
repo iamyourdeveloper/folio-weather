@@ -480,6 +480,10 @@ This application can be deployed on:
 - Add your Vercel domain to the CORS allowlist in `backend/server.js`.
 - Always use HTTPS URLs for `FRONTEND_URL` and `VITE_API_BASE_URL` in production.
 
+### Vercel 404 Fix (React Router)
+
+If you see a 404 on refresh or deep links, keep `vercel.json` at the repo root to rewrite all paths to `index.html`.
+
 ### Backend Performance Tips
 
 - Keep caching enabled (already in `backend/utils/cache.js`).
