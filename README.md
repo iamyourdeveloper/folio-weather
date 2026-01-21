@@ -1,6 +1,6 @@
 # FolioWeather - Modern Weather Application
 
-- **Live (Vercel)**: https://folio-weather.vercel.app/
+- ** Live **: https://folio-weather.vercel.app/
 
 A comprehensive weather application built with the MERN stack (MongoDB, Express.js, React 19, Node.js) that provides real-time weather data with a beautiful, responsive interface and advanced features.
 
