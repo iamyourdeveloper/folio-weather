@@ -1628,53 +1628,53 @@
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .search-dropdown__input-wrapper {
+  :root:not(.theme-light) .search-dropdown__input-wrapper {
     background: #1f2937;
     border-color: #374151;
   }
 
-  .search-dropdown__input-wrapper:focus-within {
+  :root:not(.theme-light) .search-dropdown__input-wrapper:focus-within {
     border-color: #60a5fa;
     box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
   }
 
-  .search-dropdown__input {
+  :root:not(.theme-light) .search-dropdown__input {
     color: #f9fafb;
   }
 
-  .search-dropdown__input::placeholder {
+  :root:not(.theme-light) .search-dropdown__input::placeholder {
     color: #6b7280;
   }
 
-  .search-dropdown__clear {
+  :root:not(.theme-light) .search-dropdown__clear {
     background: #374151;
     color: #9ca3af;
   }
 
-  .search-dropdown__clear:hover {
+  :root:not(.theme-light) .search-dropdown__clear:hover {
     background: #4b5563;
     color: #d1d5db;
   }
 
-  .search-dropdown__suggestions {
+  :root:not(.theme-light) .search-dropdown__suggestions {
     background: #1f2937;
     border-color: #374151;
   }
 
-  .search-dropdown__suggestion {
+  :root:not(.theme-light) .search-dropdown__suggestion {
     border-color: #374151;
   }
 
-  .search-dropdown__suggestion:hover {
+  :root:not(.theme-light) .search-dropdown__suggestion:hover {
     background: #374151;
   }
 
-  .search-dropdown__suggestion--selected {
+  :root:not(.theme-light) .search-dropdown__suggestion--selected {
     background: #1e3a8a;
     border-color: #3b82f6;
   }
 
-  .search-dropdown__suggestion-name {
+  :root:not(.theme-light) .search-dropdown__suggestion-name {
     color: #f9fafb;
   }
 }

@@ -52,7 +52,7 @@
 
 /* Dark Theme */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.theme-light) {
     --color-background: #0f172a;
     --color-background-secondary: #1e293b;
     --color-background-tertiary: #334155;
@@ -78,6 +78,20 @@
   
   --color-border: #334155;
   --color-border-light: #475569;
+}
+
+/* Manual Light Theme Class (overrides system dark mode) */
+.theme-light {
+  --color-background: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-tertiary: #f1f5f9;
+  
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
 }
 
 /* Theme switching animation */
