@@ -1316,7 +1316,8 @@
   /* Speed up theme color transitions for settings text on mobile */
   .settings-section .checkbox-label,
   .settings-section .checkbox-label strong,
-  .settings-section .checkbox-label small {
+  .settings-section .checkbox-label small,
+  .settings-section .checkbox-label small span {
     transition: none;
   }
 
