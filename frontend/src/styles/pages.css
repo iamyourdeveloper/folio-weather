@@ -1313,27 +1313,6 @@
     font-size: 2rem;
   }
 
-  /* Remove text color transitions on mobile settings groups */
-  .settings-section .checkbox-group,
-  .settings-section .radio-group {
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  /* Speed up theme color transitions for settings text on mobile */
-  .settings-section .checkbox-label,
-  .settings-section .checkbox-label strong,
-  .settings-section .checkbox-label small,
-  .settings-section .checkbox-label small span {
-    transition: none;
-  }
-
-  /* Make settings section titles/icons switch instantly on mobile */
-  .settings-section__header,
-  .settings-section__header svg,
-  .settings-section__title {
-    transition: none;
-  }
-
   .search-form--page {
     flex-direction: column;
   }
