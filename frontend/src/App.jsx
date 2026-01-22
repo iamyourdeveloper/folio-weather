@@ -5,6 +5,7 @@ import Header from "@components/layout/Header";
 import Footer from "@components/layout/Footer";
 import TopBarProgress from "@components/ui/TopBarProgress";
 import ConnectionStatus from "@components/ui/ConnectionStatus";
+import ScrollToTop from "@components/common/ScrollToTop";
 import HomePage from "@pages/HomePage";
 import SearchPage from "@pages/SearchPage";
 import FavoritesPage from "@pages/FavoritesPage";
@@ -17,6 +18,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <ScrollToTop />
         <QueryProvider>
           <WeatherProvider>
             <div className="app">
