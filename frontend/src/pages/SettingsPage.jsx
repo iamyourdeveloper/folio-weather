@@ -49,7 +49,7 @@ const SettingsPage = () => {
     const previousDuration = root.style.getPropertyValue(
       "--theme-transition-duration"
     );
-    const nextDuration = prefersReducedMotion ? "0ms" : "60ms";
+    const nextDuration = prefersReducedMotion ? "0ms" : "10ms";
     root.style.setProperty("--theme-transition-duration", nextDuration);
 
     return () => {
