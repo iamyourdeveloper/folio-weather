@@ -44,17 +44,29 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/search" className="footer__link" onClick={scrollToTop}>
+                <Link
+                  to="/search"
+                  className="footer__link"
+                  onClick={scrollToTop}
+                >
                   Search Weather
                 </Link>
               </li>
               <li>
-                <Link to="/favorites" className="footer__link" onClick={scrollToTop}>
+                <Link
+                  to="/favorites"
+                  className="footer__link"
+                  onClick={scrollToTop}
+                >
                   Favorites
                 </Link>
               </li>
               <li>
-                <Link to="/settings" className="footer__link" onClick={scrollToTop}>
+                <Link
+                  to="/settings"
+                  className="footer__link"
+                  onClick={scrollToTop}
+                >
                   Settings
                 </Link>
               </li>
@@ -90,8 +102,9 @@ const Footer = () => {
           <div className="footer__section">
             <h4 className="footer__section-title">About</h4>
             <p className="footer__text">
-              Built as a learning project to demonstrate modern web development
-              practices with React 19, Node.js, Express, and MongoDB.
+              Built as a learning project to demonstrate modern software
+              engineering practices with React 19, Node.js, Express, and
+              MongoDB.
             </p>
             <div className="footer__social">
               <a
