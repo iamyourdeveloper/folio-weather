@@ -1317,7 +1317,7 @@
   .settings-section .checkbox-label,
   .settings-section .checkbox-label strong,
   .settings-section .checkbox-label small {
-    transition-duration: 0.01s;
+    transition: none;
   }
 
   .search-form--page {
