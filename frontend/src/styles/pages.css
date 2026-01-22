@@ -1327,6 +1327,13 @@
     transition: none;
   }
 
+  /* Make settings section titles/icons switch instantly on mobile */
+  .settings-section__header,
+  .settings-section__header svg,
+  .settings-section__title {
+    transition: none;
+  }
+
   .search-form--page {
     flex-direction: column;
   }
