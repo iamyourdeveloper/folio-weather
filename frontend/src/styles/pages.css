@@ -1313,6 +1313,13 @@
     font-size: 2rem;
   }
 
+  /* Speed up theme color transitions for settings text on mobile */
+  .settings-section .checkbox-label,
+  .settings-section .checkbox-label strong,
+  .settings-section .checkbox-label small {
+    transition-duration: 0.12s;
+  }
+
   .search-form--page {
     flex-direction: column;
   }
