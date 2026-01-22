@@ -33,34 +33,6 @@ const SettingsPage = () => {
     setDraft(preferences);
   }, [preferences]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const prefersReducedMotion = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    const isTouchDevice = window.matchMedia?.(
-      "(hover: none) and (pointer: coarse)"
-    ).matches;
-
-    if (!prefersReducedMotion && !isTouchDevice) {
-      return;
-    }
-
-    const previousDuration = root.style.getPropertyValue(
-      "--theme-transition-duration"
-    );
-    const nextDuration = prefersReducedMotion ? "0ms" : "0ms";
-    root.style.setProperty("--theme-transition-duration", nextDuration);
-
-    return () => {
-      if (previousDuration) {
-        root.style.setProperty("--theme-transition-duration", previousDuration);
-      } else {
-        root.style.removeProperty("--theme-transition-duration");
-      }
-    };
-  }, []);
-
   // Live theme preview: apply draft.theme to document root immediately
   useEffect(() => {
     const root = document.documentElement;
@@ -87,12 +59,32 @@ const SettingsPage = () => {
       root.style.removeProperty("color");
     };
 
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const isTouchDevice = window.matchMedia?.(
+      "(hover: none) and (pointer: coarse)"
+    ).matches;
+    const shouldDisableTransitions = prefersReducedMotion || isTouchDevice;
+    let rafId = null;
+    if (shouldDisableTransitions) {
+      root.classList.add("no-theme-transition");
+    }
+
     // Apply draft selection for preview
     applyTheme(draft.theme);
     clearInlineVars();
 
+    if (shouldDisableTransitions) {
+      rafId = window.requestAnimationFrame(() => {
+        root.classList.remove("no-theme-transition");
+      });
+    }
+
     // On unmount or when preferences change, restore to saved prefs
     return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      root.classList.remove("no-theme-transition");
       applyTheme(preferences.theme);
       clearInlineVars();
     };
