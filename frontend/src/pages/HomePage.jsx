@@ -176,7 +176,10 @@ const HomePage = () => {
 
   // When arriving with #current-weather, scroll to the section and highlight
   useEffect(() => {
-    if (location.hash === "#current-weather") {
+    if (
+      location.hash === "#current-weather" &&
+      location.state?.fromHeaderWeatherBadge
+    ) {
       // slight delay to allow initial layout
       setTimeout(
         () => scrollToWeatherSection({ preferContentOnMobile: true }),

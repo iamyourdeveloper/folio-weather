@@ -30,6 +30,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
   } = useWeatherContext();
 
   const routerLocation = useRouterLocation();
+  const jumpState = { fromHeaderWeatherBadge: true };
 
   // Prefer current coordinates whenever location services are enabled/available.
   // This keeps the badge consistently tied to your current location across pages.
@@ -132,6 +133,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
       return (
         <Link
           to="/#current-weather"
+          state={jumpState}
           className="header-weather__link"
           title={isHome ? "Jump to current weather" : "View on Home"}
           onMouseDown={onMouseDown}
@@ -153,6 +155,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
     return (
       <Link
         to="/#current-weather"
+        state={jumpState}
         className="header-weather__link"
         title="Loading weather..."
         onMouseDown={onMouseDown}
