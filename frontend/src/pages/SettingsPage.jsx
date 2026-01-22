@@ -1,19 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
-import { useIsFetching } from '@tanstack/react-query';
-import { Save, Settings, Thermometer, Palette, MapPin, Eye, CheckCircle, RotateCcw } from 'lucide-react';
-import { useWeatherContext } from '@context/WeatherContext';
+import { useEffect, useRef, useState } from "react";
+import { useIsFetching } from "@tanstack/react-query";
+import {
+  Save,
+  Settings,
+  Thermometer,
+  Palette,
+  MapPin,
+  Eye,
+  CheckCircle,
+  RotateCcw,
+} from "lucide-react";
+import { useWeatherContext } from "@context/WeatherContext";
 
 /**
  * SettingsPage component for managing user preferences
  */
 const SettingsPage = () => {
-  const { preferences, updatePreferences, resetPreferences } = useWeatherContext();
+  const { preferences, updatePreferences, resetPreferences } =
+    useWeatherContext();
 
   // Local UI state for toast + refresh indicator
   const [showSaved, setShowSaved] = useState(false);
   const [pendingRefresh, setPendingRefresh] = useState(false);
   const prevUnitsRef = useRef(preferences.units);
-  const activeFetches = useIsFetching({ queryKey: ['weather'] });
+  const activeFetches = useIsFetching({ queryKey: ["weather"] });
 
   // Local draft of preferences. Changes here do NOT apply until Save.
   const [draft, setDraft] = useState(preferences);
@@ -25,36 +35,56 @@ const SettingsPage = () => {
 
   // Live theme preview: apply draft.theme to document root immediately
   useEffect(() => {
-    const body = document.documentElement;
+    const root = document.documentElement;
     const applyTheme = (theme) => {
-      body.classList.remove('theme-light', 'theme-dark');
-      if (theme === 'dark') body.classList.add('theme-dark');
-      else if (theme === 'light') body.classList.add('theme-light');
+      root.classList.remove("theme-light", "theme-dark");
+      if (theme === "dark") root.classList.add("theme-dark");
+      else if (theme === "light") root.classList.add("theme-light");
       // 'auto' leaves classes off to follow media queries
     };
 
     const clearInlineVars = () => {
       const CSS_VARS = [
-        '--color-background',
-        '--color-background-secondary',
-        '--color-background-tertiary',
-        '--color-text-primary',
-        '--color-text-secondary',
-        '--color-text-tertiary',
-        '--color-border',
-        '--color-border-light'
+        "--color-background",
+        "--color-background-secondary",
+        "--color-background-tertiary",
+        "--color-text-primary",
+        "--color-text-secondary",
+        "--color-text-tertiary",
+        "--color-border",
+        "--color-border-light",
       ];
-      CSS_VARS.forEach((v) => body.style.removeProperty(v));
-      body.style.removeProperty('background-color');
-      body.style.removeProperty('color');
+      CSS_VARS.forEach((v) => root.style.removeProperty(v));
+      root.style.removeProperty("background-color");
+      root.style.removeProperty("color");
     };
+
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const isTouchDevice = window.matchMedia?.(
+      "(hover: none) and (pointer: coarse)"
+    ).matches;
+    const shouldDisableTransitions = prefersReducedMotion || isTouchDevice;
+    let rafId = null;
+    if (shouldDisableTransitions) {
+      root.classList.add("no-theme-transition");
+    }
 
     // Apply draft selection for preview
     applyTheme(draft.theme);
     clearInlineVars();
 
+    if (shouldDisableTransitions) {
+      rafId = window.requestAnimationFrame(() => {
+        root.classList.remove("no-theme-transition");
+      });
+    }
+
     // On unmount or when preferences change, restore to saved prefs
     return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      root.classList.remove("no-theme-transition");
       applyTheme(preferences.theme);
       clearInlineVars();
     };
@@ -81,7 +111,7 @@ const SettingsPage = () => {
 
   // Handle reset to defaults (Fahrenheit)
   const handleReset = () => {
-    const targetUnits = 'imperial';
+    const targetUnits = "imperial";
     resetPreferences();
     setShowSaved(true);
     setPendingRefresh(true);
@@ -114,7 +144,11 @@ const SettingsPage = () => {
         <form onSubmit={handleSubmit} className="settings-form">
           {/* Toast: Saved */}
           {showSaved && (
-            <div className="toast toast--success" role="status" aria-live="polite">
+            <div
+              className="toast toast--success"
+              role="status"
+              aria-live="polite"
+            >
               <CheckCircle size={16} />
               <span>Settings saved</span>
             </div>
@@ -127,7 +161,7 @@ const SettingsPage = () => {
               <span>Refreshing weather data…</span>
             </div>
           )}
-          
+
           {/* Temperature Units */}
           <div className="settings-section">
             <div className="settings-section__header">
@@ -140,8 +174,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="units"
                   value="metric"
-                  checked={draft.units === 'metric'}
-                  onChange={(e) => handlePreferenceChange('units', e.target.value)}
+                  checked={draft.units === "metric"}
+                  onChange={(e) =>
+                    handlePreferenceChange("units", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -155,8 +191,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="units"
                   value="imperial"
-                  checked={draft.units === 'imperial'}
-                  onChange={(e) => handlePreferenceChange('units', e.target.value)}
+                  checked={draft.units === "imperial"}
+                  onChange={(e) =>
+                    handlePreferenceChange("units", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -170,8 +208,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="units"
                   value="kelvin"
-                  checked={draft.units === 'kelvin'}
-                  onChange={(e) => handlePreferenceChange('units', e.target.value)}
+                  checked={draft.units === "kelvin"}
+                  onChange={(e) =>
+                    handlePreferenceChange("units", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -194,8 +234,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="theme"
                   value="light"
-                  checked={draft.theme === 'light'}
-                  onChange={(e) => handlePreferenceChange('theme', e.target.value)}
+                  checked={draft.theme === "light"}
+                  onChange={(e) =>
+                    handlePreferenceChange("theme", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -209,8 +251,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="theme"
                   value="dark"
-                  checked={draft.theme === 'dark'}
-                  onChange={(e) => handlePreferenceChange('theme', e.target.value)}
+                  checked={draft.theme === "dark"}
+                  onChange={(e) =>
+                    handlePreferenceChange("theme", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -224,8 +268,10 @@ const SettingsPage = () => {
                   type="radio"
                   name="theme"
                   value="auto"
-                  checked={draft.theme === 'auto'}
-                  onChange={(e) => handlePreferenceChange('theme', e.target.value)}
+                  checked={draft.theme === "auto"}
+                  onChange={(e) =>
+                    handlePreferenceChange("theme", e.target.value)
+                  }
                 />
                 <span className="radio-button"></span>
                 <span className="radio-label">
@@ -247,12 +293,26 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.autoLocation}
-                  onChange={(e) => handlePreferenceChange('autoLocation', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange("autoLocation", e.target.checked)
+                  }
                 />
                 <span className="checkbox"></span>
                 <span className="checkbox-label">
                   <strong>Auto-detect location</strong>
-                    <small>Use GPS to automatically get weather for your current location. <span style={{ marginTop: '10px', display: 'inline-block' }}>* Having this option selected, along with enabling your PC & Browser's location settings will keep your current weather location displayed upon the Home page & Weather badge (top right of app's header) after refreshing the app. *</span></small>
+                  <small>
+                    Use GPS to automatically get weather for your current
+                    location.{" "}
+                    <span
+                      style={{ marginTop: "10px", display: "inline-block" }}
+                    >
+                      * Having this option selected, along with enabling your PC
+                      & Browser's location settings will keep your current
+                      weather location displayed upon the Home page & Weather
+                      badge (top right of app's header) after refreshing the
+                      app. *
+                    </span>
+                  </small>
                 </span>
               </label>
             </div>
@@ -269,7 +329,9 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.showWindSpeed}
-                  onChange={(e) => handlePreferenceChange('showWindSpeed', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange("showWindSpeed", e.target.checked)
+                  }
                 />
                 <span className="checkbox"></span>
                 <span className="checkbox-label">Show wind speed</span>
@@ -279,7 +341,9 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.showHumidity}
-                  onChange={(e) => handlePreferenceChange('showHumidity', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange("showHumidity", e.target.checked)
+                  }
                 />
                 <span className="checkbox"></span>
                 <span className="checkbox-label">Show humidity</span>
@@ -289,7 +353,9 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.showPressure}
-                  onChange={(e) => handlePreferenceChange('showPressure', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange("showPressure", e.target.checked)
+                  }
                 />
                 <span className="checkbox"></span>
                 <span className="checkbox-label">Show pressure</span>
@@ -299,7 +365,9 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.showUvIndex}
-                  onChange={(e) => handlePreferenceChange('showUvIndex', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange("showUvIndex", e.target.checked)
+                  }
                 />
                 <span className="checkbox"></span>
                 <span className="checkbox-label">Show UV index</span>
@@ -309,10 +377,17 @@ const SettingsPage = () => {
                 <input
                   type="checkbox"
                   checked={draft.showSunriseSunset}
-                  onChange={(e) => handlePreferenceChange('showSunriseSunset', e.target.checked)}
+                  onChange={(e) =>
+                    handlePreferenceChange(
+                      "showSunriseSunset",
+                      e.target.checked
+                    )
+                  }
                 />
                 <span className="checkbox"></span>
-                <span className="checkbox-label">Show sunrise/sunset times</span>
+                <span className="checkbox-label">
+                  Show sunrise/sunset times
+                </span>
               </label>
             </div>
           </div>
@@ -324,8 +399,8 @@ const SettingsPage = () => {
                 <Save size={16} />
                 Save Settings
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="btn btn--secondary"
                 onClick={handleReset}
                 data-testid="reset-defaults"
