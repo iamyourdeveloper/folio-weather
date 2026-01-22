@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { prefersReducedMotion } from "@/utils/performanceUtils.js";
 
@@ -13,27 +13,54 @@ const shouldUseInstantScroll = () => {
   return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 };
 
+const applyScrollToTop = (behavior) => {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior });
+  } catch (_) {
+    window.scrollTo(0, 0);
+  }
+
+  if (typeof document !== "undefined") {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+};
+
 const ScrollToTop = () => {
   const location = useLocation();
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    if ("scrollRestoration" in window.history) {
+      const previous = window.history.scrollRestoration;
+      window.history.scrollRestoration = "manual";
+      return () => {
+        window.history.scrollRestoration = previous;
+      };
+    }
+
+    return undefined;
+  }, []);
+
+  useLayoutEffect(() => {
     if (location.hash && location.hash !== "#top") {
       return;
     }
 
     const behavior = shouldUseInstantScroll() ? "auto" : "smooth";
+    const timers = [];
     let rafId = 0;
 
-    rafId = requestAnimationFrame(() => {
-      try {
-        window.scrollTo({ top: 0, left: 0, behavior });
-      } catch (_) {
-        window.scrollTo(0, 0);
-      }
-    });
+    const runScroll = () => applyScrollToTop(behavior);
+
+    rafId = requestAnimationFrame(runScroll);
+    timers.push(setTimeout(runScroll, 60));
+    timers.push(setTimeout(runScroll, 200));
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
+      timers.forEach((timerId) => clearTimeout(timerId));
     };
   }, [location.pathname, location.search, location.hash]);
 

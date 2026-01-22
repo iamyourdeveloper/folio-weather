@@ -63,17 +63,17 @@ const HomePage = () => {
     currentLocation.lat != null &&
     currentLocation.lon != null
   );
-  const preferCoords =
-    preferences.autoLocation && !locationError && hasCoords;
-  
+  const preferCoords = preferences.autoLocation && !locationError && hasCoords;
+
   // When user explicitly selects a location (selectedLocation exists), respect their choice
   // Otherwise, fall back to autoLocation preference
   const userHasExplicitSelection = !!selectedLocation;
-  const shouldFetchByCoords = userHasExplicitSelection 
+  const shouldFetchByCoords = userHasExplicitSelection
     ? effectiveLocation?.type === "coords"
-    : (preferCoords || effectiveLocation?.type === "coords");
+    : preferCoords || effectiveLocation?.type === "coords";
   // Only fetch by city when we're not preferring coords and a city is selected
-  const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
+  const shouldFetchByCity =
+    !shouldFetchByCoords && effectiveLocation?.type === "city";
 
   // Toggle state for revealing the 5-day forecast on Home
   const [showHomeForecast, setShowHomeForecast] = useState(false);
@@ -125,7 +125,9 @@ const HomePage = () => {
         permRef = perm;
         perm.onchange = () => {
           if (perm.state === "granted") {
-            try { requestCurrentLocation?.(); } catch (_) {}
+            try {
+              requestCurrentLocation?.();
+            } catch (_) {}
           }
         };
       } catch (_) {
@@ -133,7 +135,10 @@ const HomePage = () => {
       }
     })();
     return () => {
-      if (permRef) try { permRef.onchange = null; } catch (_) {}
+      if (permRef)
+        try {
+          permRef.onchange = null;
+        } catch (_) {}
     };
   }, [requestCurrentLocation]);
 
@@ -209,10 +214,14 @@ const HomePage = () => {
   // Fetch weather data based on location
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
+      ? preferCoords
+        ? currentLocation?.lat
+        : effectiveLocation?.coordinates?.lat
       : null,
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
+      ? preferCoords
+        ? currentLocation?.lon
+        : effectiveLocation?.coordinates?.lon
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name // Pass original name when available
@@ -229,10 +238,14 @@ const HomePage = () => {
   // Fetch forecast data (enabled only when toggled open)
   const coordsForecast = useForecastByCoords(
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
+      ? preferCoords
+        ? currentLocation?.lat
+        : effectiveLocation?.coordinates?.lat
       : null,
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
+      ? preferCoords
+        ? currentLocation?.lon
+        : effectiveLocation?.coordinates?.lon
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name, // Pass original name when available
@@ -240,10 +253,13 @@ const HomePage = () => {
       enabled:
         showHomeForecast &&
         !!(
-          shouldFetchByCoords && (
-            (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat) &&
-            (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
-          )
+          shouldFetchByCoords &&
+          (preferCoords
+            ? currentLocation?.lat
+            : effectiveLocation?.coordinates?.lat) &&
+          (preferCoords
+            ? currentLocation?.lon
+            : effectiveLocation?.coordinates?.lon)
         ),
     }
   );
@@ -282,9 +298,7 @@ const HomePage = () => {
         {/* Hero Section */}
         <section className="home-hero">
           <div className="home-hero__content">
-            <h1 className="home-hero__title">
-              Welcome to {APP_NAME}
-            </h1>
+            <h1 className="home-hero__title">Welcome to {APP_NAME}</h1>
             <p className="home-hero__subtitle">
               Get real-time weather information, forecasts, and manage your
               favorite locations
@@ -462,9 +476,16 @@ const HomePage = () => {
                     <span>
                       {(() => {
                         // Prefer the resolved name from the latest weather payload if available
-                        const payloadLoc = (shouldFetchByCity ? cityWeather : coordsWeather)?.data?.data?.location;
-                        const name = payloadLoc?.name || (payloadLoc ? resolveFullLocationName(payloadLoc) : null);
-                        const fallback = autoSelectedLocation?.name || "your current location";
+                        const payloadLoc = (
+                          shouldFetchByCity ? cityWeather : coordsWeather
+                        )?.data?.data?.location;
+                        const name =
+                          payloadLoc?.name ||
+                          (payloadLoc
+                            ? resolveFullLocationName(payloadLoc)
+                            : null);
+                        const fallback =
+                          autoSelectedLocation?.name || "your current location";
                         return `Showing weather for ${name || fallback}`;
                       })()}
                     </span>
@@ -500,21 +521,27 @@ const HomePage = () => {
 
             {activeWeather.isSuccess && activeWeather.data && (
               <div className="weather-display">
-                <div className={`focus-highlight ${highlightWeather ? "is-active" : ""}`}>
+                <div
+                  className={`focus-highlight ${
+                    highlightWeather ? "is-active" : ""
+                  }`}
+                >
                   <WeatherCard
-                  weather={activeWeather.data.data}
-                  showForecastLink={true}
-                  onAddToFavorites={(loc) => addFavorite(loc)}
-                  onRemoveFromFavorites={(loc) => removeFavoriteByLocation(loc)}
-                  onToggleForecast={() => {
-                    const newValue = !showHomeForecast;
-                    setShowHomeForecast(newValue);
-                    // Scroll to forecast section when showing forecast
-                    if (newValue) {
-                      scrollToForecastSection();
+                    weather={activeWeather.data.data}
+                    showForecastLink={true}
+                    onAddToFavorites={(loc) => addFavorite(loc)}
+                    onRemoveFromFavorites={(loc) =>
+                      removeFavoriteByLocation(loc)
                     }
-                  }}
-                  isForecastVisible={showHomeForecast}
+                    onToggleForecast={() => {
+                      const newValue = !showHomeForecast;
+                      setShowHomeForecast(newValue);
+                      // Scroll to forecast section when showing forecast
+                      if (newValue) {
+                        scrollToForecastSection();
+                      }
+                    }}
+                    isForecastVisible={showHomeForecast}
                   />
                 </div>
 
@@ -533,37 +560,37 @@ const HomePage = () => {
                           activeForecast.data.data.forecast,
                           5
                         ).map((day, index) => (
-                            <div key={day.date} className="forecast-item">
-                              <div className="forecast-item__date">
-                                {getForecastDateLabel(day.date, index)}{" "}
-                                <span
-                                  style={{
-                                    color: "var(--color-text-secondary)",
-                                  }}
-                                >
-                                  {formatDateDisplay(day.date)}
-                                </span>
-                              </div>
-                              <img
-                                src={`https://openweathermap.org/img/wn/${
-                                  day.icon || "01d"
-                                }@2x.png`}
-                                alt={day.description || "Weather"}
-                                className="forecast-item__icon"
-                              />
-                              <div className="forecast-item__temps">
-                                <span className="forecast-item__temp-high">
-                                  {Math.round(day.maxTemp)}°
-                                </span>
-                                <span className="forecast-item__temp-low">
-                                  {Math.round(day.minTemp)}°
-                                </span>
-                              </div>
-                              <div className="forecast-item__description">
-                                {day.description || day.mainWeather || "N/A"}
-                              </div>
+                          <div key={day.date} className="forecast-item">
+                            <div className="forecast-item__date">
+                              {getForecastDateLabel(day.date, index)}{" "}
+                              <span
+                                style={{
+                                  color: "var(--color-text-secondary)",
+                                }}
+                              >
+                                {formatDateDisplay(day.date)}
+                              </span>
                             </div>
-                          ))}
+                            <img
+                              src={`https://openweathermap.org/img/wn/${
+                                day.icon || "01d"
+                              }@2x.png`}
+                              alt={day.description || "Weather"}
+                              className="forecast-item__icon"
+                            />
+                            <div className="forecast-item__temps">
+                              <span className="forecast-item__temp-high">
+                                {Math.round(day.maxTemp)}°
+                              </span>
+                              <span className="forecast-item__temp-low">
+                                {Math.round(day.minTemp)}°
+                              </span>
+                            </div>
+                            <div className="forecast-item__description">
+                              {day.description || day.mainWeather || "N/A"}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
