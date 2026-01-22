@@ -147,6 +147,12 @@
   margin: 0 auto;
 }
 
+@media (max-width: 1024px) {
+  #current-weather-data {
+    scroll-margin-top: 80px;
+  }
+}
+
 .weather-loading {
   text-align: center;
   padding: 3rem;

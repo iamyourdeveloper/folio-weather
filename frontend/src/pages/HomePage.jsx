@@ -88,6 +88,8 @@ const HomePage = () => {
 
   // Weather section ref for scrolling
   const weatherSectionRef = useRef(null);
+  // Weather content ref for compact viewport scroll targeting
+  const weatherContentRef = useRef(null);
   // Forecast section ref for scrolling to forecast
   const forecastSectionRef = useRef(null);
 
@@ -150,11 +152,19 @@ const HomePage = () => {
   };
 
   // Function to scroll to weather section
-  const scrollToWeatherSection = () => {
-    const el = weatherSectionRef.current;
-    if (el) {
+  const scrollToWeatherSection = (options = {}) => {
+    const preferContentOnMobile = options.preferContentOnMobile === true;
+    const isCompactViewport =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(max-width: 1024px)").matches;
+    const target =
+      preferContentOnMobile && isCompactViewport
+        ? weatherContentRef.current || weatherSectionRef.current
+        : weatherSectionRef.current;
+
+    if (target) {
       console.log("✅ Scrolling to weather section");
-      el.scrollIntoView({
+      target.scrollIntoView({
         behavior: "smooth",
         block: "start",
         inline: "nearest",
@@ -168,7 +178,10 @@ const HomePage = () => {
   useEffect(() => {
     if (location.hash === "#current-weather") {
       // slight delay to allow initial layout
-      setTimeout(() => scrollToWeatherSection(), 50);
+      setTimeout(
+        () => scrollToWeatherSection({ preferContentOnMobile: true }),
+        50
+      );
       // trigger subtle highlight for a moment
       setHighlightWeather(true);
       const t = setTimeout(() => setHighlightWeather(false), 1400);
@@ -504,7 +517,11 @@ const HomePage = () => {
           </div>
 
           {/* Weather Content */}
-          <div className="home-weather__content">
+          <div
+            className="home-weather__content"
+            id="current-weather-data"
+            ref={weatherContentRef}
+          >
             {(isLoading || activeWeather.isLoading) && (
               <div className="weather-loading">
                 <LoadingSpinner />
