@@ -914,6 +914,11 @@
   margin: 0.5rem 0 0 0;
 }
 
+.favorites-header__subtitle_tip {
+  font-size: 0.975rem;
+  margin-top: 0.25rem;
+}
+
 .favorites-content {
   margin-top: 2rem;
 }
