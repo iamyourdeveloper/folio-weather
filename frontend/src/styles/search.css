@@ -89,5 +89,9 @@
 
 /* Current Weather Card Focus Effect */
 .search-results__current {
-  scroll-margin-top: 20px; /* Ensures proper spacing when scrolled to */
+  scroll-margin-top: 80px; /* Ensure spacing below the sticky header */
+}
+
+.search-results__forecast {
+  scroll-margin-top: 80px; /* Align forecast header under the sticky header */
 }

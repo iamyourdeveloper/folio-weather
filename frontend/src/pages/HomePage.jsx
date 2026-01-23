@@ -245,9 +245,12 @@ const HomePage = () => {
     const attemptScroll = (attempts = 0) => {
       const el = forecastSectionRef.current;
       if (el) {
+        const preferTopOnCompact =
+          typeof window !== "undefined" &&
+          window.matchMedia?.("(max-width: 1024px)").matches;
         el.scrollIntoView({
           behavior: "smooth",
-          block: "center",
+          block: preferTopOnCompact ? "start" : "center",
           inline: "nearest",
         });
         console.log("✅ Scrolled to forecast section on HomePage");

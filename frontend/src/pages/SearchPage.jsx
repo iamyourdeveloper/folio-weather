@@ -68,6 +68,8 @@ const SearchPage = () => {
   const forecastSectionRef = useRef(null);
   // Transient highlight for current weather card
   const [highlightCurrent, setHighlightCurrent] = useState(false);
+  const [autoScrollToCurrent, setAutoScrollToCurrent] = useState(false);
+  const [autoScrollToForecast, setAutoScrollToForecast] = useState(false);
   // Force-remount key for SearchDropdown to reset its internal input value on demand
   const [searchInputKey, setSearchInputKey] = useState(0);
   // Track the most recent full query submitted so requests stay specific even during context updates
@@ -180,14 +182,22 @@ const SearchPage = () => {
     }
   }, []);
 
+  const isMobileViewport = useCallback(() => {
+    if (typeof window === "undefined" || !window.matchMedia) {
+      return false;
+    }
+    return window.matchMedia("(max-width: 768px)").matches;
+  }, []);
+
   // Function to focus on current weather card
-  const focusOnWeatherCard = useCallback(() => {
+  const focusOnWeatherCard = useCallback((options = {}) => {
+    const { block } = options;
     const attemptScroll = (attempts = 0) => {
       const el = currentWeatherRef.current;
       if (el) {
         el.scrollIntoView({
           behavior: "smooth",
-          block: "center",
+          block: block || (isMobileViewport() ? "start" : "center"),
           inline: "nearest",
         });
         // Trigger a brief highlight once
@@ -199,7 +209,34 @@ const SearchPage = () => {
     };
     // Initial delay to allow render/data to begin
     setTimeout(() => attemptScroll(), 300);
-  }, []);
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (searchedCity) {
+      setAutoScrollToCurrent(true);
+    } else {
+      setAutoScrollToCurrent(false);
+    }
+  }, [searchedCity]);
+
+  useEffect(() => {
+    if (!autoScrollToCurrent) return;
+    if (!currentWeather.isSuccess || !currentWeather?.data?.data) return;
+
+    if (!isMobileViewport()) {
+      setAutoScrollToCurrent(false);
+      return;
+    }
+
+    focusOnWeatherCard({ block: "start" });
+    setAutoScrollToCurrent(false);
+  }, [
+    autoScrollToCurrent,
+    currentWeather.isSuccess,
+    currentWeather.data,
+    focusOnWeatherCard,
+    isMobileViewport,
+  ]);
 
   const applyOptimisticSelection = useCallback(
     (cityName, fullName, fallback = {}) => {
@@ -693,14 +730,15 @@ const SearchPage = () => {
     removeFavoriteByLocation(location);
 
   // Function to scroll to forecast section
-  const scrollToForecastSection = () => {
+  const scrollToForecastSection = useCallback((options = {}) => {
+    const { block } = options;
     // Try multiple times in case the element isn't ready immediately
     const attemptScroll = (attempts = 0) => {
       const el = forecastSectionRef.current;
       if (el) {
         el.scrollIntoView({
           behavior: "smooth",
-          block: "center",
+          block: block || (isMobileViewport() ? "start" : "center"),
           inline: "nearest",
         });
         console.log("✅ Scrolled to forecast section on SearchPage");
@@ -718,7 +756,30 @@ const SearchPage = () => {
 
     // Initial delay to allow React to render the forecast section
     setTimeout(() => attemptScroll(), 200);
-  };
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (!showSearchForecast) {
+      setAutoScrollToForecast(false);
+      return;
+    }
+
+    if (!autoScrollToForecast) {
+      return;
+    }
+
+    if (forecast.isSuccess && forecast?.data?.data?.forecast) {
+      scrollToForecastSection({ block: isMobileViewport() ? "start" : "center" });
+      setAutoScrollToForecast(false);
+    }
+  }, [
+    autoScrollToForecast,
+    forecast.isSuccess,
+    forecast.data,
+    showSearchForecast,
+    scrollToForecastSection,
+    isMobileViewport,
+  ]);
 
   // Expanded popular cities list (curated subset from RANDOM_CITIES)
   // Do not slice here so regional tabs can access the full set.
@@ -1190,9 +1251,8 @@ const SearchPage = () => {
                     onToggleForecast={() => {
                       const newValue = !showSearchForecast;
                       setShowSearchForecast(newValue);
-                      // Scroll to forecast section when showing forecast
                       if (newValue) {
-                        scrollToForecastSection();
+                        setAutoScrollToForecast(true);
                       }
                     }}
                     isForecastVisible={showSearchForecast}
