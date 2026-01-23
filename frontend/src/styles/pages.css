@@ -930,6 +930,9 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: box-shadow 0.2s ease;
+  max-width: 350px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .favorite-item:hover {
@@ -1239,11 +1242,6 @@
     justify-items: center;
     gap: 1.25rem;
   }
-
-  .favorite-item {
-    max-width: 350px;
-    margin: 0 auto;
-  }
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
@@ -1351,11 +1349,6 @@
 
   .favorites-content {
     text-align: center;
-  }
-
-  .favorite-item {
-    max-width: 400px;
-    margin: 0 auto;
   }
 }
 
