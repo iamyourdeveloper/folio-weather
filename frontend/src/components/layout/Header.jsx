@@ -30,12 +30,8 @@ import { APP_NAME } from "@/constants/appInfo.js";
  */
 const Header = () => {
   const location = useLocation();
-  const {
-    preferences,
-    updatePreferences,
-    searchLocation,
-    selectLocation,
-  } = useWeatherContext();
+  const { preferences, updatePreferences, searchLocation, selectLocation } =
+    useWeatherContext();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -66,8 +62,11 @@ const Header = () => {
       extractLocationComponents(fullName) || {};
 
     const resolvedCountryCode = fallback.countryCode || parsedCountry;
-    const resolvedCountryName = fallback.countryName ||
-      (resolvedCountryCode ? getCountryFullName(resolvedCountryCode) : undefined);
+    const resolvedCountryName =
+      fallback.countryName ||
+      (resolvedCountryCode
+        ? getCountryFullName(resolvedCountryCode)
+        : undefined);
 
     try {
       const [first] = searchAllCities(fullName, 1);
@@ -86,7 +85,8 @@ const Header = () => {
         }
 
         if (first.countryName || resolvedCountryName) {
-          optimisticSelection.countryName = first.countryName || resolvedCountryName;
+          optimisticSelection.countryName =
+            first.countryName || resolvedCountryName;
         }
 
         if (first.coordinates) {
@@ -141,7 +141,11 @@ const Header = () => {
 
     // Validate the query before processing
     if (!isValidLocationQuery(fullQuery)) {
-      console.log("Invalid location query format:", fullQuery, "– routing to Search to show helpful error");
+      console.log(
+        "Invalid location query format:",
+        fullQuery,
+        "– routing to Search to show helpful error"
+      );
       navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
       // Reset state promptly so UI feels responsive
       setHeaderSearchQuery("");
@@ -157,7 +161,7 @@ const Header = () => {
       // Check if it's a region query first (e.g., "Africa")
       const regionResult = getRandomRegionCapital(fullQuery);
       let locationInfo;
-      
+
       if (regionResult) {
         console.log("Resolved region query to capital:", regionResult);
         locationInfo = {
@@ -249,17 +253,17 @@ const Header = () => {
     try {
       // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      
+
       // Use the location data directly from the dropdown since it's already correct
       // Don't parse it again with parseLocationQuery as that can corrupt the data
-      selectLocation({ 
-        type: location.type || "city", 
-        city: location.city || fullQuery.split(",")[0].trim(), 
+      selectLocation({
+        type: location.type || "city",
+        city: location.city || fullQuery.split(",")[0].trim(),
         name: location.displayName || location.name || fullQuery,
         state: location.state,
         country: location.country || location.countryCode,
         countryName: location.countryName,
-        coordinates: location.coordinates
+        coordinates: location.coordinates,
       });
 
       // Navigate to search page
@@ -315,17 +319,17 @@ const Header = () => {
     try {
       // Update query context and immediately reflect selection so Home/badge update
       await searchLocation(fullQuery);
-      
+
       // Use the location data directly from the dropdown since it's already correct
       // Don't parse it again with parseLocationQuery as that can corrupt the data
-      selectLocation({ 
-        type: location.type || "city", 
-        city: location.city || fullQuery.split(",")[0].trim(), 
+      selectLocation({
+        type: location.type || "city",
+        city: location.city || fullQuery.split(",")[0].trim(),
         name: location.displayName || location.name || fullQuery,
         state: location.state,
         country: location.country || location.countryCode,
         countryName: location.countryName,
-        coordinates: location.coordinates
+        coordinates: location.coordinates,
       });
 
       // Navigate to search page
@@ -509,7 +513,7 @@ const Header = () => {
         {/* Logo and Brand */}
         <div className="header__brand">
           <Link
-            to="/#top"
+            to="/"
             className="header__logo"
             onMouseDown={() => {
               // Only preserve if search is already open
@@ -519,11 +523,10 @@ const Header = () => {
               // If already on Home, smoothly scroll to top instead of re-navigating
               if (location.pathname === "/") {
                 e.preventDefault();
-                // update hash to reflect intent
-                if (window.location.hash !== "#top") {
-                  window.history.replaceState({}, "", "/#top");
+                if (location.hash) {
+                  navigate("/", { replace: true });
                 }
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                scrollToTop();
               }
             }}
           >
@@ -603,20 +606,20 @@ const Header = () => {
                     setIsMenuOpen(false);
                   }
                 }}
-              onBlur={(e) => {
-                // Only close search if we're not interacting with search form elements
-                // and we're not currently searching
-                if (isSearching) {
-                  console.log(
-                    "Keeping search active during search operation"
-                  );
-                  return;
-                }
+                onBlur={(e) => {
+                  // Only close search if we're not interacting with search form elements
+                  // and we're not currently searching
+                  if (isSearching) {
+                    console.log(
+                      "Keeping search active during search operation"
+                    );
+                    return;
+                  }
 
-                const relatedTarget = e.relatedTarget;
-                const formEl = formRef.current;
+                  const relatedTarget = e.relatedTarget;
+                  const formEl = formRef.current;
 
-                // Keep search active if focusing on form elements or search-related buttons
+                  // Keep search active if focusing on form elements or search-related buttons
                   if (
                     relatedTarget &&
                     (formEl?.contains(relatedTarget) ||
@@ -733,7 +736,11 @@ const Header = () => {
                 }
 
                 if (!isValidLocationQuery(fullQuery)) {
-                  console.log("Invalid mobile search query:", fullQuery, "– routing to Search to show helpful error");
+                  console.log(
+                    "Invalid mobile search query:",
+                    fullQuery,
+                    "– routing to Search to show helpful error"
+                  );
                   navigate(`/search?city=${encodeURIComponent(fullQuery)}`);
                   // Reset and close menu for a clear transition
                   setIsMenuOpen(false);
@@ -749,9 +756,12 @@ const Header = () => {
                   // Check if it's a region query first (e.g., "Africa")
                   const regionResult = getRandomRegionCapital(fullQuery);
                   let locationInfo;
-                  
+
                   if (regionResult) {
-                    console.log("Resolved mobile region query to capital:", regionResult);
+                    console.log(
+                      "Resolved mobile region query to capital:",
+                      regionResult
+                    );
                     locationInfo = {
                       city: regionResult.city,
                       fullName: regionResult.fullName,
@@ -785,7 +795,9 @@ const Header = () => {
                   });
 
                   // Navigate to search page
-                  navigate(`/search?city=${encodeURIComponent(resolvedFullName)}`);
+                  navigate(
+                    `/search?city=${encodeURIComponent(resolvedFullName)}`
+                  );
 
                   // Reset mobile state with proper timing
                   const resetMobileState = () => {

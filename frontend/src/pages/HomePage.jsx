@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   MapPin,
   Search,
@@ -34,6 +34,7 @@ import {
  */
 const HomePage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     currentLocation,
     locationError,
@@ -79,6 +80,7 @@ const HomePage = () => {
   const [showHomeForecast, setShowHomeForecast] = useState(false);
   // Transient highlight when jumping to current weather
   const [highlightWeather, setHighlightWeather] = useState(false);
+  const highlightTimeoutRef = useRef(null);
 
   // Favorites slider state and helpers
   const sliderRef = useRef(null);
@@ -174,23 +176,61 @@ const HomePage = () => {
     }
   };
 
-  // When arriving with #current-weather, scroll to the section and highlight
+  const triggerWeatherHighlight = () => {
+    setHighlightWeather(true);
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = setTimeout(
+      () => setHighlightWeather(false),
+      1400
+    );
+  };
+
+  // When arriving via the header badge, scroll to the section and highlight.
   useEffect(() => {
-    if (
-      location.hash === "#current-weather" &&
-      location.state?.fromHeaderWeatherBadge
-    ) {
+    if (location.state?.fromHeaderWeatherBadge) {
       // slight delay to allow initial layout
       setTimeout(
         () => scrollToWeatherSection({ preferContentOnMobile: true }),
         50
       );
       // trigger subtle highlight for a moment
-      setHighlightWeather(true);
-      const t = setTimeout(() => setHighlightWeather(false), 1400);
-      return () => clearTimeout(t);
+      triggerWeatherHighlight();
+      // Clear state so refreshes don't re-trigger the jump.
+      setTimeout(() => {
+        navigate(`${location.pathname}${location.search}${location.hash}`, {
+          replace: true,
+          state: null,
+        });
+      }, 0);
     }
-  }, [location.hash]);
+  }, [
+    location.key,
+    location.state,
+    location.pathname,
+    location.search,
+    location.hash,
+    navigate,
+  ]);
+
+  useEffect(() => {
+    const handleBadgeJump = () => {
+      scrollToWeatherSection({ preferContentOnMobile: true });
+      triggerWeatherHighlight();
+    };
+    window.addEventListener("home:jump-current-weather", handleBadgeJump);
+    return () =>
+      window.removeEventListener("home:jump-current-weather", handleBadgeJump);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Scroll to top when hash is #top
   useEffect(() => {

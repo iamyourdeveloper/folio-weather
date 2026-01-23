@@ -14,13 +14,16 @@ const shouldUseInstantScroll = () => {
 };
 
 const applyScrollToTop = (behavior) => {
+  let usedFallback = false;
+
   try {
     window.scrollTo({ top: 0, left: 0, behavior });
   } catch (_) {
+    usedFallback = true;
     window.scrollTo(0, 0);
   }
 
-  if (typeof document !== "undefined") {
+  if (typeof document !== "undefined" && (usedFallback || behavior === "auto")) {
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }
@@ -44,6 +47,9 @@ const ScrollToTop = () => {
   }, []);
 
   useLayoutEffect(() => {
+    if (location.state?.fromHeaderWeatherBadge) {
+      return;
+    }
     if (location.hash && location.hash !== "#top") {
       return;
     }

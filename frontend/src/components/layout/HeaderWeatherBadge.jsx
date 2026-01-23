@@ -31,6 +31,13 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
 
   const routerLocation = useRouterLocation();
   const jumpState = { fromHeaderWeatherBadge: true };
+  const handleBadgeClick = (event) => {
+    if (typeof window === "undefined") return;
+    if (routerLocation.pathname === "/") {
+      event?.preventDefault();
+      window.dispatchEvent(new CustomEvent("home:jump-current-weather"));
+    }
+  };
 
   // Prefer current coordinates whenever location services are enabled/available.
   // This keeps the badge consistently tied to your current location across pages.
@@ -44,22 +51,27 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
     currentLocation.lon != null
   );
   const preferCoords = preferences.autoLocation && !locationError && hasCoords;
-  
+
   // When user explicitly selects a location (selectedLocation exists), respect their choice
   // Otherwise, fall back to autoLocation preference
   const userHasExplicitSelection = !!selectedLocation;
-  const shouldFetchByCoords = userHasExplicitSelection 
+  const shouldFetchByCoords = userHasExplicitSelection
     ? effectiveLocation?.type === "coords"
-    : (preferCoords || effectiveLocation?.type === "coords");
+    : preferCoords || effectiveLocation?.type === "coords";
   // Only fetch by city if we're not preferring coords and an explicit city is selected
-  const shouldFetchByCity = !shouldFetchByCoords && effectiveLocation?.type === "city";
+  const shouldFetchByCity =
+    !shouldFetchByCoords && effectiveLocation?.type === "city";
 
   const coordsWeather = useCurrentWeatherByCoords(
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lat : effectiveLocation?.coordinates?.lat)
+      ? preferCoords
+        ? currentLocation?.lat
+        : effectiveLocation?.coordinates?.lat
       : null,
     shouldFetchByCoords
-      ? (preferCoords ? currentLocation?.lon : effectiveLocation?.coordinates?.lon)
+      ? preferCoords
+        ? currentLocation?.lon
+        : effectiveLocation?.coordinates?.lon
       : null,
     preferences.units,
     effectiveLocation?.name || selectedLocation?.name, // Pass original name when available
@@ -95,7 +107,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
       selectedLocation?.type === "city"
         ? resolveFullLocationName(selectedLocation)
         : null;
-    
+
     // If we have weather data, show temperature + location
     if (data?.current && data?.location) {
       const temp = formatTemperature(data.current.temperature);
@@ -111,7 +123,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
         resolvedEffectiveName ||
         resolveFullLocationName(effectiveLocation) ||
         "Unknown";
-      
+
       const isHome = routerLocation.pathname === "/";
       const content = (
         <div
@@ -132,10 +144,11 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
 
       return (
         <Link
-          to="/#current-weather"
+          to="/"
           state={jumpState}
           className="header-weather__link"
           title={isHome ? "Jump to current weather" : "View on Home"}
+          onClick={handleBadgeClick}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
         >
@@ -143,7 +156,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
         </Link>
       );
     }
-    
+
     // If weather is loading or failed, show location with loading indicator
     const loadingLocName =
       manualSelectionName ||
@@ -154,10 +167,11 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
       "Loading...";
     return (
       <Link
-        to="/#current-weather"
+        to="/"
         state={jumpState}
         className="header-weather__link"
         title="Loading weather..."
+        onClick={handleBadgeClick}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       >
@@ -173,7 +187,7 @@ const HeaderWeatherBadge = ({ onMouseDown, onTouchStart }) => {
       </Link>
     );
   }
-  
+
   // Fallback: no effective location
   return null;
 };
